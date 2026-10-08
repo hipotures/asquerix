@@ -1,0 +1,11 @@
+{
+  "cache_directory": "/tmp/asquerix-audit-cold-20261008",
+  "method": "Fresh Warp kernel cache; NVIDIA driver cache left intact; no simulation trials",
+  "module_load_seconds": 1.2625333199976012,
+  "setup_and_load_seconds": 1.573979398002848,
+  "kernel_properties": {
+    "register_count": 139,
+    "local_memory_size": 32
+  },
+  "device": "cuda:0"
+}

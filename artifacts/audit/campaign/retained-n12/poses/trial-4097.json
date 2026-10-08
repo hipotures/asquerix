@@ -1,0 +1,104 @@
+{
+  "accepted": 119,
+  "attempts": 128,
+  "final_step": 0.0003906250058207661,
+  "gpu_status": "GPU_FEASIBLE",
+  "independent_validation": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.798374877091946e-05,
+    "min_wall_clearance": 1.8719589438997986e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "max_penetration": 0.0,
+  "min_pair_separation_gpu": 1.800060272216797e-05,
+  "min_wall_clearance_gpu": 1.8715858459472656e-05,
+  "n": 12,
+  "poses": [
+    [
+      -0.5815289616584778,
+      1.609946608543396,
+      1.5707954168319702
+    ],
+    [
+      1.5463643074035645,
+      1.4967824220657349,
+      1.4338380098342896
+    ],
+    [
+      -0.2575361728668213,
+      0.568203866481781,
+      -0.01073028426617384
+    ],
+    [
+      -1.4018645286560059,
+      -0.4270740747451782,
+      0.522729218006134
+    ],
+    [
+      -1.6099445819854736,
+      -1.609946846961975,
+      1.5707961320877075
+    ],
+    [
+      0.508504331111908,
+      1.5199308395385742,
+      1.3691362142562866
+    ],
+    [
+      -0.39009392261505127,
+      -1.60994553565979,
+      1.570796251296997
+    ],
+    [
+      1.4062716960906982,
+      -0.40625134110450745,
+      0.6868322491645813
+    ],
+    [
+      1.6099462509155273,
+      -1.6099462509155273,
+      -6.15922886026965e-07
+    ],
+    [
+      0.6099260449409485,
+      -1.609944462776184,
+      1.570796251296997
+    ],
+    [
+      -0.09178967028856277,
+      -0.4336532950401306,
+      1.5600653886795044
+    ],
+    [
+      -1.4341365098953247,
+      0.7072564959526062,
+      0.48677167296409607
+    ]
+  ],
+  "proposals": 17,
+  "rejected": 9,
+  "rng_scheme": "splitmix64-counter-v1",
+  "seed": 20261008,
+  "selection_reasons": [
+    "all_correctness",
+    "best_candidate",
+    "random_audit"
+  ],
+  "side": 4.219933032989502,
+  "sweeps": 11911,
+  "termination_reason": "BUDGET_EXHAUSTED",
+  "trial_id": 4097,
+  "validation": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.798374877091946e-05,
+    "min_wall_clearance": 1.8719589438997986e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "validation_status": "NUMERICALLY_VALIDATED"
+}

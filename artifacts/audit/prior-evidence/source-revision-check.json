@@ -1,0 +1,33 @@
+{
+  "implementation_commit": "ceaebce85d1dd046f97a9850cfb32b42850b8229",
+  "checks": [
+    {
+      "path": "src/asquerix/__init__.py",
+      "matches_original_revision": true
+    },
+    {
+      "path": "src/asquerix/cli.py",
+      "matches_original_revision": true
+    },
+    {
+      "path": "src/asquerix/geometry.py",
+      "matches_original_revision": true
+    },
+    {
+      "path": "src/asquerix/gpu.py",
+      "matches_original_revision": true
+    },
+    {
+      "path": "src/asquerix/output.py",
+      "matches_original_revision": true
+    },
+    {
+      "path": "src/asquerix/pilot.py",
+      "matches_original_revision": true
+    },
+    {
+      "path": "src/asquerix/runner.py",
+      "matches_original_revision": true
+    }
+  ]
+}

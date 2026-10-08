@@ -1,0 +1,22 @@
+[
+  {
+    "trial_id": 0,
+    "status": "NOT_CHECKED",
+    "diagnostic": "Initialization exhausted; no final pose exists."
+  },
+  {
+    "trial_id": 1,
+    "status": "NOT_CHECKED",
+    "diagnostic": "Initialization exhausted; no final pose exists."
+  },
+  {
+    "trial_id": 2,
+    "status": "NOT_CHECKED",
+    "diagnostic": "Initialization exhausted; no final pose exists."
+  },
+  {
+    "trial_id": 3,
+    "status": "NOT_CHECKED",
+    "diagnostic": "Initialization exhausted; no final pose exists."
+  }
+]

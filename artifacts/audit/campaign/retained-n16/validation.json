@@ -1,0 +1,290 @@
+{
+  "4096": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8048550314064826e-05,
+    "min_wall_clearance": 1.8466060638377968e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4097": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.799169196436967e-05,
+    "min_wall_clearance": 1.8320256240045296e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4098": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8071847377010286e-05,
+    "min_wall_clearance": 1.8826460173926307e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4099": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7975795439828524e-05,
+    "min_wall_clearance": 1.8882021833643847e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4100": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8011876383616787e-05,
+    "min_wall_clearance": 1.8618505071898994e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4101": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8044544691564468e-05,
+    "min_wall_clearance": 1.8813212302681848e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4102": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7958167931236835e-05,
+    "min_wall_clearance": 1.8439691086946652e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4103": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.824538081196536e-05,
+    "min_wall_clearance": 1.8016771014206512e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4104": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.791983514820572e-05,
+    "min_wall_clearance": 1.8829832066025176e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4105": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8161354890300352e-05,
+    "min_wall_clearance": 1.886729686395583e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4106": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8074393718037207e-05,
+    "min_wall_clearance": 1.9015827855461964e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4107": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7950265117638864e-05,
+    "min_wall_clearance": 1.8265113324034132e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4108": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7957797687095933e-05,
+    "min_wall_clearance": 1.8450879611719984e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4109": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7989100205784148e-05,
+    "min_wall_clearance": 1.8492205928755112e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4110": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8078268937626873e-05,
+    "min_wall_clearance": 1.8356089074078596e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4111": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8113611013892417e-05,
+    "min_wall_clearance": 1.9113415971716563e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4112": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.798461152024977e-05,
+    "min_wall_clearance": 1.8038447051615947e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4113": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8242349659525203e-05,
+    "min_wall_clearance": 1.816155755296478e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4114": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.808359183308461e-05,
+    "min_wall_clearance": 1.8344211078158423e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4115": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8115964512677163e-05,
+    "min_wall_clearance": 1.820127250784509e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4116": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8056742434158224e-05,
+    "min_wall_clearance": 1.8279081952954357e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4117": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7946610205488156e-05,
+    "min_wall_clearance": 1.8354825185085133e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4118": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7992309247372162e-05,
+    "min_wall_clearance": 1.8111156131705997e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4119": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.799093631221771e-05,
+    "min_wall_clearance": 1.884658901829539e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4120": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.807358338434817e-05,
+    "min_wall_clearance": 1.80090813772793e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4121": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8000940476881055e-05,
+    "min_wall_clearance": 1.87763633929805e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4122": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8085312773974405e-05,
+    "min_wall_clearance": 1.8269603999421236e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4123": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.800563885390183e-05,
+    "min_wall_clearance": 1.8056676829303342e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4124": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.799814313774295e-05,
+    "min_wall_clearance": 1.8066017443807425e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4125": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.80808317061798e-05,
+    "min_wall_clearance": 1.882162247435204e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4126": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.7993547586137026e-05,
+    "min_wall_clearance": 1.803764462593449e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  },
+  "4127": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.795632129875102e-05,
+    "min_wall_clearance": 1.8345885576476206e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v2"
+  }
+}

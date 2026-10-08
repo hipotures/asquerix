@@ -1,0 +1,19 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-audit-cold-20261008/1.18.0
+Module asquerix.gpu 1455034 load on device 'cuda:0' took 1122.55 ms  (compiled)
+{
+  "cache_directory": "/tmp/asquerix-audit-cold-20261008",
+  "method": "Fresh Warp kernel cache; NVIDIA driver cache left intact; no simulation trials",
+  "module_load_seconds": 1.2625333199976012,
+  "setup_and_load_seconds": 1.573979398002848,
+  "kernel_properties": {
+    "register_count": 139,
+    "local_memory_size": 32
+  },
+  "device": "cuda:0"
+}

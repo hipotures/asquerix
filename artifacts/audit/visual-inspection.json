@@ -1,0 +1,10 @@
+{
+  "method": "Rasterized existing SVG files with rsvg-convert, opened the resulting local PNG images, and checked labels, container and square count. Polygon coordinates are checked numerically by the independent artifact checker; visual inspection is not a validity certificate.",
+  "viewed_svg_files": [
+    "artifacts/audit/campaign/matched-b512-r0/svg/trial-6233.svg",
+    "artifacts/audit/campaign/retained-n11/svg/trial-4122.svg",
+    "artifacts/audit/campaign/retained-n16/svg/trial-4114.svg",
+    "artifacts/pilot/init-failed/svg/trial-0.svg"
+  ],
+  "observations": "The n=12 candidate shows twelve unit squares, including three tilted interior squares; n=11 and n=16 controls contain tilted squares and unused area. The initialization-failure view is empty and clearly labeled INVALID DEBUG. Selected geometry is preserved in SVG and pose JSON; PNG previews are temporary."
+}

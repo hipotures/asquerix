@@ -1,0 +1,564 @@
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_configuration_contract_survives_fp32_conversion[changes0] ________
+
+changes = {'step': 1e+40}
+
+    @pytest.mark.parametrize("changes", [
+        {"step": 1e40}, {"motion_tolerance": 1e-50},
+        {"step_reduction": 1 - 1e-10},
+        {"guard": 2e-5, "acceptance_tolerance": 2e-5 - 1e-14},
+    ])
+    def test_configuration_contract_survives_fp32_conversion(changes):
+>       with pytest.raises(ValueError, match="FP32"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_audit_gpu.py:15: Failed
+________ test_configuration_contract_survives_fp32_conversion[changes1] ________
+
+changes = {'motion_tolerance': 1e-50}
+
+    @pytest.mark.parametrize("changes", [
+        {"step": 1e40}, {"motion_tolerance": 1e-50},
+        {"step_reduction": 1 - 1e-10},
+        {"guard": 2e-5, "acceptance_tolerance": 2e-5 - 1e-14},
+    ])
+    def test_configuration_contract_survives_fp32_conversion(changes):
+>       with pytest.raises(ValueError, match="FP32"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_audit_gpu.py:15: Failed
+________ test_configuration_contract_survives_fp32_conversion[changes2] ________
+
+changes = {'step_reduction': 0.9999999999}
+
+    @pytest.mark.parametrize("changes", [
+        {"step": 1e40}, {"motion_tolerance": 1e-50},
+        {"step_reduction": 1 - 1e-10},
+        {"guard": 2e-5, "acceptance_tolerance": 2e-5 - 1e-14},
+    ])
+    def test_configuration_contract_survives_fp32_conversion(changes):
+>       with pytest.raises(ValueError, match="FP32"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_audit_gpu.py:15: Failed
+________ test_configuration_contract_survives_fp32_conversion[changes3] ________
+
+changes = {'guard': 2e-05, 'acceptance_tolerance': 1.9999999990000002e-05}
+
+    @pytest.mark.parametrize("changes", [
+        {"step": 1e40}, {"motion_tolerance": 1e-50},
+        {"step_reduction": 1 - 1e-10},
+        {"guard": 2e-5, "acceptance_tolerance": 2e-5 - 1e-14},
+    ])
+    def test_configuration_contract_survives_fp32_conversion(changes):
+>       with pytest.raises(ValueError, match="FP32"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_audit_gpu.py:15: Failed
+______________ test_production_finalizer_reports_wall_penetration ______________
+
+cuda_device = 'cuda:0'
+
+    @pytest.mark.gpu
+    def test_production_finalizer_reports_wall_penetration(cuda_device):
+        # Inject an invalid accepted state to exercise the production finalizer;
+        # zero attempts in this diagnostic must leave all coordinates unchanged.
+        config = Config(n=1, max_attempts=1)
+        poses = wp.array(np.asarray([[[5.0, 0.0, 0.0]]], dtype=np.float32),
+                         dtype=wp.vec3, device=cuda_device)
+        work = wp.empty_like(poses)
+        state = Result()
+        state.side = 10.0
+        state.final_step = config.step
+        results = wp.array([state], dtype=Result, device=cuda_device)
+        trace = wp.zeros((1, 1), dtype=float, device=cuda_device)
+        wp.launch(simulate, dim=1, inputs=[parameters(config), wp.uint64(0), poses,
+                  work, results, trace, 0, 1, 0], device=cuda_device, block_dim=32)
+        wp.synchronize_device(cuda_device)
+        result = results.numpy()[0]
+        assert result["min_wall"] == pytest.approx(-0.5)
+>       assert result["max_penetration"] == pytest.approx(0.5)
+E       assert np.float32(0.0) == 0.5 ± 5.0e-07
+E         
+E         comparison failed
+E         Obtained: 0.0
+E         Expected: 0.5 ± 5.0e-07
+
+tests/test_audit_gpu.py:37: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+----------------------------- Captured stdout call -----------------------------
+Module asquerix.gpu c72ae0f load on device 'cuda:0' took 3.16 ms  (cached)
+__________ test_batch_rejects_noninteger_ids_and_out_of_batch_gather ___________
+
+kernel = <warp._src.context.Kernel object at 0x7f7f124fa250>
+arg_type = <class 'warp._src.types.uint64'>, arg_name = 'offset'
+value = <[TypeError("'float' object cannot be interpreted as an integer") raised in repr()] uint64 object at 0x7f7f1234f820>
+device = 'cuda:0', adjoint = False
+
+    def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
+        device = runtime.get_device(device)
+    
+        if warp._src.types.is_array(arg_type):
+            if value is None:
+                # allow for NULL arrays
+                return arg_type.__ctype__()
+    
+            elif isinstance(value, warp._src.types.array_t):
+                # accept array descriptors verbatim
+                return value
+    
+            else:
+                # check for array type
+                # - in forward passes, array types have to match
+                # - in backward passes, indexed array gradients are regular arrays
+                if adjoint:
+                    array_matches = isinstance(value, warp.array)
+                else:
+                    array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
+    
+                if not array_matches:
+                    # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
+                    if warp._src.types.matches_array_class(arg_type, warp.array):
+                        if device.is_cuda:
+                            # check for __cuda_array_interface__
+                            try:
+                                interface = value.__cuda_array_interface__
+                            except AttributeError:
+                                pass
+                            else:
+                                return warp._src.types.array_ctype_from_interface(
+                                    interface, dtype=arg_type.dtype, owner=value
+                                )
+                        else:
+                            # check for __array_interface__
+                            try:
+                                interface = value.__array_interface__
+                            except AttributeError:
+                                pass
+                            else:
+                                return warp._src.types.array_ctype_from_interface(
+                                    interface, dtype=arg_type.dtype, owner=value
+                                )
+                            # check for __array__() method, e.g. Torch CPU tensors
+                            try:
+                                interface = value.__array__().__array_interface__
+                            except AttributeError:
+                                pass
+                            else:
+                                return warp._src.types.array_ctype_from_interface(
+                                    interface, dtype=arg_type.dtype, owner=value
+                                )
+    
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {warp._src.types.type_repr(arg_type)}, but passed value has type {type(value).__name__}."
+                    )
+    
+                # check subtype
+                if not warp._src.types.types_equal(value.dtype, arg_type.dtype):
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={value.dtype}."
+                    )
+    
+                # check dimensions
+                if value.ndim != arg_type.ndim:
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
+                    )
+    
+                # Optional diagnostic check for mixed-device launches. By default, array pointers are passed
+                # through and the hardware access rules determine whether the launch is valid.
+                if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
+                    _validate_launch_array_access(kernel, arg_name, value, device)
+    
+                return value.__ctype__()
+    
+        # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
+        elif arg_type is Texture1D:
+            if value is None:
+                return texture1d_t()
+            if isinstance(value, Texture1D):
+                return value.__ctype__()
+            if isinstance(value, texture1d_t):
+                return value
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture1D "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif arg_type is Texture2D:
+            if value is None:
+                return texture2d_t()
+            if isinstance(value, Texture2D):
+                return value.__ctype__()
+            if isinstance(value, texture2d_t):
+                return value
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture2D "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif arg_type is Texture3D:
+            if value is None:
+                return texture3d_t()
+            if isinstance(value, Texture3D):
+                return value.__ctype__()
+            if isinstance(value, texture3d_t):
+                return value
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture3D "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif isinstance(arg_type, warp._src.codegen.Struct):
+            if value is None:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects {arg_type.key} but got None"
+                )
+            return value.__ctype__()
+    
+        # try to convert to a value type (vec3, mat33, etc)
+        elif issubclass(arg_type, ctypes.Array):
+            # simple value types don't have gradient arrays, but native built-in signatures still expect a non-null adjoint value of the correct type
+            if value is None and adjoint:
+                return arg_type(0)
+            if warp._src.types.types_equal(type(value), arg_type):
+                return value
+            else:
+                if isinstance(value, (bool, warp.bool, np.bool_, np.integer, np.floating)):
+                    log_warning(
+                        f"Implicit conversion from a value of type `{type(value).__name__}` to the composite type "
+                        f"`{type_str(arg_type)}` for kernel parameter '{arg_name}' is deprecated. "
+                        f"Construct the value explicitly, e.g.: `{type_str(arg_type)}(...)`.",
+                        category=DeprecationWarning,
+                        stacklevel=4,
+                    )
+                    # Normalize values so transformations broadcast like the other composite types.
+                    value = float(value) if isinstance(value, np.floating) else int(value)
+                elif value is not None and not hasattr(value, "__len__"):
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects "
+                        f"{type_str(arg_type)} but got a single value of type {type(value).__name__}. "
+                        f"Construct the value explicitly, e.g.: {type_str(arg_type)}(...)."
+                    )
+                # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+                try:
+                    return arg_type(value)
+                except Exception as e:
+                    raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
+    
+        elif issubclass(arg_type, ctypes.Structure):
+            # ctypes Structure types (like texture1d_t, texture2d_t, texture3d_t)
+            if isinstance(value, arg_type):
+                # Already the correct ctypes structure, pass directly
+                return value
+            # Check if value is a Texture object that needs conversion
+            if arg_type is texture1d_t and isinstance(value, Texture1D):
+                # check device
+                if value.device != device:
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input texture for argument '{arg_name}' is on device={value.device}."
+                    )
+                return value.__ctype__()
+            if arg_type is texture2d_t and isinstance(value, Texture2D):
+                # check device
+                if value.device != device:
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input texture for argument '{arg_name}' is on device={value.device}."
+                    )
+                return value.__ctype__()
+            if arg_type is texture3d_t and isinstance(value, Texture3D):
+                # check device
+                if value.device != device:
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input texture for argument '{arg_name}' is on device={value.device}."
+                    )
+                return value.__ctype__()
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects {arg_type.__name__} "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif isinstance(value, arg_type):
+            try:
+                # try to pack as a scalar type
+                if arg_type is warp._src.types.float16:
+                    return arg_type._type_(warp._src.types.float_to_half_bits(value.value))
+                elif arg_type is warp._src.types.bfloat16:
+                    return arg_type._type_(warp._src.types.float_to_bfloat16_bits(value.value))
+                else:
+>                   return arg_type._type_(value.value)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   TypeError: 'float' object cannot be interpreted as an integer
+
+.venv/lib/python3.14/site-packages/warp/_src/context.py:10827: TypeError
+
+The above exception was the direct cause of the following exception:
+
+cuda_device = 'cuda:0'
+
+    @pytest.mark.gpu
+    def test_batch_rejects_noninteger_ids_and_out_of_batch_gather(cuda_device):
+        batch = Batch(Config(n=1, max_attempts=0), 4, cuda_device)
+        for count, offset in [(1, 1.5), (1, True), (True, 0), (1.5, 0),
+                              (1, -1), (2, 2**64 - 1)]:
+            with pytest.raises(ValueError, match="trial range"):
+>               batch.run(count, offset)
+
+tests/test_audit_gpu.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/asquerix-audit-before/src/asquerix/gpu.py:472: in run
+    wp.launch(simulate, dim=count, inputs=[self.params, wp.uint64(offset), self.poses, self.work,
+.venv/lib/python3.14/site-packages/warp/_src/context.py:11753: in launch
+    pack_args(fwd_args, params, adjoint=False)
+.venv/lib/python3.14/site-packages/warp/_src/context.py:11748: in pack_args
+    params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kernel = <warp._src.context.Kernel object at 0x7f7f124fa250>
+arg_type = <class 'warp._src.types.uint64'>, arg_name = 'offset'
+value = <[TypeError("'float' object cannot be interpreted as an integer") raised in repr()] uint64 object at 0x7f7f1234f820>
+device = 'cuda:0', adjoint = False
+
+    def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
+        device = runtime.get_device(device)
+    
+        if warp._src.types.is_array(arg_type):
+            if value is None:
+                # allow for NULL arrays
+                return arg_type.__ctype__()
+    
+            elif isinstance(value, warp._src.types.array_t):
+                # accept array descriptors verbatim
+                return value
+    
+            else:
+                # check for array type
+                # - in forward passes, array types have to match
+                # - in backward passes, indexed array gradients are regular arrays
+                if adjoint:
+                    array_matches = isinstance(value, warp.array)
+                else:
+                    array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
+    
+                if not array_matches:
+                    # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
+                    if warp._src.types.matches_array_class(arg_type, warp.array):
+                        if device.is_cuda:
+                            # check for __cuda_array_interface__
+                            try:
+                                interface = value.__cuda_array_interface__
+                            except AttributeError:
+                                pass
+                            else:
+                                return warp._src.types.array_ctype_from_interface(
+                                    interface, dtype=arg_type.dtype, owner=value
+                                )
+                        else:
+                            # check for __array_interface__
+                            try:
+                                interface = value.__array_interface__
+                            except AttributeError:
+                                pass
+                            else:
+                                return warp._src.types.array_ctype_from_interface(
+                                    interface, dtype=arg_type.dtype, owner=value
+                                )
+                            # check for __array__() method, e.g. Torch CPU tensors
+                            try:
+                                interface = value.__array__().__array_interface__
+                            except AttributeError:
+                                pass
+                            else:
+                                return warp._src.types.array_ctype_from_interface(
+                                    interface, dtype=arg_type.dtype, owner=value
+                                )
+    
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {warp._src.types.type_repr(arg_type)}, but passed value has type {type(value).__name__}."
+                    )
+    
+                # check subtype
+                if not warp._src.types.types_equal(value.dtype, arg_type.dtype):
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={value.dtype}."
+                    )
+    
+                # check dimensions
+                if value.ndim != arg_type.ndim:
+                    adj = "adjoint " if adjoint else ""
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
+                    )
+    
+                # Optional diagnostic check for mixed-device launches. By default, array pointers are passed
+                # through and the hardware access rules determine whether the launch is valid.
+                if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
+                    _validate_launch_array_access(kernel, arg_name, value, device)
+    
+                return value.__ctype__()
+    
+        # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
+        elif arg_type is Texture1D:
+            if value is None:
+                return texture1d_t()
+            if isinstance(value, Texture1D):
+                return value.__ctype__()
+            if isinstance(value, texture1d_t):
+                return value
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture1D "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif arg_type is Texture2D:
+            if value is None:
+                return texture2d_t()
+            if isinstance(value, Texture2D):
+                return value.__ctype__()
+            if isinstance(value, texture2d_t):
+                return value
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture2D "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif arg_type is Texture3D:
+            if value is None:
+                return texture3d_t()
+            if isinstance(value, Texture3D):
+                return value.__ctype__()
+            if isinstance(value, texture3d_t):
+                return value
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture3D "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif isinstance(arg_type, warp._src.codegen.Struct):
+            if value is None:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects {arg_type.key} but got None"
+                )
+            return value.__ctype__()
+    
+        # try to convert to a value type (vec3, mat33, etc)
+        elif issubclass(arg_type, ctypes.Array):
+            # simple value types don't have gradient arrays, but native built-in signatures still expect a non-null adjoint value of the correct type
+            if value is None and adjoint:
+                return arg_type(0)
+            if warp._src.types.types_equal(type(value), arg_type):
+                return value
+            else:
+                if isinstance(value, (bool, warp.bool, np.bool_, np.integer, np.floating)):
+                    log_warning(
+                        f"Implicit conversion from a value of type `{type(value).__name__}` to the composite type "
+                        f"`{type_str(arg_type)}` for kernel parameter '{arg_name}' is deprecated. "
+                        f"Construct the value explicitly, e.g.: `{type_str(arg_type)}(...)`.",
+                        category=DeprecationWarning,
+                        stacklevel=4,
+                    )
+                    # Normalize values so transformations broadcast like the other composite types.
+                    value = float(value) if isinstance(value, np.floating) else int(value)
+                elif value is not None and not hasattr(value, "__len__"):
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects "
+                        f"{type_str(arg_type)} but got a single value of type {type(value).__name__}. "
+                        f"Construct the value explicitly, e.g.: {type_str(arg_type)}(...)."
+                    )
+                # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+                try:
+                    return arg_type(value)
+                except Exception as e:
+                    raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
+    
+        elif issubclass(arg_type, ctypes.Structure):
+            # ctypes Structure types (like texture1d_t, texture2d_t, texture3d_t)
+            if isinstance(value, arg_type):
+                # Already the correct ctypes structure, pass directly
+                return value
+            # Check if value is a Texture object that needs conversion
+            if arg_type is texture1d_t and isinstance(value, Texture1D):
+                # check device
+                if value.device != device:
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input texture for argument '{arg_name}' is on device={value.device}."
+                    )
+                return value.__ctype__()
+            if arg_type is texture2d_t and isinstance(value, Texture2D):
+                # check device
+                if value.device != device:
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input texture for argument '{arg_name}' is on device={value.device}."
+                    )
+                return value.__ctype__()
+            if arg_type is texture3d_t and isinstance(value, Texture3D):
+                # check device
+                if value.device != device:
+                    raise RuntimeError(
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input texture for argument '{arg_name}' is on device={value.device}."
+                    )
+                return value.__ctype__()
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects {arg_type.__name__} "
+                f"but got {type(value).__name__}"
+            )
+    
+        elif isinstance(value, arg_type):
+            try:
+                # try to pack as a scalar type
+                if arg_type is warp._src.types.float16:
+                    return arg_type._type_(warp._src.types.float_to_half_bits(value.value))
+                elif arg_type is warp._src.types.bfloat16:
+                    return arg_type._type_(warp._src.types.float_to_bfloat16_bits(value.value))
+                else:
+                    return arg_type._type_(value.value)
+            except Exception as e:
+>               raise RuntimeError(
+                    "Error launching kernel, unable to pack kernel parameter type "
+                    f"{type(value)} for param {arg_name}, expected {arg_type}"
+                ) from e
+E               RuntimeError: Error launching kernel, unable to pack kernel parameter type <class 'warp._src.types.uint64'> for param offset, expected <class 'warp._src.types.uint64'>
+
+.venv/lib/python3.14/site-packages/warp/_src/context.py:10829: RuntimeError
+=============================== warnings summary ===============================
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+  /home/user/DEV/asquerix/.venv/lib/python3.14/site-packages/warp/_src/apic/types.py:49: DeprecationWarning: Due to '_pack_', the 'APICLaunchParamRecord' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slated to become an error in Python 3.19.
+    class APICLaunchParamRecord(ctypes.Structure):
+
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+  /home/user/DEV/asquerix/.venv/lib/python3.14/site-packages/warp/_src/apic/types.py:69: DeprecationWarning: Due to '_pack_', the 'APICLaunchPtrLocation' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slated to become an error in Python 3.19.
+    class APICLaunchPtrLocation(ctypes.Structure):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes0]
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes1]
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes2]
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes3]
+FAILED tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+FAILED tests/test_audit_gpu.py::test_batch_rejects_noninteger_ids_and_out_of_batch_gather
+6 failed, 2 warnings in 1.26s

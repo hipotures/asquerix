@@ -1,0 +1,157 @@
+{
+  "audit_sample_completed": 8,
+  "completed_trials": 32,
+  "deadline_overrun_seconds": 0.0,
+  "dependencies": {
+    "asquerix": "0.1.0",
+    "numpy": "2.5.3",
+    "warp-lang": "1.18.0"
+  },
+  "error": null,
+  "git_revision": {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "6e3f0d9dc771d21a6f9cc1837a5b9c9339b279de\n"
+  },
+  "git_status": {
+    "command": [
+      "git",
+      "status",
+      "--porcelain"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "?? AGENTS.md\n?? PROMPT_01_IMPLEMENTATION.md\n?? PROMPT_02_AUDIT.md\n?? artifacts/audit/campaign.log\n?? artifacts/audit/campaign/\n?? artifacts/audit/prior-evidence/\n?? artifacts/audit/profile-preflight.log\n?? artifacts/audit/regressions-on-original.txt\n?? artifacts/audit/tests-baseline.txt\n?? artifacts/audit/tests-before-fixes.txt\n?? artifacts/audit/tests-fixed.txt\n?? artifacts/audit/tests-gpu-regressions.txt\n"
+  },
+  "gpu_query": {
+    "command": [
+      "nvidia-smi",
+      "--query-gpu=name,uuid,driver_version,memory.total,memory.used,display_active,compute_mode",
+      "--format=csv"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "name, uuid, driver_version, memory.total [MiB], memory.used [MiB], display_active, compute_mode\nNVIDIA GeForce RTX 4070 Ti, GPU-64d50ac7-f623-65a8-8784-b9ec14d16527, 615.71.09, 12282 MiB, 3866 MiB, Enabled, Default\n"
+  },
+  "kernel_properties": {
+    "local_memory_size": 32,
+    "register_count": 139
+  },
+  "leaderboard": [
+    {
+      "accepted": 119,
+      "attempts": 128,
+      "final_step": 0.0003906250058207661,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.798374877091946e-05,
+        "min_wall_clearance": 1.8719589438997986e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v2"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.8715858459472656e-05,
+      "n": 12,
+      "proposals": 17,
+      "rejected": 9,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.219933032989502,
+      "sweeps": 11911,
+      "termination_reason": "BUDGET_EXHAUSTED",
+      "trial_id": 4097,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 107,
+      "attempts": 118,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.798162953409177e-05,
+        "min_wall_clearance": 1.867381210640673e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v2"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.8656253814697266e-05,
+      "n": 12,
+      "proposals": 16,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.262322425842285,
+      "sweeps": 10342,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 4124,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 118,
+      "attempts": 128,
+      "final_step": 0.00019531250291038305,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.786751461718694e-05,
+        "min_wall_clearance": 1.8022458624145088e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v2"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.800060272216797e-05,
+      "n": 12,
+      "proposals": 26,
+      "rejected": 10,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.285927772521973,
+      "sweeps": 11340,
+      "termination_reason": "BUDGET_EXHAUSTED",
+      "trial_id": 4107,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    }
+  ],
+  "platform": "Linux-7.2.9-1-cachyos-x86_64-with-glibc2.44",
+  "python": "3.14.7",
+  "random_audit_outcomes": {
+    "INDETERMINATE": 0,
+    "INVALID": 0,
+    "NOT_CHECKED": 0,
+    "NUMERICALLY_VALIDATED": 8
+  },
+  "reproducibility": "Same seed/global IDs/config/kernel/hardware: tested bitwise; no cross-device/version guarantee.",
+  "requested_trials": 32,
+  "retained_pose_count": 32,
+  "search_elapsed_seconds": 2.60567601697403,
+  "source_sha256": {
+    "src/asquerix/__init__.py": "c19be6368e542bec9deb8f78940873187775172e6d6b2a619ee121b30af82be1",
+    "src/asquerix/cli.py": "31ec0bf3725a4801debcf06212bb6cafc3d9ef2a21df39baf41291214404e47f",
+    "src/asquerix/geometry.py": "530785a72ebe845df50890ed557787936dc9aa6c43548eb88e6318c0eb6ab825",
+    "src/asquerix/gpu.py": "374bc1aba148fff3211c90e19c6b03e39be2800c4dc95a8440b197ce136ba342",
+    "src/asquerix/output.py": "580277304528ed95e7b9127da40ae8de98ab662418392e6f15d4a374f82c51a9",
+    "src/asquerix/pilot.py": "fc708c08988961e13db452a28c7e8ff3c8bb3e8908a97f9d2785bb694758dd19",
+    "src/asquerix/runner.py": "3717bae2c507cffaa3ef571f27eb7d981353a83d0bf984e1e35666f5fe82221f"
+  },
+  "stop_observed_to_batch_completion_seconds": 0.0,
+  "stop_reason": "TRIALS_COMPLETED",
+  "svg_count": 3,
+  "warp_device": "cuda:0",
+  "wheel_variant": "warp-lang 1.18.0 default PyPI CUDA 13.4 wheel"
+}

@@ -1,0 +1,307 @@
+FFFFFF......FF.FFF.FFFFFF.....FF..F........F..F.FF.F.F..F.FF.F           [100%]
+=================================== FAILURES ===================================
+________ test_configuration_contract_survives_fp32_conversion[changes0] ________
+tests/test_audit_gpu.py:16: in test_configuration_contract_survives_fp32_conversion
+    with pytest.raises(ValueError, match="FP32"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+________ test_configuration_contract_survives_fp32_conversion[changes1] ________
+tests/test_audit_gpu.py:16: in test_configuration_contract_survives_fp32_conversion
+    with pytest.raises(ValueError, match="FP32"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+________ test_configuration_contract_survives_fp32_conversion[changes2] ________
+tests/test_audit_gpu.py:16: in test_configuration_contract_survives_fp32_conversion
+    with pytest.raises(ValueError, match="FP32"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+________ test_configuration_contract_survives_fp32_conversion[changes3] ________
+tests/test_audit_gpu.py:16: in test_configuration_contract_survives_fp32_conversion
+    with pytest.raises(ValueError, match="FP32"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+______________ test_production_finalizer_reports_wall_penetration ______________
+tests/test_audit_gpu.py:38: in test_production_finalizer_reports_wall_penetration
+    assert result["max_penetration"] == pytest.approx(0.5)
+E   assert np.float32(0.0) == 0.5 ± 5.0e-07
+E     
+E     comparison failed
+E     Obtained: 0.0
+E     Expected: 0.5 ± 5.0e-07
+---------------------------- Captured stdout setup -----------------------------
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+----------------------------- Captured stdout call -----------------------------
+Module asquerix.gpu c72ae0f load on device 'cuda:0' took 4.41 ms  (cached)
+__________ test_batch_rejects_noninteger_ids_and_out_of_batch_gather ___________
+.venv/lib/python3.14/site-packages/warp/_src/context.py:10827: in pack_arg
+    return arg_type._type_(value.value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'float' object cannot be interpreted as an integer
+
+The above exception was the direct cause of the following exception:
+tests/test_audit_gpu.py:49: in test_batch_rejects_noninteger_ids_and_out_of_batch_gather
+    batch.run(count, offset)
+/tmp/asquerix-audit-before/src/asquerix/gpu.py:472: in run
+    wp.launch(simulate, dim=count, inputs=[self.params, wp.uint64(offset), self.poses, self.work,
+.venv/lib/python3.14/site-packages/warp/_src/context.py:11753: in launch
+    pack_args(fwd_args, params, adjoint=False)
+.venv/lib/python3.14/site-packages/warp/_src/context.py:11748: in pack_args
+    params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/warp/_src/context.py:10829: in pack_arg
+    raise RuntimeError(
+E   RuntimeError: Error launching kernel, unable to pack kernel parameter type <class 'warp._src.types.uint64'> for param offset, expected <class 'warp._src.types.uint64'>
+_____ test_finite_but_unrepresentable_centers_cannot_emit_infinite_metrics _____
+tests/test_audit_geometry.py:83: in test_finite_but_unrepresentable_centers_cannot_emit_infinite_metrics
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'INDETERMINATE' == 'INVALID'
+E     
+E     - INVALID
+E     + INDETERMINATE
+_________ test_non_numeric_length_scalars_are_not_schema_coerced[True] _________
+tests/test_audit_geometry.py:96: in test_non_numeric_length_scalars_are_not_schema_coerced
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'INDETERMINATE' == 'INVALID'
+E     
+E     - INVALID
+E     + INDETERMINATE
+________ test_non_numeric_length_scalars_are_not_schema_coerced[2.0_0] _________
+tests/test_audit_geometry.py:96: in test_non_numeric_length_scalars_are_not_schema_coerced
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'NUMERICALLY_VALIDATED' == 'INVALID'
+E     
+E     - INVALID
+E     + NUMERICALLY_VALIDATED
+________ test_non_numeric_length_scalars_are_not_schema_coerced[2.0_1] _________
+tests/test_audit_geometry.py:96: in test_non_numeric_length_scalars_are_not_schema_coerced
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'NUMERICALLY_VALIDATED' == 'INVALID'
+E     
+E     - INVALID
+E     + NUMERICALLY_VALIDATED
+___________ test_document_rejects_textual_side_and_boolean_tolerance ___________
+tests/test_audit_geometry.py:108: in test_document_rejects_textual_side_and_boolean_tolerance
+    assert side_result["status"] == "INVALID"
+E   AssertionError: assert 'NUMERICALLY_VALIDATED' == 'INVALID'
+E     
+E     - INVALID
+E     + NUMERICALLY_VALIDATED
+_ test_malformed_or_overflowing_pose_coordinates_return_json_invalid[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000] _
+tests/test_audit_geometry.py:133: in test_malformed_or_overflowing_pose_coordinates_return_json_invalid
+    result = validate_document({"n": 1, "side": 4, "poses": [[coordinate, 0.0, 0.0]]})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/asquerix-audit-before/src/asquerix/geometry.py:297: in validate_document
+    result = validate_pose(poses, document["side"], tolerance=float(tolerance_value))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/asquerix-audit-before/src/asquerix/geometry.py:191: in validate_pose
+    pose_array = _pose_array(poses)
+                 ^^^^^^^^^^^^^^^^^^
+/tmp/asquerix-audit-before/src/asquerix/geometry.py:39: in _pose_array
+    array = np.asarray(poses, dtype=np.float64)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   OverflowError: int too large to convert to float
+___ test_malformed_or_overflowing_pose_coordinates_return_json_invalid[0.0] ____
+tests/test_audit_geometry.py:134: in test_malformed_or_overflowing_pose_coordinates_return_json_invalid
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'NUMERICALLY_VALIDATED' == 'INVALID'
+E     
+E     - INVALID
+E     + NUMERICALLY_VALIDATED
+___ test_malformed_or_overflowing_pose_coordinates_return_json_invalid[True] ___
+tests/test_audit_geometry.py:134: in test_malformed_or_overflowing_pose_coordinates_return_json_invalid
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'NUMERICALLY_VALIDATED' == 'INVALID'
+E     
+E     - INVALID
+E     + NUMERICALLY_VALIDATED
+__ test_malformed_or_overflowing_pose_coordinates_return_json_invalid[False] ___
+tests/test_audit_geometry.py:134: in test_malformed_or_overflowing_pose_coordinates_return_json_invalid
+    assert result["status"] == "INVALID"
+E   AssertionError: assert 'NUMERICALLY_VALIDATED' == 'INVALID'
+E     
+E     - INVALID
+E     + NUMERICALLY_VALIDATED
+____________ test_audited_scalar_records_have_durable_pose_evidence ____________
+tests/test_audit_artifacts.py:88: in test_audited_scalar_records_have_durable_pose_evidence
+    assert audited_ids <= saved_ids
+E   assert {1, 3, 5} <= {5}
+E     
+E     Extra items in the left set:
+E     1
+E     3
+----------------------------- Captured stdout call -----------------------------
+Completed 2/6 trials; best numerical side=3.9
+Completed 4/6 trials; best numerical side=3.7
+Completed 6/6 trials; best numerical side=3.5
+_ test_validate_cli_does_not_relabel_initialization_failure_as_geometry_invalid _
+tests/test_audit_artifacts.py:115: in test_validate_cli_does_not_relabel_initialization_failure_as_geometry_invalid
+    assert cli_main(["validate", str(run)]) == 0
+E   AssertionError: assert 1 == 0
+E    +  where 1 = cli_main(['validate', '/tmp/pytest-of-user/pytest-29/test_validate_cli_does_not_rel0/init-failed'])
+----------------------------- Captured stdout call -----------------------------
+[
+  {
+    "trial_id": 0,
+    "status": "INVALID",
+    "min_pair_separation": null,
+    "max_penetration": null,
+    "min_wall_clearance": null,
+    "nonfinite": false,
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v1",
+    "error": "document field 'poses' length 0 does not match n=2"
+  }
+]
+______ test_render_selected_disambiguates_sanitized_identifier_collisions ______
+tests/test_output.py:78: in test_render_selected_disambiguates_sanitized_identifier_collisions
+    assert [path.name for path in paths] == ["trial-a_b.svg", "trial-a_b-2.svg"]
+E   AssertionError: assert ['trial-a_b.s...rial-a_b.svg'] == ['trial-a_b.s...al-a_b-2.svg']
+E     
+E     At index 1 diff: 'trial-a_b.svg' != 'trial-a_b-2.svg'
+E     Use -v to get more diff
+__________ test_unknown_validation_status_is_reported_as_invalid_data __________
+tests/test_output.py:86: in test_unknown_validation_status_is_reported_as_invalid_data
+    assert "validation=INVALID DEBUG" in rendered.read_text(encoding="utf-8")
+E   assert 'validation=INVALID DEBUG' in '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0...rial_id=8 | n=1 | side=1</text>\n<text class="status unknown" x="76" y="868">validation=FUTURE-STATUS</text>\n</svg>\n'
+E    +  where '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0...rial_id=8 | n=1 | side=1</text>\n<text class="status unknown" x="76" y="868">validation=FUTURE-STATUS</text>\n</svg>\n' = read_text(encoding='utf-8')
+E    +    where read_text = PosixPath('/tmp/pytest-of-user/pytest-29/test_unknown_validation_status0/unknown.svg').read_text
+__________ test_report_timing_includes_written_histogram_and_markdown __________
+tests/test_output.py:243: in test_report_timing_includes_written_histogram_and_markdown
+    monkeypatch.setattr(output, "perf_counter", clock)
+E   AttributeError: <module 'asquerix.output' from '/tmp/asquerix-audit-before/src/asquerix/output.py'> has no attribute 'perf_counter'
+_________________ test_run_rejects_malformed_controls[kwargs1] _________________
+tests/test_runner.py:369: in test_run_rejects_malformed_controls
+    runner.run(
+/tmp/asquerix-audit-before/src/asquerix/runner.py:115: in run
+    audit_ids = {trial_offset + int(i) for i in audit_rng.choice(trials, min(trials, audit_size), replace=False)}
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy/random/_generator.pyx:993: in numpy.random._generator.Generator.choice
+    ???
+E   TypeError: expected a sequence of integers or a single integer, got 'True'
+_________________ test_run_rejects_malformed_controls[kwargs4] _________________
+tests/test_runner.py:369: in test_run_rejects_malformed_controls
+    runner.run(
+/tmp/asquerix-audit-before/src/asquerix/runner.py:143: in run
+    scalars, timing = batch.run(count, offset)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_runner.py:68: in run
+    results = np.zeros(count, dtype=_RESULT_DTYPE)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: expected a sequence of integers or a single integer, got '1.0'
+_________________ test_run_rejects_malformed_controls[kwargs6] _________________
+tests/test_runner.py:368: in test_run_rejects_malformed_controls
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+----------------------------- Captured stdout call -----------------------------
+Completed 32/64 trials; best numerical side=4.0
+Completed 64/64 trials; best numerical side=4.0
+_________________ test_run_rejects_malformed_controls[kwargs7] _________________
+tests/test_runner.py:369: in test_run_rejects_malformed_controls
+    runner.run(
+/tmp/asquerix-audit-before/src/asquerix/runner.py:97: in run
+    if not 1 <= batch_size <= 65536 or not np.isfinite(max_seconds) or max_seconds <= 0:
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''
+_________________ test_run_rejects_malformed_controls[kwargs9] _________________
+tests/test_runner.py:368: in test_run_rejects_malformed_controls
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+----------------------------- Captured stdout call -----------------------------
+Completed 32/64 trials; best numerical side=4.0
+Completed 64/64 trials; best numerical side=4.0
+________________ test_run_rejects_malformed_controls[kwargs11] _________________
+tests/test_runner.py:369: in test_run_rejects_malformed_controls
+    runner.run(
+/tmp/asquerix-audit-before/src/asquerix/runner.py:154: in run
+    reasons, candidates = select_indices(current, sample_every=sample_every, audit_ids=audit_ids,
+/tmp/asquerix-audit-before/src/asquerix/runner.py:81: in select_indices
+    for i in candidates[:keep_best]:
+             ^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: slice indices must be integers or None or have an __index__ method
+________________ test_run_rejects_malformed_controls[kwargs14] _________________
+tests/test_runner.py:369: in test_run_rejects_malformed_controls
+    runner.run(
+/tmp/asquerix-audit-before/src/asquerix/runner.py:115: in run
+    audit_ids = {trial_offset + int(i) for i in audit_rng.choice(trials, min(trials, audit_size), replace=False)}
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy/random/_generator.pyx:993: in numpy.random._generator.Generator.choice
+    ???
+E   TypeError: expected a sequence of integers or a single integer, got '1.0'
+________________ test_run_rejects_malformed_controls[kwargs16] _________________
+tests/test_runner.py:368: in test_run_rejects_malformed_controls
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+----------------------------- Captured stdout call -----------------------------
+Completed 32/64 trials; best numerical side=4.0
+Completed 64/64 trials; best numerical side=4.0
+________________ test_run_rejects_malformed_controls[kwargs17] _________________
+tests/test_runner.py:368: in test_run_rejects_malformed_controls
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+----------------------------- Captured stdout call -----------------------------
+Completed 32/64 trials; best numerical side=4.0
+Completed 64/64 trials; best numerical side=4.0
+________________ test_run_rejects_malformed_controls[kwargs19] _________________
+tests/test_runner.py:368: in test_run_rejects_malformed_controls
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+----------------------------- Captured stdout call -----------------------------
+Completed 32/64 trials; best numerical side=4.0
+Completed 64/64 trials; best numerical side=4.0
+=============================== warnings summary ===============================
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+  /home/user/DEV/asquerix/.venv/lib/python3.14/site-packages/warp/_src/apic/types.py:49: DeprecationWarning: Due to '_pack_', the 'APICLaunchParamRecord' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slated to become an error in Python 3.19.
+    class APICLaunchParamRecord(ctypes.Structure):
+
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+  /home/user/DEV/asquerix/.venv/lib/python3.14/site-packages/warp/_src/apic/types.py:69: DeprecationWarning: Due to '_pack_', the 'APICLaunchPtrLocation' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slated to become an error in Python 3.19.
+    class APICLaunchPtrLocation(ctypes.Structure):
+
+tests/test_audit_geometry.py::test_finite_but_unrepresentable_centers_cannot_emit_infinite_metrics
+  /tmp/asquerix-audit-before/src/asquerix/geometry.py:131: RuntimeWarning: invalid value encountered in divide
+    return normals / lengths[:, None]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes0]
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes1]
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes2]
+FAILED tests/test_audit_gpu.py::test_configuration_contract_survives_fp32_conversion[changes3]
+FAILED tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+FAILED tests/test_audit_gpu.py::test_batch_rejects_noninteger_ids_and_out_of_batch_gather
+FAILED tests/test_audit_geometry.py::test_finite_but_unrepresentable_centers_cannot_emit_infinite_metrics
+FAILED tests/test_audit_geometry.py::test_non_numeric_length_scalars_are_not_schema_coerced[True]
+FAILED tests/test_audit_geometry.py::test_non_numeric_length_scalars_are_not_schema_coerced[2.0_0]
+FAILED tests/test_audit_geometry.py::test_non_numeric_length_scalars_are_not_schema_coerced[2.0_1]
+FAILED tests/test_audit_geometry.py::test_document_rejects_textual_side_and_boolean_tolerance
+FAILED tests/test_audit_geometry.py::test_malformed_or_overflowing_pose_coordinates_return_json_invalid[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000]
+FAILED tests/test_audit_geometry.py::test_malformed_or_overflowing_pose_coordinates_return_json_invalid[0.0]
+FAILED tests/test_audit_geometry.py::test_malformed_or_overflowing_pose_coordinates_return_json_invalid[True]
+FAILED tests/test_audit_geometry.py::test_malformed_or_overflowing_pose_coordinates_return_json_invalid[False]
+FAILED tests/test_audit_artifacts.py::test_audited_scalar_records_have_durable_pose_evidence
+FAILED tests/test_audit_artifacts.py::test_validate_cli_does_not_relabel_initialization_failure_as_geometry_invalid
+FAILED tests/test_output.py::test_render_selected_disambiguates_sanitized_identifier_collisions
+FAILED tests/test_output.py::test_unknown_validation_status_is_reported_as_invalid_data
+FAILED tests/test_output.py::test_report_timing_includes_written_histogram_and_markdown
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs1] - T...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs4] - T...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs6] - F...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs7] - T...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs9] - F...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs11] - ...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs14] - ...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs16] - ...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs17] - ...
+FAILED tests/test_runner.py::test_run_rejects_malformed_controls[kwargs19] - ...
+30 failed, 32 passed, 3 warnings in 2.10s

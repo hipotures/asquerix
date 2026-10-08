@@ -1,0 +1,536 @@
+{
+  "accepted_trials": 12288,
+  "artifacts": {
+    "histogram": "histogram.svg",
+    "report": "report.md",
+    "summary": "summary.json"
+  },
+  "attempted_trials": 12288,
+  "audit_coverage": {
+    "audited_trials": 136,
+    "coverage_fraction": 0.011067708333333334,
+    "indeterminate_trials": 0,
+    "invalid_trials": 0,
+    "not_checked_trials": 12152,
+    "numerically_validated_trials": 136,
+    "total_trials": 12288
+  },
+  "counters": {
+    "accepted": 1073016,
+    "attempts": 1191796,
+    "rejected": 118780,
+    "sweeps": 102811687
+  },
+  "failure_counts": {
+    "budget_exhausted": 6873,
+    "initialization_failed": 0,
+    "no_accepted_pose": 0,
+    "numerical_failure": 0,
+    "total": 0
+  },
+  "gpu_status_counts": {
+    "GPU_FEASIBLE": 12288
+  },
+  "histogram": {
+    "gpu_accepted": {
+      "count": 12288,
+      "counts": [
+        249,
+        1803,
+        3692,
+        2050,
+        1078,
+        1046,
+        948,
+        832,
+        404,
+        131,
+        27,
+        14,
+        9,
+        1,
+        4
+      ],
+      "edges": [
+        4.000200271606445,
+        4.19726972579956,
+        4.394339179992675,
+        4.591408634185791,
+        4.788478088378906,
+        4.9855475425720215,
+        5.1826169967651365,
+        5.379686450958252,
+        5.5767559051513675,
+        5.773825359344483,
+        5.970894813537598,
+        6.167964267730713,
+        6.365033721923828,
+        6.562103176116944,
+        6.759172630310058,
+        6.956242084503174
+      ],
+      "population": "GPU_FEASIBLE"
+    },
+    "numerically_validated": {
+      "count": 136,
+      "counts": [
+        43,
+        40,
+        28,
+        7,
+        4,
+        3,
+        5,
+        3,
+        3
+      ],
+      "edges": [
+        4.000200271606445,
+        4.216413074069553,
+        4.4326258765326605,
+        4.6488386789957685,
+        4.865051481458876,
+        5.081264283921984,
+        5.297477086385092,
+        5.513689888848199,
+        5.729902691311306,
+        5.946115493774414
+      ],
+      "population": "GPU_FEASIBLE + NUMERICALLY_VALIDATED"
+    }
+  },
+  "iteration_statistics": {
+    "attempts": {
+      "best": 33.0,
+      "count": 12288,
+      "max": 128.0,
+      "mean": 96.98860677083333,
+      "median": 128.0,
+      "min": 33.0,
+      "q05": 40.0,
+      "q25": 47.0,
+      "q75": 128.0,
+      "q95": 128.0,
+      "quantiles": {
+        "q05": 40.0,
+        "q25": 47.0,
+        "q50": 128.0,
+        "q75": 128.0,
+        "q95": 128.0
+      },
+      "worst": 128.0
+    },
+    "sweeps": {
+      "best": 1666.0,
+      "count": 12288,
+      "max": 13299.0,
+      "mean": 8366.836507161459,
+      "median": 11155.5,
+      "min": 1666.0,
+      "q05": 2085.35,
+      "q25": 2902.0,
+      "q75": 11941.0,
+      "q95": 12480.0,
+      "quantiles": {
+        "q05": 2085.35,
+        "q25": 2902.0,
+        "q50": 11155.5,
+        "q75": 11941.0,
+        "q95": 12480.0
+      },
+      "worst": 13299.0
+    }
+  },
+  "metadata": {
+    "leaderboard": [
+      {
+        "accepted": 52,
+        "attempts": 63,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8017752592770147e-05,
+          "min_wall_clearance": 1.856174380243658e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.8537044525146484e-05,
+        "n": 12,
+        "proposals": 22,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.000200271606445,
+        "sweeps": 4372,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 6233,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 39,
+        "attempts": 50,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8059530536265796e-05,
+          "min_wall_clearance": 1.8493733586755212e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.8477439880371094e-05,
+        "n": 12,
+        "proposals": 15,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.0002007484436035,
+        "sweeps": 2952,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 3801,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 39,
+        "attempts": 50,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8359589340821714e-05,
+          "min_wall_clearance": 1.8202943943279593e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.8358230590820312e-05,
+        "min_wall_clearance_gpu": 1.817941665649414e-05,
+        "n": 12,
+        "proposals": 24,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.0002007484436035,
+        "sweeps": 2881,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 11032,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 99,
+        "attempts": 110,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.801294591243779e-05,
+          "min_wall_clearance": 1.8140965597268632e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.811981201171875e-05,
+        "n": 12,
+        "proposals": 22,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.000202655792236,
+        "sweeps": 9834,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 8314,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 73,
+        "attempts": 84,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8018671474662185e-05,
+          "min_wall_clearance": 1.7999812542690563e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.800060272216797e-05,
+        "n": 12,
+        "proposals": 21,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.000207901000977,
+        "sweeps": 6312,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 476,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 119,
+        "attempts": 128,
+        "final_step": 0.0003906250058207661,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.806184493324814e-05,
+          "min_wall_clearance": 1.814504479025203e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.811981201171875e-05,
+        "n": 12,
+        "proposals": 25,
+        "rejected": 9,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.012516975402832,
+        "sweeps": 11166,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 1611,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 50,
+        "attempts": 61,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.800059886614136e-05,
+          "min_wall_clearance": 1.814166803626449e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.811981201171875e-05,
+        "n": 12,
+        "proposals": 19,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.022663593292236,
+        "sweeps": 4221,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 420,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 84,
+        "attempts": 95,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.7957088060883974e-05,
+          "min_wall_clearance": 1.8336375277705486e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.8358230590820312e-05,
+        "n": 12,
+        "proposals": 14,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.027942657470703,
+        "sweeps": 7950,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 4684,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 119,
+        "attempts": 128,
+        "final_step": 0.0003906250058207661,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8077306771557833e-05,
+          "min_wall_clearance": 1.8416410895838453e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.8358230590820312e-05,
+        "n": 12,
+        "proposals": 16,
+        "rejected": 9,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.028914928436279,
+        "sweeps": 11518,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 10003,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 33,
+        "attempts": 44,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.857662599724641e-05,
+          "min_wall_clearance": 1.8097956384188763e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.8596649169921875e-05,
+        "min_wall_clearance_gpu": 1.811981201171875e-05,
+        "n": 12,
+        "proposals": 18,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.031255722045898,
+        "sweeps": 2150,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 9843,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      }
+    ],
+    "requested_trials": 12288,
+    "retained_pose_count": 136,
+    "solver": {
+      "acceptance_tolerance": 2e-06,
+      "guard": 2e-05,
+      "initial_side": 10.0,
+      "max_attempts": 128,
+      "max_rotation": 0.08,
+      "max_sweeps": 120,
+      "max_translation": 0.1,
+      "motion_tolerance": 1e-07,
+      "n": 12,
+      "proposals_per_square": 2000,
+      "relaxation": 0.8,
+      "rotation_mobility": 0.3,
+      "seed": 20261008,
+      "stagnation_sweeps": 4,
+      "step": 0.2,
+      "step_floor": 0.0001,
+      "step_reduction": 0.5
+    },
+    "stop_reason": "TRIALS_COMPLETED"
+  },
+  "no_accepted_pose_trials": 0,
+  "record_count": 12288,
+  "statistics": {
+    "gpu_accepted": {
+      "best": 4.000200271606445,
+      "count": 12288,
+      "max": 6.956242084503174,
+      "mean": 4.760355689989713,
+      "median": 4.62030816078186,
+      "min": 4.000200271606445,
+      "q05": 4.265044379234314,
+      "q25": 4.441020965576172,
+      "q75": 5.045803666114807,
+      "q95": 5.5712137699127195,
+      "quantiles": {
+        "q05": 4.265044379234314,
+        "q25": 4.441020965576172,
+        "q50": 4.62030816078186,
+        "q75": 5.045803666114807,
+        "q95": 5.5712137699127195
+      },
+      "worst": 6.956242084503174
+    },
+    "numerically_validated": {
+      "best": 4.000200271606445,
+      "count": 136,
+      "max": 5.946115493774414,
+      "mean": 4.440601948429556,
+      "median": 4.298638820648193,
+      "min": 4.000200271606445,
+      "q05": 4.026622891426086,
+      "q25": 4.140736699104309,
+      "q75": 4.560171842575073,
+      "q95": 5.379871249198914,
+      "quantiles": {
+        "q05": 4.026622891426086,
+        "q25": 4.140736699104309,
+        "q50": 4.298638820648193,
+        "q75": 4.560171842575073,
+        "q95": 5.379871249198914
+      },
+      "worst": 5.946115493774414
+    }
+  },
+  "termination_counts": {
+    "BUDGET_EXHAUSTED": 6873,
+    "STEP_FLOOR_REACHED": 5415
+  },
+  "throughput": {
+    "device_seconds": {
+      "attempted_trials_per_second": 108.98295011510373,
+      "gpu_feasible_trials_per_second": 108.98295011510373,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency.",
+      "seconds": 112.7515816650391
+    },
+    "end_to_end_seconds": {
+      "attempted_trials_per_second": 105.93696770727902,
+      "gpu_feasible_trials_per_second": 105.93696770727902,
+      "meaning": "Amortized throughput over the End-to-end through report/histogram persistence; excludes final summary serialization.; not individual-trial latency.",
+      "seconds": 115.99350317401695
+    },
+    "simulation_seconds": {
+      "attempted_trials_per_second": 108.96809856322244,
+      "gpu_feasible_trials_per_second": 108.96809856322244,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency.",
+      "seconds": 112.76694887789199
+    }
+  },
+  "timing_boundary": "Includes report and histogram; excludes final summary JSON serialization.",
+  "timings": {
+    "device_seconds": 112.7515816650391,
+    "end_to_end_seconds": 115.99350317401695,
+    "max_stage_seconds": 0.19418727111816406,
+    "module_load_seconds": 0.0005775640020146966,
+    "persistence_seconds": 0.15239137870958075,
+    "render_seconds": 0.002641668979777023,
+    "report_seconds": 0.06512351101264358,
+    "simulation_seconds": 112.76694887789199,
+    "transfer_seconds": 0.07732852385379374,
+    "validation_seconds": 1.8849740710866172,
+    "warmup_seconds": 0.7822120760101825
+  },
+  "validation_status_counts": {
+    "NOT_CHECKED": 12152,
+    "NUMERICALLY_VALIDATED": 136
+  }
+}

@@ -1,0 +1,19 @@
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+tests/test_audit_gpu.py::test_batch_rejects_noninteger_ids_and_out_of_batch_gather
+tests/test_audit_gpu.py::test_gpu_sat_matches_independent_vertex_projection_on_adversarial_pairs
+tests/test_gpu.py::test_initializer_audit_supports_required_n_values[n1]
+tests/test_gpu.py::test_initializer_audit_supports_required_n_values[n11]
+tests/test_gpu.py::test_initializer_audit_supports_required_n_values[n12]
+tests/test_gpu.py::test_initializer_audit_supports_required_n_values[n16]
+tests/test_gpu.py::test_initializer_audit_supports_required_n_values[n32]
+tests/test_gpu.py::test_global_uint64_ids_are_reproducible_distinct_and_partition_invariant
+tests/test_gpu.py::test_off_center_wall_and_pair_contacts_translate_and_rotate
+tests/test_gpu.py::test_aligned_symmetric_contacts_have_zero_torque
+tests/test_gpu.py::test_coincident_pair_contact_stays_finite
+tests/test_gpu.py::test_sat_gradient_matches_finite_difference[p_axis]
+tests/test_gpu.py::test_sat_gradient_matches_finite_difference[q_axis]
+tests/test_gpu.py::test_rejected_impossible_step_restores_every_pose_component
+tests/test_gpu.py::test_accepted_side_trace_is_monotonic_and_auditable
+tests/test_gpu.py::test_budget_exhaustion_and_initialization_failure_are_explicit
+
+17/126 tests collected (109 deselected) in 0.42s

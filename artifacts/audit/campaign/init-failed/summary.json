@@ -1,0 +1,199 @@
+{
+  "accepted_trials": 0,
+  "artifacts": {
+    "histogram": "histogram.svg",
+    "report": "report.md",
+    "summary": "summary.json"
+  },
+  "attempted_trials": 4,
+  "audit_coverage": {
+    "audited_trials": 0,
+    "coverage_fraction": 0.0,
+    "indeterminate_trials": 0,
+    "invalid_trials": 0,
+    "not_checked_trials": 4,
+    "numerically_validated_trials": 0,
+    "total_trials": 4
+  },
+  "counters": {
+    "accepted": 0,
+    "attempts": 0,
+    "rejected": 0,
+    "sweeps": 0
+  },
+  "failure_counts": {
+    "budget_exhausted": 0,
+    "initialization_failed": 4,
+    "no_accepted_pose": 4,
+    "numerical_failure": 0,
+    "total": 4
+  },
+  "gpu_status_counts": {
+    "NO_ACCEPTED_POSE": 4
+  },
+  "histogram": {
+    "gpu_accepted": {
+      "count": 0,
+      "counts": [],
+      "edges": [],
+      "population": "GPU_FEASIBLE"
+    },
+    "numerically_validated": {
+      "count": 0,
+      "counts": [],
+      "edges": [],
+      "population": "GPU_FEASIBLE + NUMERICALLY_VALIDATED"
+    }
+  },
+  "iteration_statistics": {
+    "attempts": {
+      "best": 0.0,
+      "count": 4,
+      "max": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "q05": 0.0,
+      "q25": 0.0,
+      "q75": 0.0,
+      "q95": 0.0,
+      "quantiles": {
+        "q05": 0.0,
+        "q25": 0.0,
+        "q50": 0.0,
+        "q75": 0.0,
+        "q95": 0.0
+      },
+      "worst": 0.0
+    },
+    "sweeps": {
+      "best": 0.0,
+      "count": 4,
+      "max": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "q05": 0.0,
+      "q25": 0.0,
+      "q75": 0.0,
+      "q95": 0.0,
+      "quantiles": {
+        "q05": 0.0,
+        "q25": 0.0,
+        "q50": 0.0,
+        "q75": 0.0,
+        "q95": 0.0
+      },
+      "worst": 0.0
+    }
+  },
+  "metadata": {
+    "leaderboard": [],
+    "requested_trials": 4,
+    "retained_pose_count": 4,
+    "solver": {
+      "acceptance_tolerance": 2e-06,
+      "guard": 2e-05,
+      "initial_side": 1.5,
+      "max_attempts": 0,
+      "max_rotation": 0.08,
+      "max_sweeps": 120,
+      "max_translation": 0.1,
+      "motion_tolerance": 1e-07,
+      "n": 2,
+      "proposals_per_square": 1,
+      "relaxation": 0.8,
+      "rotation_mobility": 0.3,
+      "seed": 20261008,
+      "stagnation_sweeps": 4,
+      "step": 0.2,
+      "step_floor": 0.0001,
+      "step_reduction": 0.5
+    },
+    "stop_reason": "TRIALS_COMPLETED"
+  },
+  "no_accepted_pose_trials": 4,
+  "record_count": 4,
+  "statistics": {
+    "gpu_accepted": {
+      "best": null,
+      "count": 0,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "min": null,
+      "q05": null,
+      "q25": null,
+      "q75": null,
+      "q95": null,
+      "quantiles": {
+        "q05": null,
+        "q25": null,
+        "q50": null,
+        "q75": null,
+        "q95": null
+      },
+      "worst": null
+    },
+    "numerically_validated": {
+      "best": null,
+      "count": 0,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "min": null,
+      "q05": null,
+      "q25": null,
+      "q75": null,
+      "q95": null,
+      "quantiles": {
+        "q05": null,
+        "q25": null,
+        "q50": null,
+        "q75": null,
+        "q95": null
+      },
+      "worst": null
+    }
+  },
+  "termination_counts": {
+    "INIT_FAILED": 4
+  },
+  "throughput": {
+    "device_seconds": {
+      "attempted_trials_per_second": 60096.15368255244,
+      "gpu_feasible_trials_per_second": 0.0,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency.",
+      "seconds": 6.656000018119811e-05
+    },
+    "end_to_end_seconds": {
+      "attempted_trials_per_second": 76.02950649062406,
+      "gpu_feasible_trials_per_second": 0.0,
+      "meaning": "Amortized throughput over the End-to-end through report/histogram persistence; excludes final summary serialization.; not individual-trial latency.",
+      "seconds": 0.052611153019825
+    },
+    "simulation_seconds": {
+      "attempted_trials_per_second": 48510.713795551055,
+      "gpu_feasible_trials_per_second": 0.0,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency.",
+      "seconds": 8.245601202361286e-05
+    }
+  },
+  "timing_boundary": "Includes report and histogram; excludes final summary JSON serialization.",
+  "timings": {
+    "device_seconds": 6.656000018119811e-05,
+    "end_to_end_seconds": 0.052611153019825,
+    "max_stage_seconds": 6.137600168585777e-05,
+    "module_load_seconds": 0.0006249119760468602,
+    "persistence_seconds": 0.0006515730055980384,
+    "render_seconds": 0.00046994900912977755,
+    "report_seconds": 0.0009715080086607486,
+    "simulation_seconds": 8.245601202361286e-05,
+    "transfer_seconds": 9.341599070467055e-05,
+    "validation_seconds": 0.0,
+    "warmup_seconds": 0.0005253340059425682
+  },
+  "validation_status_counts": {
+    "NOT_CHECKED": 4
+  }
+}

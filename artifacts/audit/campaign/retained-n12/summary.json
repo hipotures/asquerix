@@ -1,0 +1,315 @@
+{
+  "accepted_trials": 32,
+  "artifacts": {
+    "histogram": "histogram.svg",
+    "report": "report.md",
+    "summary": "summary.json"
+  },
+  "attempted_trials": 32,
+  "audit_coverage": {
+    "audited_trials": 32,
+    "coverage_fraction": 1.0,
+    "indeterminate_trials": 0,
+    "invalid_trials": 0,
+    "not_checked_trials": 0,
+    "numerically_validated_trials": 32,
+    "total_trials": 32
+  },
+  "counters": {
+    "accepted": 2715,
+    "attempts": 3038,
+    "rejected": 323,
+    "sweeps": 263144
+  },
+  "failure_counts": {
+    "budget_exhausted": 14,
+    "initialization_failed": 0,
+    "no_accepted_pose": 0,
+    "numerical_failure": 0,
+    "total": 0
+  },
+  "gpu_status_counts": {
+    "GPU_FEASIBLE": 32
+  },
+  "histogram": {
+    "gpu_accepted": {
+      "count": 32,
+      "counts": [
+        16,
+        10,
+        1,
+        2,
+        0,
+        3
+      ],
+      "edges": [
+        4.219933032989502,
+        4.500561634699504,
+        4.781190236409505,
+        5.061818838119507,
+        5.342447439829509,
+        5.623076041539511,
+        5.903704643249512
+      ],
+      "population": "GPU_FEASIBLE"
+    },
+    "numerically_validated": {
+      "count": 32,
+      "counts": [
+        16,
+        10,
+        1,
+        2,
+        0,
+        3
+      ],
+      "edges": [
+        4.219933032989502,
+        4.500561634699504,
+        4.781190236409505,
+        5.061818838119507,
+        5.342447439829509,
+        5.623076041539511,
+        5.903704643249512
+      ],
+      "population": "GPU_FEASIBLE + NUMERICALLY_VALIDATED"
+    }
+  },
+  "iteration_statistics": {
+    "attempts": {
+      "best": 37.0,
+      "count": 32,
+      "max": 128.0,
+      "mean": 94.9375,
+      "median": 108.0,
+      "min": 37.0,
+      "q05": 39.55,
+      "q25": 55.5,
+      "q75": 128.0,
+      "q95": 128.0,
+      "quantiles": {
+        "q05": 39.55,
+        "q25": 55.5,
+        "q50": 108.0,
+        "q75": 128.0,
+        "q95": 128.0
+      },
+      "worst": 128.0
+    },
+    "sweeps": {
+      "best": 2176.0,
+      "count": 32,
+      "max": 12573.0,
+      "mean": 8223.25,
+      "median": 9728.0,
+      "min": 2176.0,
+      "q05": 2191.25,
+      "q25": 3667.25,
+      "q75": 12010.25,
+      "q95": 12465.1,
+      "quantiles": {
+        "q05": 2191.25,
+        "q25": 3667.25,
+        "q50": 9728.0,
+        "q75": 12010.25,
+        "q95": 12465.1
+      },
+      "worst": 12573.0
+    }
+  },
+  "metadata": {
+    "leaderboard": [
+      {
+        "accepted": 119,
+        "attempts": 128,
+        "final_step": 0.0003906250058207661,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.798374877091946e-05,
+          "min_wall_clearance": 1.8719589438997986e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.8715858459472656e-05,
+        "n": 12,
+        "proposals": 17,
+        "rejected": 9,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.219933032989502,
+        "sweeps": 11911,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 4097,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 107,
+        "attempts": 118,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.798162953409177e-05,
+          "min_wall_clearance": 1.867381210640673e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.8656253814697266e-05,
+        "n": 12,
+        "proposals": 16,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.262322425842285,
+        "sweeps": 10342,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 4124,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 118,
+        "attempts": 128,
+        "final_step": 0.00019531250291038305,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.786751461718694e-05,
+          "min_wall_clearance": 1.8022458624145088e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v2"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.800060272216797e-05,
+        "n": 12,
+        "proposals": 26,
+        "rejected": 10,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.285927772521973,
+        "sweeps": 11340,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 4107,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      }
+    ],
+    "requested_trials": 32,
+    "retained_pose_count": 32,
+    "solver": {
+      "acceptance_tolerance": 2e-06,
+      "guard": 2e-05,
+      "initial_side": 10.0,
+      "max_attempts": 128,
+      "max_rotation": 0.08,
+      "max_sweeps": 120,
+      "max_translation": 0.1,
+      "motion_tolerance": 1e-07,
+      "n": 12,
+      "proposals_per_square": 2000,
+      "relaxation": 0.8,
+      "rotation_mobility": 0.3,
+      "seed": 20261008,
+      "stagnation_sweeps": 4,
+      "step": 0.2,
+      "step_floor": 0.0001,
+      "step_reduction": 0.5
+    },
+    "stop_reason": "TRIALS_COMPLETED"
+  },
+  "no_accepted_pose_trials": 0,
+  "record_count": 32,
+  "statistics": {
+    "gpu_accepted": {
+      "best": 4.219933032989502,
+      "count": 32,
+      "max": 5.903704643249512,
+      "mean": 4.6362481117248535,
+      "median": 4.495421648025513,
+      "min": 4.219933032989502,
+      "q05": 4.275305366516113,
+      "q25": 4.404254674911499,
+      "q75": 4.680871963500977,
+      "q95": 5.7188538074493405,
+      "quantiles": {
+        "q05": 4.275305366516113,
+        "q25": 4.404254674911499,
+        "q50": 4.495421648025513,
+        "q75": 4.680871963500977,
+        "q95": 5.7188538074493405
+      },
+      "worst": 5.903704643249512
+    },
+    "numerically_validated": {
+      "best": 4.219933032989502,
+      "count": 32,
+      "max": 5.903704643249512,
+      "mean": 4.6362481117248535,
+      "median": 4.495421648025513,
+      "min": 4.219933032989502,
+      "q05": 4.275305366516113,
+      "q25": 4.404254674911499,
+      "q75": 4.680871963500977,
+      "q95": 5.7188538074493405,
+      "quantiles": {
+        "q05": 4.275305366516113,
+        "q25": 4.404254674911499,
+        "q50": 4.495421648025513,
+        "q75": 4.680871963500977,
+        "q95": 5.7188538074493405
+      },
+      "worst": 5.903704643249512
+    }
+  },
+  "termination_counts": {
+    "BUDGET_EXHAUSTED": 14,
+    "STEP_FLOOR_REACHED": 18
+  },
+  "throughput": {
+    "device_seconds": {
+      "attempted_trials_per_second": 14.657797866941053,
+      "gpu_feasible_trials_per_second": 14.657797866941053,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency.",
+      "seconds": 2.1831383056640625
+    },
+    "end_to_end_seconds": {
+      "attempted_trials_per_second": 10.68787710079472,
+      "gpu_feasible_trials_per_second": 10.68787710079472,
+      "meaning": "Amortized throughput over the End-to-end through report/histogram persistence; excludes final summary serialization.; not individual-trial latency.",
+      "seconds": 2.994046403997345
+    },
+    "simulation_seconds": {
+      "attempted_trials_per_second": 14.655463785928283,
+      "gpu_feasible_trials_per_second": 14.655463785928283,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency.",
+      "seconds": 2.1834859999944456
+    }
+  },
+  "timing_boundary": "Includes report and histogram; excludes final summary JSON serialization.",
+  "timings": {
+    "device_seconds": 2.1831383056640625,
+    "end_to_end_seconds": 2.994046403997345,
+    "max_stage_seconds": 0.16207373046875,
+    "module_load_seconds": 0.0010192719928454608,
+    "persistence_seconds": 0.006168321007862687,
+    "render_seconds": 0.002439273986965418,
+    "report_seconds": 0.0019985380058642477,
+    "simulation_seconds": 2.1834859999944456,
+    "transfer_seconds": 0.001629889040486887,
+    "validation_seconds": 0.4173678580264095,
+    "warmup_seconds": 0.3363450549659319
+  },
+  "validation_status_counts": {
+    "NUMERICALLY_VALIDATED": 32
+  }
+}

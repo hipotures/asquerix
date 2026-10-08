@@ -119,6 +119,8 @@ The follow-up audit preserves the original pilot files and independently checks 
 
 The runner writes the report and histogram once. Final `summary.json` timings include their generation and persistence, with the summary's own final serialization explicitly excluded. The audit also records the external duration of each complete `run()` call, including that serialization.
 
+See the [audit report](artifacts/audit/REPORT.md) for confirmed findings, regression results, independently reconstructed evidence and the matched benchmark. Selected SVGs: [n=12, trial 6233](artifacts/audit/campaign/matched-b512-r0/svg/trial-6233.svg), [n=11 control](artifacts/audit/campaign/retained-n11/svg/trial-4122.svg), and [n=16 control](artifacts/audit/campaign/retained-n16/svg/trial-4114.svg).
+
 Reproduce the matched audit campaign into fresh destinations:
 
 ```bash
