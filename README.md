@@ -159,7 +159,7 @@ Compare shows CUDA-event GPU time/rate, relative speedup, end-to-end timing, bud
 
 `diagnose`, `validate`, `render`, `report` and `compare` also accept `--json`. For commands without an existing run destination, use `--output results-name.json.gz`; otherwise a unique file is created under `runs/`. Validation and comparison do not overwrite historical source files.
 
-New runs save `summary.json.gz`, `config.json.gz`, `environment.json.gz`, `validation.json.gz`, `audit_ids.json.gz`, `trials.jsonl.gz`, and `poses/trial-<id>.json.gz`. Gzip metadata and JSON serialization are deterministic; identical serialized bytes produce identical compressed bytes. JSONL is streamed and finalized on graceful interruption. Readers transparently accept both historical plain files and compressed archives. Markdown, CSV and SVG remain uncompressed.
+New runs save `summary.json.gz`, `config.json.gz`, `environment.json.gz`, `validation.json.gz`, `audit_ids.json.gz`, `trials.jsonl.gz`, and `poses/trial-<id>.json.gz`. Gzip metadata and JSON serialization are deterministic; identical serialized bytes and streaming flush boundaries produce identical compressed bytes. JSONL is streamed and finalized on graceful interruption. Readers transparently accept both historical plain files and compressed archives. Markdown, CSV and SVG remain uncompressed.
 
 Names use 1–80 ASCII letters, digits, dots, underscores or hyphens, starting with a letter or digit. Omitted names incorporate N, sweeps, batch size and a unique UTC run ID. Existing output directories are never overwritten.
 

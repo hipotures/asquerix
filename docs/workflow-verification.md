@@ -51,3 +51,5 @@ uv run --locked asquerix run --experiment workflow-rich-smoke --n 12 --trials 8 
 uv run --locked asquerix run --experiment workflow-json-partial-smoke --n 12 --trials 8 --batch-size 4 --retain-all --sample-every 0 --audit-size 8 --keep-best 3 --max-images 2 --max-seconds 0.001 --json --output runs/workflow-json-partial-smoke
 uv run --locked asquerix compare runs/workflow-rich-smoke runs/workflow-json-partial-smoke
 ```
+
+Quiet `diagnose` saved the actual CUDA environment as gzip and printed only its path. `report --json` was exercised on a private copy of the completed compressed run; regenerated statistics retained all eight records. Published run directories were not modified by this offline verification.
