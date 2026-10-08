@@ -4,7 +4,11 @@ Initial verification was performed in a worktree on `feat/experiment-workflow`, 
 
 ## Scientific scope
 
-`src/asquerix/gpu.py` and `src/asquerix/geometry.py` are byte-for-byte unchanged from `d4884c9214da01c00a2e10b93f55542276de95c8`. No GPU algorithms, budgets, floating-point parameters, random streams, collision predicates or acceptance rules changed. The new real-CUDA regression executes four original full-budget trials at batch sizes 2 and 4, with and without progress callbacks, and compares every search scalar against the original archived benchmark. Independent validation checks every returned pose.
+At the time of the original workflow verification, `src/asquerix/gpu.py` and `src/asquerix/geometry.py` were byte-for-byte unchanged from `d4884c9214da01c00a2e10b93f55542276de95c8`. No GPU algorithms, budgets, floating-point parameters, random streams, collision predicates or acceptance rules changed in that workflow integration. Its real-CUDA regression executed four original full-budget trials at batch sizes 2 and 4, with and without progress callbacks, and compared every search scalar against the original archived benchmark. Independent validation checked every returned pose.
+
+Commit `eb8d2ac` subsequently corrected minimum compression step handling: the solver now attempts the configured floor and can accept further compression before stopping. The unchanged configuration therefore no longer implies identical search scalars to the historical pilot. The current workflow regression compares all search scalars and retained poses with a direct current-solver submission, at both batch sizes with progress enabled and disabled. The maintained audit campaign uses its first current-solver run for repeat and partition equality, and reports historical search equality separately. Historical pilot and audit artifacts remain unchanged.
+
+Verification of this regression update on 2026-10-09: `uv run --locked pytest -q` completed with **228 passed, 0 failed, 0 skipped** in 24.41 seconds, including real CUDA execution on the RTX 4070 Ti. Two upstream Warp ctypes deprecation warnings remain. The focused workflow and step-floor command, `uv run --locked pytest -q tests/test_workflow_gpu.py tests/test_step_floor.py`, passed all nine tests. Host tests cover truthful historical-equality metadata and rejection of current repeat/partition drift using synthetic runs. The full 12,288-trial audit campaign was not rerun for this test/tool correction; no new throughput claim is made.
 
 ## Verification
 

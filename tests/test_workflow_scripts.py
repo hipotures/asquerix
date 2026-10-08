@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import sys
 from types import ModuleType
 
 import pytest
@@ -106,6 +107,131 @@ def test_reproduce_archive_streams_plain_and_gzip_sources(tmp_path: Path, source
     assert reproduce.archive_run(source, target) == expected_sha
     assert list(read_jsonl(target / "trials.jsonl")) == [_record()]
     assert (target / "trials.jsonl.gz").exists()
+
+
+def _search_record(side: float) -> dict:
+    return {
+        "trial_id": 0,
+        "seed": 20261008,
+        "n": 12,
+        "side": side,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "validation_status": "NUMERICALLY_VALIDATED",
+        "independent_validation": {"status": "NUMERICALLY_VALIDATED"},
+    }
+
+
+def _patch_reproduce_main(monkeypatch, tmp_path: Path, reproduce: ModuleType, *, drift: str | None = None):
+    historical = [_search_record(4.0)]
+    current = [_search_record(4.1)]
+    drifted = [_search_record(4.2)]
+    calls = []
+
+    def fake_read_json(path):
+        path = Path(path)
+        if path.name == "config.json":
+            return {"solver": reproduce.asdict(reproduce.Config())}
+        if path.name == "environment.json":
+            return {
+                "stop_reason": "MAX_SECONDS",
+                "stop_observed_to_batch_completion_seconds": 0.01,
+            }
+        raise AssertionError(f"unexpected read_json path: {path}")
+
+    def fake_records_at(directory):
+        name = Path(directory).name
+        if name == "repeat-0":
+            return historical
+        if drift == "repeat" and name == "matched-b512-r1":
+            return drifted
+        if drift == "partition" and name == "matched-b128":
+            return drifted
+        return current
+
+    def fake_run(config, *, trials, batch_size, output, **options):
+        name = Path(output).name
+        calls.append({"name": name, "trials": trials, "batch_size": batch_size})
+        if name == "stop-wall-time":
+            return {"summary": {"record_count": 8}}
+        if name == "init-failed":
+            return {"summary": {"failure_counts": {"initialization_failed": 4}}}
+        return {
+            "summary": {
+                "record_count": trials,
+                "timings": {"device_seconds": 20.0},
+                "throughput": {
+                    "simulation_seconds": {
+                        "attempted_trials_per_second": 2.0,
+                    },
+                },
+            },
+        }
+
+    monkeypatch.setattr(reproduce, "read_json", fake_read_json)
+    monkeypatch.setattr(reproduce, "records_at", fake_records_at)
+    monkeypatch.setattr(reproduce, "run", fake_run)
+    monkeypatch.setattr(reproduce, "recheck", lambda directory: {"NUMERICALLY_VALIDATED": 32})
+    monkeypatch.setattr(reproduce, "archive_run", lambda source, target: "synthetic-sha256")
+    monkeypatch.setattr(reproduce, "profile", lambda output: None)
+    monkeypatch.setattr(reproduce, "environment", lambda: {"source_sha256": "source"})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "reproduce_audit.py",
+            "--output",
+            str(tmp_path / "archive"),
+            "--runs-output",
+            str(tmp_path / "runs"),
+            "--max-seconds",
+            "30",
+        ],
+    )
+    return tmp_path / "archive", calls
+
+
+def test_reproduce_main_records_historical_and_matched_search_equality(monkeypatch, tmp_path: Path) -> None:
+    reproduce = load_tool("reproduce_audit.py")
+    output, calls = _patch_reproduce_main(monkeypatch, tmp_path, reproduce)
+
+    reproduce.main()
+
+    measurements = read_json(output / "measurements.json")
+    assert measurements["original_search_equality"] is False
+    assert measurements["matched_search_equality"] is True
+    assert measurements["batch_partition_search_equality"] is True
+    entries = {entry["name"]: entry for entry in measurements["runs"]}
+    for name in ("matched-b512-r0", "matched-b512-r1", "matched-b512-r2", "matched-b128"):
+        assert entries[name]["original_search_equality"] is False
+        assert entries[name]["matched_search_equality"] is True
+    assert [call["name"] for call in calls] == [
+        "retained-n11",
+        "retained-n12",
+        "retained-n16",
+        "matched-b512-r0",
+        "matched-b512-r1",
+        "matched-b512-r2",
+        "matched-b128",
+        "stop-wall-time",
+        "init-failed",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("drift", "message"),
+    [
+        ("repeat", "Repeated search changed the scientific results"),
+        ("partition", "Batch partition changed the scientific results"),
+    ],
+)
+def test_reproduce_main_rejects_current_repeat_or_partition_drift(
+    monkeypatch, tmp_path: Path, drift: str, message: str
+) -> None:
+    reproduce = load_tool("reproduce_audit.py")
+    _patch_reproduce_main(monkeypatch, tmp_path, reproduce, drift=drift)
+
+    with pytest.raises(AssertionError, match=message):
+        reproduce.main()
 
 
 def test_maintained_script_defaults_do_not_target_historical_artifacts() -> None:

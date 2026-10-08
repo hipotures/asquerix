@@ -84,7 +84,7 @@ Axes tied within `1e-6` have averaged gradients; support cusps use zero derivati
 
 Search uses FP32 with fast math disabled. Default `guard=2e-5` is separate from `acceptance_tolerance=2e-6`. Acceptance requires raw pair and wall clearances at least `1.8e-5`. The unit-square geometry, clearance target, residual tolerance, and independent validation policy are distinct.
 
-Budgets: 2000 proposals per square, 128 compression attempts, 120 sweeps per attempt. Failure restores all accepted pose components and the previous side, then halves the initial `0.2` step to a `1e-4` floor. Accepted sides are nonincreasing. Four consecutive sweeps with maximum individual correction at most `1e-7` mark relaxation stagnation. This conservative motion measure cannot cancel signed corrections; feasibility is checked separately.
+Budgets: 2000 proposals per square, 128 compression attempts, 120 sweeps per attempt. Failure restores all accepted pose components and the previous side, then halves the initial `0.2` step, clamped to a `1e-4` floor. The floor is attempted within the remaining budget; successful floor steps continue until a floor attempt fails or the budget is exhausted. Accepted sides are nonincreasing. Four consecutive sweeps with maximum individual correction at most `1e-7` mark relaxation stagnation. This conservative motion measure cannot cancel signed corrections; feasibility is checked separately.
 
 Termination reasons include `STEP_FLOOR_REACHED`, `STAGNATED`, `BUDGET_EXHAUSTED`, `INIT_FAILED`, and `NUMERICAL_FAILURE`. A feasible pose may exhaust its budget. Transient overlaps are search residuals; continuous collision-free trajectories between corrections are not established.
 
@@ -129,7 +129,7 @@ Reproduce the matched audit campaign into fresh destinations:
 uv run --locked python tools/reproduce_audit.py --output runs/audit-archive-new --runs-output runs/audit-new --max-seconds 300
 ```
 
-It retains all final states for bounded `n=11,12,16` controls, captures instrumented CUDA activities separately, repeats the original 12,288-trial `n=12` workload three times at batch size 512, compares batch size 128 on the same IDs and full solver budget, and exercises deadline draining and initialization exhaustion. The original search results are compared directly with the archived scalar bytes. Meaningful audit evidence is kept under `artifacts/audit`.
+It retains all final states for bounded `n=11,12,16` controls, captures instrumented CUDA activities separately, repeats the original 12,288-trial `n=12` workload three times at batch size 512, compares batch size 128 on the same IDs and full solver budget, and exercises deadline draining and initialization exhaustion. Repeat and partition checks compare every search scalar with the first current-solver run. Equality with the archived pilot is reported separately: the corrected minimum-step behavior changes search outcomes despite identical configuration values. Historical evidence under `artifacts/audit` retains its original solver provenance.
 
 ## Rich workflow and automatic publication
 
