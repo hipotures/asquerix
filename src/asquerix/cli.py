@@ -132,13 +132,14 @@ def main(argv=None):
             from .runner import run
             from .publication import publish
             from .presentation import PlainProgress, RunProgress
+            import warp as wp
             display = PlainProgress() if args.json else RunProgress(_console(file=sys.stderr))
             options = vars(args).copy()
             for key in ("command", "json", "no_push"):
                 options.pop(key)
             config = Config(**{f.name: options.pop(f.name) for f in fields(Config)})
             call_started = perf_counter()
-            with display:
+            with wp.ScopedLogLevel(wp.LOG_WARNING), display:
                 with redirect_stdout(sys.stderr):
                     result = run(config, **options, progress=display.update)
             computation_seconds = perf_counter() - call_started

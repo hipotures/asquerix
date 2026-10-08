@@ -250,3 +250,51 @@ def test_tty_runtime_failure_keeps_traceback_on_stderr(tmp_path, monkeypatch):
     assert 'Traceback' in stderr.getvalue()
     assert 'RuntimeError: CUDA compilation failed' in stderr.getvalue()
     assert 'CUDA compilation failed' not in stdout.getvalue()
+
+
+@pytest.mark.parametrize("json_mode", [False, True])
+def test_run_suppresses_warp_info_but_preserves_warnings_errors_and_log_level(
+        tmp_path, monkeypatch, capsys, fake_run, json_mode):
+    import warp as wp
+    from warp._src.logger import log_error, log_info, log_warning
+
+    previous_level = wp.config.log_level
+    actual_run = runner.run
+    def run(config, **options):
+        assert wp.config.log_level == wp.LOG_WARNING
+        log_info("Warp initialization noise")
+        log_info("Module load noise")
+        log_warning("Visible Warp warning", category=RuntimeWarning)
+        log_error("Visible compiler diagnostic")
+        return actual_run(config, **options)
+    monkeypatch.setattr(runner, "run", run)
+    monkeypatch.setattr(publication, "publish", lambda *args, **kwargs: dict(status="LOCAL_ONLY", seconds=0, error=None))
+    arguments = ["run", "--experiment", "quiet-runtime", "--n", "1", "--trials", "2",
+                 "--max-attempts", "0", "--no-push", "--output", str(tmp_path / "run")]
+    if json_mode:
+        arguments.append("--json")
+    assert cli.main(arguments) == 0
+    capture = capsys.readouterr()
+    assert "initialization noise" not in capture.out + capture.err
+    assert "Module load noise" not in capture.out + capture.err
+    assert "Visible Warp warning" in capture.err
+    assert "Visible compiler diagnostic" in capture.err
+    assert wp.config.log_level == previous_level
+
+
+def test_run_restores_warp_log_level_after_compilation_failure(tmp_path, monkeypatch, capsys):
+    import warp as wp
+    from warp._src.logger import log_error
+
+    previous_level = wp.config.log_level
+    def run(*args, **kwargs):
+        assert wp.config.log_level == wp.LOG_WARNING
+        log_error("Actual compiler failure detail")
+        raise RuntimeError("CUDA compilation failed")
+    monkeypatch.setattr(runner, "run", run)
+    assert cli.main(["run", "--no-push", "--output", str(tmp_path / "failure")]) == 2
+    capture = capsys.readouterr()
+    assert "Actual compiler failure detail" in capture.err
+    assert "Traceback" in capture.err
+    assert "CUDA compilation failed" in capture.err
+    assert wp.config.log_level == previous_level

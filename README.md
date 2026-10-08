@@ -135,6 +135,8 @@ Normal interactive runs show one updating progress display. Completed counts adv
 
 When all requested trials fit in one batch, the display shows a spinner, elapsed time and the number of trials running. It omits the completion bar and percentage because the solver does not expose progress within a batch. Multi-batch runs show a completion bar advancing at batch boundaries. `--batch-size` is a maximum; 1000 trials with batch size 32768 execute as one production batch. Changing batch size affects measured throughput, so the CLI never reduces it for presentation.
 
+During `run`, Warp initialization and module-loading informational messages are hidden so they do not interrupt the display. Warnings, compilation errors and exception tracebacks remain visible on stderr. `diagnose` retains environment details. This display policy does not change kernel settings or measured GPU work.
+
 ```bash
 uv run asquerix run \
   --experiment n12-s480-b8192 \
