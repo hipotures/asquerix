@@ -133,6 +133,8 @@ It retains all final states for bounded `n=11,12,16` controls, captures instrume
 
 Normal interactive runs show one updating progress display. Completed counts advance only when a GPU batch has finished and its records are saved. An active spinner and elapsed time remain visible while the next batch runs. Best L and validation counts refer to independent CPU checks; GPU acceptance is a separate status. Redirected output uses stable plain text without ANSI animation.
 
+When all requested trials fit in one batch, the display shows a spinner, elapsed time and the number of trials running. It omits the completion bar and percentage because the solver does not expose progress within a batch. Multi-batch runs show a completion bar advancing at batch boundaries. `--batch-size` is a maximum; 1000 trials with batch size 32768 execute as one production batch. Changing batch size affects measured throughput, so the CLI never reduces it for presentation.
+
 ```bash
 uv run asquerix run \
   --experiment n12-s480-b8192 \

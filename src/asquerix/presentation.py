@@ -36,7 +36,7 @@ class PlainProgress:
 
 
 class RunProgress:
-    """Refresh elapsed/spinner at 2 Hz; count advances only at batch completion."""
+    """Show batch progress; a single GPU batch uses only a spinner and elapsed time."""
     def __init__(self, console):
         self.console = console
         self.plain = PlainProgress() if not console.is_terminal else None
@@ -48,11 +48,28 @@ class RunProgress:
             return self
         # Imports stay lazy so --json does not load Rich.
         from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn
-        self.progress = Progress(
-            SpinnerColumn(), TextColumn("{task.description}"),
-            BarColumn(bar_width=None), TaskProgressColumn(),
-            TextColumn("{task.completed:.0f}/{task.total:.0f}"),
+        from rich.text import Text
+
+        class DisplayProgress(Progress):
+            def get_renderables(self):
+                tasks = self.tasks
+                if not tasks:
+                    return
+                task = tasks[0]
+                if task.fields.get("header"):
+                    yield Text(task.fields["header"])
+                yield self.make_tasks_table(tasks)
+                if task.fields.get("metrics"):
+                    yield Text(task.fields["metrics"])
+
+        self.activity_columns = (SpinnerColumn(), TextColumn("{task.description}"), TimeElapsedColumn())
+        self.batch_columns = (
+            SpinnerColumn(), TextColumn("{task.description}"), BarColumn(bar_width=None),
+            TaskProgressColumn(), TextColumn("{task.completed:.0f}/{task.total:.0f}"),
             TimeElapsedColumn(), TimeRemainingColumn(),
+        )
+        self.progress = DisplayProgress(
+            *self.activity_columns,
             console=self.console, refresh_per_second=2, transient=True,
             redirect_stdout=True, redirect_stderr=True,
         )
@@ -73,9 +90,24 @@ class RunProgress:
             return
         gpu_seconds = event["device_seconds"]
         rate = event["completed"] / gpu_seconds if gpu_seconds > 0 else None
-        description = (f"{event['experiment_name']}\nN={event['n']} · {event['device']} · batch={event['batch_size']} · {event['event']}\n"
-                       f"GPU {number(rate, 2)} trials/s · validated {event['validated_count']} · best validated L {number(event['best_validated_L'], 8)}")
-        self.progress.update(self.task, description=description, total=event["requested"], completed=event["completed"], refresh=True)
+        requested, completed, size = event["requested"], event["completed"], event["batch_size"]
+        batches = (requested + size - 1) // size
+        self.progress.columns = self.batch_columns if batches > 1 else self.activity_columns
+        phase = event["event"]
+        if phase == "batch-start":
+            count = event.get("current_batch_trials", min(size, requested - completed))
+            description = f"GPU batch {completed // size + 1}/{batches} · {count} trials running"
+        elif phase == "batch-completed":
+            description = f"Saved batch {(completed + size - 1) // size}/{batches}"
+        elif phase == "finalizing":
+            description = "Finalizing artifacts"
+        else:
+            description = "Preparing GPU"
+        header = f"{event['experiment_name']}\nN={event['n']} · {event['device']} · batch size={size}"
+        metrics = (f"GPU {number(rate, 2)} trials/s · validated {event['validated_count']} · "
+                   f"best validated L {number(event['best_validated_L'], 8)}")
+        self.progress.update(self.task, description=description, total=requested, completed=completed,
+                             header=header, metrics=metrics, refresh=True)
 
 
 def run_summary(console, result, publication):

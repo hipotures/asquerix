@@ -118,8 +118,48 @@ def test_real_tty_progress_starts_and_counts_only_finished_batches(monkeypatch):
         progress.update({**event, "event": "batch-completed", "completed": 4, "device_seconds": 2,
                          "validated_count": 1, "best_validated_L": 4.1})
         assert progress.progress.tasks[0].completed == 4
-        assert "best validated L 4.10000000" in progress.progress.tasks[0].description
+        assert "best validated L 4.10000000" in progress.progress.tasks[0].fields["metrics"]
     assert "tty-test" in stream.getvalue()
+
+
+def test_single_gpu_batch_shows_activity_without_a_percentage_or_completion_bar(monkeypatch):
+    monkeypatch.setenv("TERM", "xterm-256color")
+    console = Console(file=StringIO(), force_terminal=True, width=110)
+    event = dict(event="batch-start", experiment_name="single-batch", n=16, device="cuda:0",
+                 completed=0, requested=1000, batch_size=32768, current_batch_trials=1000,
+                 device_seconds=0, validated_count=0, best_validated_L=None)
+    with RunProgress(console) as progress:
+        progress.update(event)
+        assert progress.progress.columns == progress.activity_columns
+        assert progress.progress.tasks[0].completed == 0
+        with console.capture() as captured:
+            console.print(progress.progress.get_renderable())
+        display = captured.get()
+        assert "GPU batch 1/1" in display and "1000 trials running" in display
+        assert "0/1000" not in display and "0%" not in display
+        progress.update({**event, "event": "batch-completed", "completed": 1000,
+                         "device_seconds": 2})
+        assert progress.progress.tasks[0].completed == 1000
+        assert progress.progress.columns == progress.activity_columns
+
+
+def test_multiple_gpu_batches_show_progress_only_for_completed_results(monkeypatch):
+    monkeypatch.setenv("TERM", "xterm-256color")
+    console = Console(file=StringIO(), force_terminal=True, width=110)
+    event = dict(event="batch-start", experiment_name="multiple-batches", n=16, device="cuda:0",
+                 completed=0, requested=1000, batch_size=400, current_batch_trials=400,
+                 device_seconds=0, validated_count=0, best_validated_L=None)
+    with RunProgress(console) as progress:
+        progress.update(event)
+        assert progress.progress.columns == progress.batch_columns
+        progress.update({**event, "event": "batch-completed", "completed": 400, "device_seconds": 2})
+        progress.update({**event, "completed": 400, "device_seconds": 2})
+        assert progress.progress.tasks[0].completed == 400
+        with console.capture() as captured:
+            console.print(progress.progress.get_renderable())
+        display = captured.get()
+        assert "GPU batch 2/3" in display
+        assert "40%" in display and "400/1000" in display
 
 
 @pytest.fixture
