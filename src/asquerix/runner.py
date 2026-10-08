@@ -7,36 +7,76 @@ import math
 from numbers import Real
 from pathlib import Path
 import platform
+import re
 import signal
 import subprocess
-from time import perf_counter
+from time import perf_counter, perf_counter_ns
+import uuid
+from datetime import datetime, timezone
 
 import numpy as np
 
 from .geometry import validate_pose
 from .gpu import Batch, Config, TERMINATIONS
 from .output import render_selected, write_report
+from .persistence import open_jsonl_writer, write_json
 
 
-def write_json(path, value):
-    Path(path).write_text(json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
+_EXPERIMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z")
+
+
+def validate_experiment_name(value: str) -> str:
+    """Validate and return a filesystem/Git-safe experiment display name."""
+
+    if not isinstance(value, str) or value in {".", ".."} or not _EXPERIMENT_NAME.fullmatch(value):
+        raise ValueError(
+            "experiment must be 1-80 ASCII characters matching [A-Za-z0-9][A-Za-z0-9._-]*"
+        )
+    return value
+
+
+def _validate_run_id(value: str) -> str:
+    """Validate a caller-supplied run identifier using the same safe slug rule."""
+
+    try:
+        return validate_experiment_name(value)
+    except ValueError as exc:
+        raise ValueError(
+            "run_id must be 1-80 ASCII characters matching [A-Za-z0-9][A-Za-z0-9._-]*"
+        ) from exc
+
+
+def _default_experiment(config: Config, batch_size: int) -> tuple[str, str]:
+    """Return a descriptive experiment name and unique run identifier."""
+
+    run_id = f"run-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:12]}"
+    return f"n{config.n}-s{config.max_sweeps}-b{batch_size}-{run_id}", run_id
 
 
 def environment():
+    # Resolve repository provenance relative to the installed module rather
+    # than the caller's shell.  Experiments are often started from another
+    # working directory or a detached worktree.
+    root = Path(__file__).resolve().parents[2]
+
     def command(args):
         try:
-            proc = subprocess.run(args, text=True, capture_output=True, check=False)
+            proc = subprocess.run(args, cwd=root, text=True, capture_output=True, check=False)
         except FileNotFoundError as exc:
             return {"command": args, "exit_code": 127, "stdout": "", "stderr": str(exc)}
         return {"command": args, "exit_code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
-    root = Path(__file__).resolve().parents[2]
+    revision = command(["git", "rev-parse", "HEAD"])
+    status = command(["git", "status", "--porcelain"])
     return {
         "python": platform.python_version(), "platform": platform.platform(),
-        "dependencies": {key: importlib.metadata.version(key) for key in ("numpy", "warp-lang", "asquerix")},
+        "source_root": str(root),
+        "dependencies": {key: importlib.metadata.version(key) for key in ("numpy", "warp-lang", "asquerix", "rich")},
         "wheel_variant": "warp-lang 1.18.0 default PyPI CUDA 13.4 wheel",
         "gpu_query": command(["nvidia-smi", "--query-gpu=name,uuid,driver_version,memory.total,memory.used,display_active,compute_mode", "--format=csv"]),
-        "git_revision": command(["git", "rev-parse", "HEAD"]),
-        "git_status": command(["git", "status", "--porcelain"]),
+        "git_revision": revision,
+        "git_status": status,
+        "source_revision": revision["stdout"].strip() if revision["exit_code"] == 0 else None,
+        "source_dirty": bool(status["stdout"].strip()) if status["exit_code"] == 0 else None,
         "source_sha256": {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in sorted((root / "src").rglob("*.py"))},
     }
@@ -112,9 +152,9 @@ def _runner_seconds(value):
 
 
 def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cuda:0",
-        output="runs/run", sample_every=1000, keep_best=10, max_images=10,
+        output=None, experiment=None, run_id=None, sample_every=1000, keep_best=10, max_images=10,
         audit_size=16, failure_examples=3, retain_all=False, max_seconds=30.0,
-        batch_factory=Batch):
+        batch_factory=Batch, progress=None):
     config.validate()
     trials = _runner_integer(trials, "trials", minimum=1, maximum=2**31 - 1)
     batch_size = _runner_integer(batch_size, "batch_size", minimum=1, maximum=65536)
@@ -130,23 +170,108 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
     if not isinstance(retain_all, (bool, np.bool_)):
         raise ValueError("retain_all must be a boolean")
     retain_all = bool(retain_all)
-    output = Path(output)
+    if progress is not None and not callable(progress):
+        raise ValueError("progress must be callable")
+    if run_id is None:
+        generated_experiment, run_id = _default_experiment(config, batch_size)
+        if experiment is None:
+            experiment = generated_experiment
+    else:
+        run_id = _validate_run_id(run_id)
+    if experiment is None:
+        experiment = f"n{config.n}-s{config.max_sweeps}-b{batch_size}-{run_id}"
+    experiment = validate_experiment_name(experiment)
+    if output is None:
+        output = Path("runs") / experiment / run_id
+    else:
+        output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     started = perf_counter()
     timings = {key: 0.0 for key in ("module_load_seconds", "warmup_seconds", "simulation_seconds",
                                    "device_seconds", "transfer_seconds", "validation_seconds",
                                    "render_seconds", "report_seconds", "persistence_seconds")}
     metadata = environment()
+    metadata.update({
+        "experiment_name": experiment,
+        "experiment_slug": experiment,
+        "experiment": experiment,
+        "run_id": run_id,
+        "n": config.n,
+        "device": device,
+    })
     options = dict(trials=trials, batch_size=batch_size, trial_offset=trial_offset, device=device,
+                   experiment=experiment, experiment_name=experiment, experiment_slug=experiment,
+                   run_id=run_id,
                    sample_every=sample_every, keep_best=keep_best, max_images=max_images,
                    audit_size=audit_size, failure_examples=failure_examples, retain_all=retain_all,
                    max_seconds=max_seconds)
+    initial_persistence_started = perf_counter_ns()
     write_json(output / "config.json", {"solver": asdict(config), "runner": options})
     write_json(output / "environment.json", metadata)
     audit_rng = np.random.default_rng(config.seed)
     audit_ids = {trial_offset + int(i) for i in audit_rng.choice(trials, min(trials, audit_size), replace=False)}
     write_json(output / "audit_ids.json", sorted(audit_ids))
+    timings["persistence_seconds"] += (perf_counter_ns() - initial_persistence_started) / 1_000_000_000.0
     records, documents, leaderboard = [], {}, []
+    batch = None
+    validated_count = 0
+    best_validated_L = None
+
+    def device_label() -> str:
+        """Format the configured selector together with Warp's actual device name."""
+
+        selected = str(getattr(batch, "device", device))
+        name = getattr(getattr(batch, "device", None), "name", None)
+        if name:
+            return f"{selected} ({name})"
+        return selected
+
+    def update_validation_progress(current: list[dict]) -> None:
+        """Accumulate validation counters after a scalar batch is persisted."""
+
+        nonlocal validated_count, best_validated_L
+        for record in current:
+            if (record.get("gpu_status") == "GPU_FEASIBLE"
+                    and record.get("validation_status") == "NUMERICALLY_VALIDATED"
+                    and record.get("side") is not None):
+                validated_count += 1
+                side = float(record["side"])
+                if best_validated_L is None or side < best_validated_L:
+                    best_validated_L = side
+
+    def emit_progress(event: str, *, current_batch_trials: int = 0) -> None:
+        """Emit one batch-boundary update without adding work when disabled."""
+
+        if progress is None:
+            return
+        elapsed = perf_counter() - started
+        completed = len(records)
+        event_data = {
+            "event": event,
+            "experiment_name": experiment,
+            "experiment": experiment,
+            "run_id": run_id,
+            "n": config.n,
+            "device": device_label(),
+            "device_selector": device,
+            "device_name": getattr(getattr(batch, "device", None), "name", None),
+            "requested": trials,
+            "requested_trials": trials,
+            "completed": completed,
+            "completed_trials": completed,
+            "current": completed,
+            "current_count": completed,
+            "current_batch_trials": current_batch_trials,
+            "batch_size": batch_size,
+            "elapsed_seconds": elapsed,
+            "device_seconds": timings["device_seconds"],
+            "simulation_seconds": timings["simulation_seconds"],
+            "validated_count": validated_count,
+            "best_validated_L": best_validated_L,
+        }
+        progress(event_data)
+
+    emit_progress("init")
     stop = {"requested": False, "observed_at": None}
     def stop_handler(signum, frame):
         if not stop["requested"]:
@@ -154,11 +279,16 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
     old_handler = signal.signal(signal.SIGINT, stop_handler)
     search_started = None
     completed_at = None
+    jsonl_close_reference = None
+    jsonl_completed = False
     error = None
     try:
         batch = batch_factory(config, batch_size, device)
         timings["module_load_seconds"] = batch.module_load_seconds
         metadata["warp_device"] = str(batch.device)
+        metadata["device"] = str(batch.device)
+        metadata["device_selector"] = device
+        metadata["device_name"] = getattr(batch.device, "name", None)
         metadata["kernel_properties"] = getattr(batch, "kernel_properties", {})
         # Warm-up uses the identical production budget, and repeats ID 0 without
         # recording it as an attempted trial. Production IDs are never skipped.
@@ -166,12 +296,20 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
             _, warm_timing = batch.run(1, trial_offset)
             timings["warmup_seconds"] = warm_timing["simulation_seconds"] + warm_timing["transfer_seconds"]
         search_started = perf_counter()
-        with (output / "trials.jsonl").open("w", encoding="utf-8") as scalar_file:
+        with open_jsonl_writer(output / "trials.jsonl") as scalar_file:
             while len(records) < trials:
-                if stop["requested"] or perf_counter() - search_started >= max_seconds:
+                if stop["requested"]:
+                    if jsonl_close_reference is None:
+                        jsonl_close_reference = stop["observed_at"]
+                    break
+                search_elapsed = perf_counter() - search_started
+                if search_elapsed >= max_seconds:
+                    if jsonl_close_reference is None:
+                        jsonl_close_reference = search_started + search_elapsed
                     break
                 offset = trial_offset + len(records)
                 count = min(batch_size, trials - len(records))
+                emit_progress("batch-start", current_batch_trials=count)
                 scalars, timing = batch.run(count, offset)
                 completed_at = perf_counter()
                 for key, value in timing.items():
@@ -243,17 +381,29 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
                     scalar_file.write(json.dumps(record, allow_nan=False) + "\n")
                 scalar_file.flush()
                 records.extend(current)
-                timings["persistence_seconds"] += perf_counter() - begin
-                print(f"Completed {len(records)}/{trials} trials; best numerical side="
-                      f"{leaderboard[0]['side'] if leaderboard else 'none'}", flush=True)
+                persisted_at = perf_counter()
+                timings["persistence_seconds"] += persisted_at - begin
+                jsonl_close_reference = persisted_at
+                update_validation_progress(current)
+                emit_progress("batch-completed", current_batch_trials=count)
+        jsonl_completed = True
     except BaseException as exc:
         error = f"{type(exc).__name__}: {exc}"
         raise
     finally:
         signal.signal(signal.SIGINT, old_handler)
         end_search = perf_counter()
+        if jsonl_completed and jsonl_close_reference is not None:
+            # The writer closes the text wrapper, gzip footer, and fsync/rename
+            # after the last scalar write.  Attribute that host-only interval
+            # to persistence without another clock call that would affect the
+            # bounded deadline/signal scheduling path.
+            timings["persistence_seconds"] += max(0.0, end_search - jsonl_close_reference)
         metadata["stop_reason"] = ("ERROR" if error else "SIGINT" if stop["requested"] else
                                    "MAX_SECONDS" if len(records) < trials else "TRIALS_COMPLETED")
+        metadata["run_status"] = (
+            "FAILED" if error else "COMPLETED" if len(records) == trials else "PARTIAL"
+        )
         metadata["error"] = error
         deadline = search_started + max_seconds if search_started else None
         metadata["stop_observed_to_batch_completion_seconds"] = (
@@ -270,6 +420,12 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
         metadata["leaderboard"] = leaderboard
         metadata["retained_pose_count"] = len(documents)
         metadata["reproducibility"] = "Same seed/global IDs/config/kernel/hardware: tested bitwise; no cross-device/version guarantee."
+        metadata["persistence_timing_boundary"] = (
+            "Includes config, initial environment, audit IDs, scalar JSONL, gzip closure, "
+            "pose/validation JSON, and final environment writes; report_seconds includes "
+            "report, histogram, and summary persistence."
+        )
+        emit_progress("finalizing")
         begin = perf_counter()
         (output / "poses").mkdir(exist_ok=True)
         for tid, document in sorted(documents.items()):
@@ -280,9 +436,29 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
         paths = render_selected(list(documents.values()), output / "svg", max_images)
         timings["render_seconds"] = perf_counter() - begin
         metadata["svg_count"] = len(paths)
+        final_environment_started = perf_counter_ns()
         write_json(output / "environment.json", metadata)
-        summary = write_report(output, records, timings, metadata={"stop_reason": metadata["stop_reason"],
-                     "requested_trials": trials, "retained_pose_count": len(documents),
-                     "leaderboard": leaderboard, "solver": asdict(config)}, started_at=started)
-        return_value = {"directory": str(output), "summary": summary}
+        timings["persistence_seconds"] += (perf_counter_ns() - final_environment_started) / 1_000_000_000.0
+        summary = write_report(output, records, timings, metadata={
+                     "experiment_name": experiment,
+                     "experiment_slug": experiment,
+                     "experiment": experiment,
+                     "run_id": run_id,
+                     "run_status": metadata["run_status"],
+                     "stop_reason": metadata["stop_reason"],
+                     "requested_trials": trials,
+                     "completed_trials": len(records),
+                     "retained_pose_count": len(documents),
+                     "persistence_timing_boundary": metadata["persistence_timing_boundary"],
+                     "leaderboard": leaderboard,
+                     "solver": asdict(config)}, started_at=started)
+        return_value = {
+            "directory": str(output),
+            "summary": summary,
+            "experiment_name": experiment,
+            "experiment_slug": experiment,
+            "run_id": run_id,
+            "run_status": metadata["run_status"],
+            "metadata": metadata,
+        }
     return return_value

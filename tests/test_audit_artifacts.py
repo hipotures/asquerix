@@ -10,6 +10,7 @@ import numpy as np
 from asquerix import runner
 from asquerix.cli import main as cli_main
 from asquerix.gpu import Config
+from asquerix.persistence import pose_paths, read_json, read_jsonl
 
 
 _RESULT_DTYPE = np.dtype(
@@ -81,8 +82,8 @@ def test_audited_scalar_records_have_durable_pose_evidence(tmp_path: Path, monke
         batch_factory=DescendingBatch,
     )
 
-    records = [json.loads(line) for line in (output / "trials.jsonl").read_text().splitlines()]
-    saved_ids = {json.loads(path.read_text())["trial_id"] for path in (output / "poses").glob("*.json")}
+    records = list(read_jsonl(output / "trials.jsonl"))
+    saved_ids = {read_json(path)["trial_id"] for path in pose_paths(output / "poses")}
     audited_ids = {record["trial_id"] for record in records if record["validation_status"] != "NOT_CHECKED"}
 
     assert audited_ids <= saved_ids
@@ -113,6 +114,7 @@ def test_validate_cli_does_not_relabel_initialization_failure_as_geometry_invali
     )
 
     assert cli_main(["validate", str(run)]) == 0
-    output = json.loads(capsys.readouterr().out)
-    assert output[0]["status"] == "NOT_CHECKED"
+    output = capsys.readouterr().out
+    assert "NOT_CHECKED" in output
+    assert "not a rigorous certificate" in output
 

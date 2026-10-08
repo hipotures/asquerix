@@ -1,13 +1,13 @@
 """Reproducible single-GPU pilot: identical n=12 inputs across batch sizes."""
 import argparse
-import json
 from pathlib import Path
 from time import perf_counter
 
 import numpy as np
 
 from .gpu import Config
-from .runner import run, write_json
+from .persistence import read_json, read_jsonl, write_json
+from .runner import run
 
 
 def main(argv=None):
@@ -31,7 +31,7 @@ def main(argv=None):
         results.append({"label": label, "n": n, "batch_size": batch_size, "summary": result["summary"]})
         write_json(args.output / "campaign.json", {"elapsed_seconds": perf_counter() - started,
                    "wall_budget_seconds": args.max_seconds, "runs": results})
-        environment = json.loads((args.output / label / "environment.json").read_text())
+        environment = read_json(args.output / label / "environment.json")
         return environment["stop_reason"] == "TRIALS_COMPLETED"
     for n in (11, 16):
         if not execute(f"tiny-n{n}", n, 8, trials=8, retain_all=True):
@@ -56,7 +56,7 @@ def main(argv=None):
     for result in results:
         if result["n"] != 12:
             continue
-        records = [json.loads(line) for line in (args.output / result["label"] / "trials.jsonl").read_text().splitlines()]
+        records = list(read_jsonl(args.output / result["label"] / "trials.jsonl"))
         scalars = [{k: v for k, v in r.items() if k not in ("validation_status", "independent_validation")}
                    for r in records]
         if reference is None:

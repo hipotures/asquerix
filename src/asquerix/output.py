@@ -20,6 +20,7 @@ from time import perf_counter
 import numpy as np
 
 from .geometry import vertices
+from .persistence import write_json
 
 
 _SVG_WIDTH = 900
@@ -628,8 +629,12 @@ def _report_markdown(summary: Mapping[str, Any], metadata: Any = None) -> str:
     iteration_statistics = summary["iteration_statistics"]
     coverage = summary["audit_coverage"]
     failure = summary["failure_counts"]
+    report_name = None
+    if isinstance(metadata, Mapping):
+        report_name = metadata.get("experiment") or metadata.get("experiment_name")
+    title = f"# {report_name} compression run report" if report_name else "# Compression run report"
     lines = [
-        "# Compression run report",
+        title,
         "",
         "This report is generated from the persisted trial records. GPU acceptance and independent numerical validation are reported as separate populations.",
         "",
@@ -739,7 +744,7 @@ def write_report(
     if metadata is not None:
         summary["metadata"] = _json_value(metadata)
     summary["artifacts"] = {
-        "summary": "summary.json",
+        "summary": "summary.json.gz",
         "report": "report.md",
         "histogram": "histogram.svg",
     }
@@ -749,7 +754,7 @@ def write_report(
     report_path = output_directory / "report.md"
     markdown = _report_markdown(summary, metadata)
     if started_at is not None:
-        markdown += ("\nFinal report and end-to-end timings are in `summary.json`. "
+        markdown += ("\nFinal report and end-to-end timings are in `summary.json.gz`. "
                      "Their boundary includes this report and histogram; it excludes "
                      "the final summary's own serialization.\n")
     report_path.write_text(markdown, encoding="utf-8")
@@ -762,9 +767,5 @@ def write_report(
         summary["throughput"]["end_to_end_seconds"] = _throughput_metrics(
             timings["end_to_end_seconds"], summary["attempted_trials"], summary["accepted_trials"],
             "End-to-end through report/histogram persistence; excludes final summary serialization.")
-    summary_path = output_directory / "summary.json"
-    summary_path.write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
-        encoding="utf-8",
-    )
+    write_json(output_directory / "summary.json", summary)
     return summary

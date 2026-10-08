@@ -6,7 +6,7 @@ This searches for feasible constructions and potential **upper bounds**. Stagnat
 
 ## Setup and tested commands
 
-Tested versions: Python 3.14.7, Warp 1.18.0, NumPy 2.5.3, pytest 9.1.1. Install the isolated environment from the checked-in lock:
+Tested versions: Python 3.14.7, Warp 1.18.0, NumPy 2.5.3, Rich 14.3.4, pytest 9.1.1. Install the isolated environment from the checked-in lock:
 
 ```bash
 uv sync --locked
@@ -49,10 +49,10 @@ The pilot uses identical seed, global trial IDs, initializer, tolerances, and fu
 The short high-throughput measurements in that initial sweep are preliminary. The principal throughput result uses three longer matched runs. Reproduce those with fresh destinations:
 
 ```bash
-uv run python artifacts/pilot/extended-benchmark.py --output runs/extended-archive-new --runs-output runs/extended-new
+uv run python tools/extended_benchmark.py --output runs/extended-archive-new --runs-output runs/extended-new
 ```
 
-The extended script preserves every scalar record in gzip archives, with uncompressed SHA-256 hashes. Its uncompressed run directories remain under `runs/`. See [the measured report](artifacts/pilot/REPORT.md) for durations, variability, audit coverage, and limitations.
+The extended script preserves every scalar record in gzip archives, with uncompressed SHA-256 hashes. New run directories under `runs/` use gzip JSON/JSONL. See [the measured report](artifacts/pilot/REPORT.md) for durations, variability, audit coverage, and limitations.
 
 ## Geometry and numerical method
 
@@ -107,24 +107,68 @@ The CPU validator independently reconstructs float64 vertices, derives edge-norm
 
 `GPU_FEASIBLE` remains a separate search status. Exact fixture tangencies remain numerically indeterminate; slightly separated derivatives exercise strict validation. The eleven-square Trump fixture includes coordinates, exact polynomial/isolating interval, immutable source hash/revision, attribution, and MIT notice. The [current case record](https://jlevy.github.io/squares/cases/11.html) reports optimality with its stated machine-check/review qualifications. This program tests the construction without reproducing the global proof. References never become random-solver inputs.
 
-Each run stores configuration, hardware/dependency/source-hash provenance, `trials.jsonl`, audit IDs, retained poses, validation diagnostics, sparse SVGs, `summary.json`, `report.md`, and a histogram of observed data. JSON preserves round-trip values. SVG uses actual vertices and container at equal scale. `max_images` is independent of retained coordinates. Independent leaderboards exclude invalid/indeterminate results and break ties by global ID. Histograms distinguish GPU acceptance from the selected independently checked subset; the latter is not an unbiased whole-run distribution.
+Each run stores configuration, hardware/dependency/source-hash provenance, `trials.jsonl.gz`, audit IDs, retained poses, validation diagnostics, sparse SVGs, `summary.json.gz`, `report.md`, and a histogram of observed data. JSON preserves round-trip values. SVG uses actual vertices and container at equal scale. `max_images` is independent of retained coordinates. Independent leaderboards exclude invalid/indeterminate results and break ties by global ID. Histograms distinguish GPU acceptance from the selected independently checked subset; the latter is not an unbiased whole-run distribution.
 
 Principal throughput includes initialization and full compression, with synchronized boundaries and CUDA events. Module loading, warm-up, transfers/selection, validation, persistence, rendering/reporting, and end-to-end time are separate. Amortized microseconds/trial denote throughput rather than individual-world latency. The display GPU had other workloads; repeat variability is reported.
 
-Evidence is retained under [artifacts/pilot](artifacts/pilot). Ordinary future runs are ignored under `runs/`. Do not commit huge new datasets without a durable location and manifest.
+Evidence is retained under [artifacts/pilot](artifacts/pilot). Local runtime directories are ignored under `runs/`. Normal CLI runs automatically publish finalized artifacts on the dedicated `experiment-results` branch, under `experiments/<name>/<run-id>/`, with a provenance and hash manifest. Historical evidence remains unchanged.
 
 ## Independent audit
 
 The follow-up audit preserves the original pilot files and independently checks their hashes, scalar records, retained geometry, and SVG coordinates. The hardened numerical validator is `cpu-f64-projection-v2`; it rejects malformed numeric schemas and float64 vertex reconstructions that cannot represent unit edges. Historical v1 records retain their original provenance.
 
-The runner writes the report and histogram once. Final `summary.json` timings include their generation and persistence, with the summary's own final serialization explicitly excluded. The audit also records the external duration of each complete `run()` call, including that serialization.
+The runner writes the report and histogram once. Final `summary.json.gz` timings include their generation and persistence, with the summary's own final serialization explicitly excluded. The audit also records the external duration of each complete `run()` call, including that serialization.
 
 See the [audit report](artifacts/audit/REPORT.md) for confirmed findings, regression results, independently reconstructed evidence and the matched benchmark. Selected SVGs: [n=12, trial 6233](artifacts/audit/campaign/matched-b512-r0/svg/trial-6233.svg), [n=11 control](artifacts/audit/campaign/retained-n11/svg/trial-4122.svg), and [n=16 control](artifacts/audit/campaign/retained-n16/svg/trial-4114.svg).
 
 Reproduce the matched audit campaign into fresh destinations:
 
 ```bash
-uv run --locked python artifacts/audit/reproduce.py --output runs/audit-archive-new --runs-output runs/audit-new --max-seconds 300
+uv run --locked python tools/reproduce_audit.py --output runs/audit-archive-new --runs-output runs/audit-new --max-seconds 300
 ```
 
 It retains all final states for bounded `n=11,12,16` controls, captures instrumented CUDA activities separately, repeats the original 12,288-trial `n=12` workload three times at batch size 512, compares batch size 128 on the same IDs and full solver budget, and exercises deadline draining and initialization exhaustion. The original search results are compared directly with the archived scalar bytes. Meaningful audit evidence is kept under `artifacts/audit`.
+
+## Rich workflow and automatic publication
+
+Normal interactive runs show one updating progress display. Completed counts advance only when a GPU batch has finished and its records are saved. An active spinner and elapsed time remain visible while the next batch runs. Best L and validation counts refer to independent CPU checks; GPU acceptance is a separate status. Redirected output uses stable plain text without ANSI animation.
+
+```bash
+uv run asquerix run \
+  --experiment n12-s480-b8192 \
+  --n 12 --max-sweeps 480 --trials 16384 --batch-size 8192 \
+  --output runs/n12-s480-b8192
+```
+
+The inherited 30-second scheduling limit may produce a partial run. Set `--max-seconds` explicitly for longer benchmarks. Large batches on the display GPU are user-selected workloads, not the bounded development test campaign.
+
+Quiet structured-output mode saves the same artifacts and prints their paths, never JSON payloads:
+
+```bash
+uv run asquerix run \
+  --experiment n12-s480-b8192-json \
+  --n 12 --max-sweeps 480 --trials 16384 --batch-size 8192 \
+  --json --output runs/n12-s480-b8192-json
+
+uv run asquerix compare \
+  runs/perf-b128-n12 runs/perf-b512-n12 \
+  runs/perf-b1024-n12 runs/perf-b2048-n12
+```
+
+Compare shows CUDA-event GPU time/rate, relative speedup, end-to-end timing, budgets, quality and validation coverage. It warns about different configurations, trial ranges, hardware, dependencies, source hashes or host audit workloads. The previously reported synchronized simulation rate remains in the saved summary as a separate timing interval.
+
+`diagnose`, `validate`, `render`, `report` and `compare` also accept `--json`. For commands without an existing run destination, use `--output results-name.json.gz`; otherwise a unique file is created under `runs/`. Validation and comparison do not overwrite historical source files.
+
+New runs save `summary.json.gz`, `config.json.gz`, `environment.json.gz`, `validation.json.gz`, `audit_ids.json.gz`, `trials.jsonl.gz`, and `poses/trial-<id>.json.gz`. Gzip metadata and JSON serialization are deterministic; identical serialized bytes produce identical compressed bytes. JSONL is streamed and finalized on graceful interruption. Readers transparently accept both historical plain files and compressed archives. Markdown, CSV and SVG remain uncompressed.
+
+Names use 1–80 ASCII letters, digits, dots, underscores or hyphens, starting with a letter or digit. Omitted names incorporate N, sweeps, batch size and a unique UTC run ID. Existing output directories are never overwritten.
+
+Every normal `run` attempts publication after data, report and SVG finalization. `--no-push` creates a local manifest without contacting a remote. `manifest.json.gz` records the run-start code revision and source hashes, full solver/runner configuration, GPU/software provenance, completion status, timing intervals and artifact hashes. The code revision differs from the results commit. The local `publication.json.gz` receipt records the confirmed results commit, GitHub URL, publication timing and total CLI duration; it is excluded from the published tree to avoid circular dependencies.
+
+Open the printed commit URL, then browse `experiments/<experiment-name>/<run-id>/`. All results are also discoverable on [the experiment-results branch](https://github.com/hipotures/asquerix/tree/experiment-results). Download gzip files and read them with `gzip -dc`, Python's `gzip`, or these CLI readers.
+
+Publication uses a private snapshot and temporary Git index, never the active index or checkout. It works from detached HEAD and serializes local publishers using a lock in the shared Git directory. Remote advances trigger up to three fast-forward attempts preserving existing history. A duplicate run path is rejected. Failed pushes retain local files and an anchored local commit when one was created. Per-file publication is limited to 95 MiB and the total to 500 MiB; oversized or invalid artifacts are reported without data loss. Git identity and remote authentication must already be configured.
+
+Statuses are `COMPLETED + PUBLISHED`, `PARTIAL + PUBLISHED`, or computation status plus `LOCAL_ONLY`/`PUSH_FAILED`. Exit codes: 0 for successful computation/publication or explicit local-only mode, 1 for invalid saved geometry, 2 for input/runtime errors, 3 for failed automatic publication. Ctrl-C or a deadline stops new batches and publishes completed partial results after the current batch drains.
+
+CUDA-event `device_seconds` excludes transfers, CPU validation, gzip and Git. Persistence/compression, rendering/reporting and publication have separate intervals. Summary end-to-end time includes computation and reporting through the documented final-summary boundary; the publication receipt adds the full `run()` duration and total CLI duration. Maintained tools under `tools/` read old/new formats and default to fresh runtime output paths. Archived scripts under `artifacts/` remain immutable provenance; internal library/pilot runs stay local and do not automatically publish.

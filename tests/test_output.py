@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from asquerix.output import render_pose, render_selected, summarize, write_report
+from asquerix.persistence import read_json
 
 
 def pose_document(trial_id: int, side: float, status: str = "NOT_CHECKED") -> dict:
@@ -221,9 +221,9 @@ def test_write_report_contains_observed_histogram_and_machine_summary(tmp_path: 
     summary = write_report(tmp_path, records, {"end_to_end_seconds": 0.5}, {"seed": 123})
 
     assert summary["metadata"] == {"seed": 123}
-    for name in ("summary.json", "report.md", "histogram.svg"):
+    for name in ("summary.json.gz", "report.md", "histogram.svg"):
         assert (tmp_path / name).exists()
-    loaded = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    loaded = read_json(tmp_path / "summary.json")
     histogram = (tmp_path / "histogram.svg").read_text(encoding="utf-8")
     report = (tmp_path / "report.md").read_text(encoding="utf-8")
     assert loaded["histogram"]["gpu_accepted"]["count"] == 1
@@ -238,12 +238,11 @@ def test_report_timing_includes_written_histogram_and_markdown(tmp_path, monkeyp
         if len(calls) == 2:
             assert (tmp_path / "report.md").is_file()
             assert (tmp_path / "histogram.svg").is_file()
-            assert not (tmp_path / "summary.json").exists()
+            assert not (tmp_path / "summary.json.gz").exists()
         return 10.0 if len(calls) == 1 else 15.0
     monkeypatch.setattr(output, "perf_counter", clock)
     summary = output.write_report(tmp_path, [], {"report_seconds": 0}, started_at=1)
     assert summary["timings"]["report_seconds"] == 5
     assert summary["timings"]["end_to_end_seconds"] == 14
     assert "excludes final summary" in summary["timing_boundary"]
-    import json
-    assert json.loads((tmp_path / "summary.json").read_text()) == summary
+    assert read_json(tmp_path / "summary.json") == summary

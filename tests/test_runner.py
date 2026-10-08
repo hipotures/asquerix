@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import signal
 from pathlib import Path
 
@@ -11,6 +10,7 @@ import pytest
 
 from asquerix import runner
 from asquerix.gpu import Config
+from asquerix.persistence import pose_paths, read_json, read_jsonl
 
 
 _RESULT_DTYPE = np.dtype(
@@ -127,8 +127,7 @@ def _factory(**options):
 
 
 def _read_records(directory: Path) -> list[dict]:
-    path = directory / "trials.jsonl"
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    return list(read_jsonl(directory / "trials.jsonl"))
 
 
 def test_select_indices_uses_global_periodic_ids_fixed_audits_and_tie_breaking() -> None:
@@ -210,8 +209,8 @@ def test_sigint_preserves_completed_batch_and_stops_new_launches(tmp_path: Path,
     assert batch.calls == [(1, 10), (2, 10)]
     records = _read_records(output)
     assert [record["trial_id"] for record in records] == [10, 11]
-    assert len(list((output / "poses").glob("trial-*.json"))) == 2
-    metadata = json.loads((output / "environment.json").read_text(encoding="utf-8"))
+    assert len(pose_paths(output / "poses")) == 2
+    metadata = read_json(output / "environment.json")
     assert metadata["stop_reason"] == "SIGINT"
     assert metadata["completed_trials"] == 2
     assert metadata["stop_observed_to_batch_completion_seconds"] >= 0.0
@@ -236,10 +235,7 @@ def test_invalid_debug_examples_are_bounded_across_batches(tmp_path: Path, fake_
     records = _read_records(output)
     assert len(records) == 6
     assert all(record["validation_status"] == "INVALID" for record in records)
-    pose_documents = [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted((output / "poses").glob("trial-*.json"))
-    ]
+    pose_documents = [read_json(path) for path in pose_paths(output / "poses")]
     assert len(pose_documents) <= 1
     assert all(document["validation"]["status"] == "INVALID" for document in pose_documents)
 
@@ -262,7 +258,7 @@ def test_batch_exception_persists_error_stop_metadata(tmp_path: Path, fake_envir
         )
 
     records = _read_records(output)
-    metadata = json.loads((output / "environment.json").read_text(encoding="utf-8"))
+    metadata = read_json(output / "environment.json")
     assert [record["trial_id"] for record in records] == [0, 1]
     assert metadata["stop_reason"] == "ERROR"
     assert metadata["error"] == "RuntimeError: synthetic batch failure"
@@ -307,7 +303,7 @@ def test_max_seconds_stops_after_completed_batch_without_another_launch(
 
     batch = FakeBatch.instances[0]
     assert batch.calls == [(1, 0), (2, 0)]
-    metadata = json.loads((output / "environment.json").read_text(encoding="utf-8"))
+    metadata = read_json(output / "environment.json")
     assert metadata["stop_reason"] == "MAX_SECONDS"
     assert metadata["completed_trials"] == 2
     assert metadata["stop_observed_to_batch_completion_seconds"] > 0.0
@@ -331,11 +327,13 @@ def test_retain_all_keeps_small_audit_batch_even_with_zero_leaderboard(tmp_path:
         batch_factory=_factory(),
     )
 
-    pose_paths = sorted((output / "poses").glob("trial-*.json"))
-    assert [path.stem for path in pose_paths] == ["trial-0", "trial-1", "trial-2"]
+    paths = pose_paths(output / "poses")
+    assert [path.name.removesuffix(".json.gz").removesuffix(".json") for path in paths] == [
+        "trial-0", "trial-1", "trial-2"
+    ]
     assert all(
-        json.loads(path.read_text(encoding="utf-8"))["validation_status"] == "NUMERICALLY_VALIDATED"
-        for path in pose_paths
+        read_json(path)["validation_status"] == "NUMERICALLY_VALIDATED"
+        for path in paths
     )
 
 

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from asquerix.output import summarize
+from asquerix.persistence import read_json, read_jsonl
 
 
 def test_saved_campaign_scalar_records_match_summary_counts() -> None:
     root = Path(__file__).parents[1] / "artifacts" / "pilot" / "campaign" / "repeat-0"
-    records = [json.loads(line) for line in (root / "trials.jsonl").read_text(encoding="utf-8").splitlines()]
-    summary = json.loads((root / "summary.json").read_text(encoding="utf-8"))
+    records = list(read_jsonl(root / "trials.jsonl"))
+    summary = read_json(root / "summary.json")
 
     assert summary["record_count"] == len(records) == 512
     assert summary["attempted_trials"] == len(records)
@@ -26,8 +26,8 @@ def test_saved_campaign_scalar_records_match_summary_counts() -> None:
 
 def test_summary_recomputation_preserves_pilot_populations() -> None:
     root = Path(__file__).parents[1] / "artifacts" / "pilot" / "campaign" / "repeat-0"
-    records = [json.loads(line) for line in (root / "trials.jsonl").read_text(encoding="utf-8").splitlines()]
-    persisted = json.loads((root / "summary.json").read_text(encoding="utf-8"))
+    records = list(read_jsonl(root / "trials.jsonl"))
+    persisted = read_json(root / "summary.json")
     recomputed = summarize(records, persisted["timings"])
 
     assert recomputed["statistics"] == persisted["statistics"]
