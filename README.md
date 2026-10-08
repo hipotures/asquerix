@@ -90,7 +90,7 @@ Termination reasons include `STEP_FLOOR_REACHED`, `STAGNATED`, `BUDGET_EXHAUSTED
 
 One CUDA thread owns a world, with block size 32 and preallocated `(square,world)` pose/rollback storage. A fixed batch submission uses kernels of at most 16 compression attempts, retaining state on the device: eight kernels for the default budget. The host submits this predetermined sequence and reads nothing until the batch finishes. Initialization, relaxation, compression decisions, acceptance, and rollback are on the GPU. No per-trial GPU launches or per-contact/sweep host synchronization occurs. CUDA events measure total work and maximum stage duration.
 
-All trials transfer compact scalar records. Selected poses use a batched GPU gather. Selection retains the independent numerical leaderboard, global-ID periodic samples, a bounded reproducible random audit sample, and bounded failure examples. Small correctness runs explicitly transfer every pose.
+All trials transfer compact scalar records. Selected poses use a batched GPU gather. Selection retains the independent numerical leaderboard, global-ID periodic samples, a bounded reproducible random audit sample, and bounded failure examples. Checked valid or indeterminate candidates remain saved after a later candidate supersedes them; `keep_best` caps the leaderboard rather than deleting the inputs to completed checks. Invalid debug examples retain their separate cap. Small correctness runs explicitly transfer every pose.
 
 RNG identity is `(seed, global_trial_id)`, both uint64. SplitMix64 starts at `seed XOR mix64(global_trial_id)`, adds its 64-bit Weyl constant per draw, and converts the top 24 bits to FP32. Out-of-range identifiers are rejected rather than truncated. Tests cover IDs near `2**64-1`, distinct sampled worlds, repetition, and partition equivalence. Statistical independence is not proved. Bitwise reproducibility is tested on the same hardware/configuration/kernel/dependency versions; cross-hardware/compiler/version equivalence is not promised.
 
@@ -112,3 +112,17 @@ Each run stores configuration, hardware/dependency/source-hash provenance, `tria
 Principal throughput includes initialization and full compression, with synchronized boundaries and CUDA events. Module loading, warm-up, transfers/selection, validation, persistence, rendering/reporting, and end-to-end time are separate. Amortized microseconds/trial denote throughput rather than individual-world latency. The display GPU had other workloads; repeat variability is reported.
 
 Evidence is retained under [artifacts/pilot](artifacts/pilot). Ordinary future runs are ignored under `runs/`. Do not commit huge new datasets without a durable location and manifest.
+
+## Independent audit
+
+The follow-up audit preserves the original pilot files and independently checks their hashes, scalar records, retained geometry, and SVG coordinates. The hardened numerical validator is `cpu-f64-projection-v2`; it rejects malformed numeric schemas and float64 vertex reconstructions that cannot represent unit edges. Historical v1 records retain their original provenance.
+
+The runner writes the report and histogram once. Final `summary.json` timings include their generation and persistence, with the summary's own final serialization explicitly excluded. The audit also records the external duration of each complete `run()` call, including that serialization.
+
+Reproduce the matched audit campaign into fresh destinations:
+
+```bash
+uv run --locked python artifacts/audit/reproduce.py --output runs/audit-archive-new --runs-output runs/audit-new --max-seconds 300
+```
+
+It retains all final states for bounded `n=11,12,16` controls, captures instrumented CUDA activities separately, repeats the original 12,288-trial `n=12` workload three times at batch size 512, compares batch size 128 on the same IDs and full solver budget, and exercises deadline draining and initialization exhaustion. The original search results are compared directly with the archived scalar bytes. Meaningful audit evidence is kept under `artifacts/audit`.

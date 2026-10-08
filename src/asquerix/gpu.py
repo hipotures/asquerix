@@ -2,6 +2,7 @@
 import math
 import os
 from dataclasses import asdict, dataclass
+from numbers import Integral
 from time import perf_counter
 
 import numpy as np
@@ -56,6 +57,19 @@ class Config:
             raise ValueError("guard must exceed acceptance_tolerance; step_floor must not exceed step")
         if not 0 < self.step_reduction < 1 or not 0 < self.relaxation <= 1:
             raise ValueError("step_reduction must be in (0,1); relaxation must be in (0,1]")
+        # Parameters are compiled as FP32. Reject values whose conversion would
+        # change the validated contract (zero, infinity, or a lost inequality).
+        float_keys = ("initial_side", "step", "step_floor", "step_reduction", "guard",
+                      "acceptance_tolerance", "motion_tolerance", "rotation_mobility",
+                      "relaxation", "max_translation", "max_rotation")
+        with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+            values = {key: np.float32(getattr(self, key)) for key in float_keys}
+        if any(not np.isfinite(value) or value <= 0 for value in values.values()):
+            raise ValueError("numerical parameters must remain positive and finite in FP32")
+        if (values["guard"] <= values["acceptance_tolerance"]
+                or values["step_floor"] > values["step"]
+                or values["step_reduction"] >= 1):
+            raise ValueError("guard, step floor, and reduction inequalities must survive FP32 conversion")
         if not 0 <= self.max_attempts <= 2048 or not 1 <= self.max_sweeps <= 2000:
             raise ValueError("attempt/sweep budgets exceed the bounded baseline limits")
         if not 1 <= self.proposals_per_square <= 100000 or not 1 <= self.stagnation_sweeps <= 100:
@@ -389,7 +403,7 @@ def simulate(cfg: Parameters, offset: wp.uint64,
         gap, wall, finite = residuals(accepted_pose, world, cfg.n, result.side)
         result.min_gap = gap
         result.min_wall = wall
-        result.max_penetration = wp.max(0.0, -gap)
+        result.max_penetration = wp.max(0.0, -wp.min(gap, wall))
         result.feasible = int(finite == 1 and wp.min(gap, wall) >= cfg.guard - cfg.acceptance_tolerance)
     results[world] = result
 
@@ -434,13 +448,15 @@ class Batch:
     """Reusable GPU storage. Readbacks happen only at completed batch boundaries."""
     def __init__(self, config, capacity, device="cuda:0", debug=False):
         config.validate()
-        if not 1 <= capacity <= 65536:
+        if isinstance(capacity, bool) or not isinstance(capacity, Integral) or not 1 <= capacity <= 65536:
             raise ValueError("batch_size must be in [1,65536]")
+        capacity = int(capacity)
         wp.init()
         self.device = wp.get_device(device)
         if not self.device.is_cuda:
             raise ValueError("GPU runs require an explicit CUDA device; CPU fallback is forbidden")
         self.config, self.capacity, self.debug = config, capacity, debug
+        self.completed_count = 0
         self.params = parameters(config)
         start = perf_counter()
         wp.load_module(module=__name__, device=self.device, block_dim=32)
@@ -459,8 +475,11 @@ class Batch:
         self.stage_events = [wp.Event(device=self.device, enable_timing=True) for _ in range(self.stage_count + 1)]
 
     def run(self, count, offset):
-        if not 1 <= count <= self.capacity or not 0 <= offset <= 2**64 - count:
+        if (isinstance(count, bool) or not isinstance(count, Integral)
+                or isinstance(offset, bool) or not isinstance(offset, Integral)
+                or not 1 <= count <= self.capacity or not 0 <= offset <= 2**64 - int(count)):
             raise ValueError("batch count or global unsigned-64 trial range is invalid")
+        count, offset = int(count), int(offset)
         wp.synchronize_device(self.device)
         begin = perf_counter()
         # A fixed submission contains at most 16 attempts per kernel. The CPU
@@ -481,10 +500,16 @@ class Batch:
         begin = perf_counter()
         scalars = self.results[:count].numpy().copy()
         transfer = perf_counter() - begin
+        self.completed_count = count
         return scalars, {"simulation_seconds": synchronized, "device_seconds": device_seconds,
                          "transfer_seconds": transfer, "max_stage_seconds": max_stage}
 
     def get_poses(self, indices):
+        raw_indices = np.asarray(indices)
+        if (raw_indices.ndim != 1 or raw_indices.size > self.capacity or (raw_indices.size and
+                (raw_indices.dtype.kind not in "iu" or np.any(raw_indices < 0)
+                 or np.any(raw_indices >= self.completed_count)))):
+            raise ValueError("pose indices must be integers in the most recently completed batch")
         if not len(indices):
             return np.empty((0, self.config.n, 3)), 0.0
         begin = perf_counter()

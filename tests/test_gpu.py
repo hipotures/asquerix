@@ -20,20 +20,6 @@ from asquerix.gpu import (
 pytestmark = pytest.mark.gpu
 
 
-@pytest.fixture(scope="session")
-def cuda_device():
-    """Return an actual CUDA device, or skip without a CPU fallback."""
-
-    try:
-        wp.init()
-        device = wp.get_device("cuda:0")
-    except Exception as exc:  # pragma: no cover - depends on the host runtime
-        pytest.skip(f"CUDA device unavailable: {exc}")
-    if not device.is_cuda:  # pragma: no cover - defensive for unusual Warp setups
-        pytest.skip("CUDA correctness tests require an accessible CUDA device")
-    return device
-
-
 def _batch(config: Config, capacity: int, cuda_device, *, debug: bool = False) -> Batch:
     return Batch(config, capacity=capacity, device=cuda_device, debug=debug)
 

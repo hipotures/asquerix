@@ -15,15 +15,16 @@ construction and all reported distances are floating-point numerical checks;
 from __future__ import annotations
 
 from collections.abc import Mapping
-from numbers import Integral
+from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
 
 
-VALIDATOR_VERSION = "cpu-f64-projection-v1"
+VALIDATOR_VERSION = "cpu-f64-projection-v2"
 _VERTEX_COUNT = 4
 _POSE_WIDTH = 3
+_UNIT_EDGE_TOLERANCE = 1e-12
 
 
 def _pose_array(poses: Any) -> np.ndarray:
@@ -36,8 +37,11 @@ def _pose_array(poses: Any) -> np.ndarray:
     """
 
     try:
-        array = np.asarray(poses, dtype=np.float64)
-    except (TypeError, ValueError) as exc:
+        raw = np.asarray(poses, dtype=object)
+        if any(isinstance(value, (bool, np.bool_)) or not isinstance(value, Real) for value in raw.flat):
+            raise ValueError("pose coordinates must be numeric, non-boolean scalars")
+        array = np.asarray(raw, dtype=np.float64)
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError("poses must be convertible to a numeric float64 array") from exc
     if array.ndim != 2 or array.shape[1] != _POSE_WIDTH:
         raise ValueError("poses must have shape (n, 3)")
@@ -108,11 +112,18 @@ def _invalid_result(tolerance: float | None, nonfinite: bool = False) -> dict[st
 
 
 def _scalar(value: Any) -> float | None:
-    """Convert a scalar-like value without leaking NumPy scalar types."""
+    """Convert a numeric scalar without accepting schema-coercing values.
+
+    JSON documents use numeric values for lengths and tolerances.  In
+    particular, accepting ``"2.0"`` or ``True`` here would make malformed
+    persisted documents appear valid after an implicit conversion.
+    """
 
     try:
         array = np.asarray(value)
         if array.ndim != 0:
+            return None
+        if array.dtype.kind not in "iuf":
             return None
         result = float(array)
     except (TypeError, ValueError, OverflowError):
@@ -127,8 +138,14 @@ def _edge_normals(polygon: np.ndarray) -> np.ndarray:
     # A valid square has unit-length edges.  Keep the normalization explicit so
     # the SAT path is independent of the vertex scale and ordering.
     normals = np.stack((-edges[:, 1], edges[:, 0]), axis=-1)
-    lengths = np.linalg.norm(normals, axis=1)
-    return normals / lengths[:, None]
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        lengths = np.linalg.norm(normals, axis=1)
+        normalized = normals / lengths[:, None]
+    if not bool(np.isfinite(lengths).all()) or not bool(np.isfinite(normalized).all()):
+        raise ValueError("polygon edge normals are not finite")
+    if bool((lengths <= 0.0).any()):
+        raise ValueError("polygon edge normals are degenerate")
+    return normalized
 
 
 def _pair_separation(first: np.ndarray, second: np.ndarray) -> float:
@@ -142,14 +159,21 @@ def _pair_separation(first: np.ndarray, second: np.ndarray) -> float:
     """
 
     axes = np.concatenate((_edge_normals(first), _edge_normals(second)), axis=0)
+    if not bool(np.isfinite(axes).all()):
+        raise ValueError("polygon separating axes are not finite")
     best_gap = -np.inf
     for axis in axes:
-        first_projection = first @ axis
-        second_projection = second @ axis
+        with np.errstate(over="ignore", invalid="ignore"):
+            first_projection = first @ axis
+            second_projection = second @ axis
+        if not bool(np.isfinite(first_projection).all()) or not bool(np.isfinite(second_projection).all()):
+            raise ValueError("polygon projections are not finite")
         gap = max(
             float(second_projection.min() - first_projection.max()),
             float(first_projection.min() - second_projection.max()),
         )
+        if not np.isfinite(gap):
+            raise ValueError("polygon separation is not finite")
         if gap > best_gap:
             best_gap = gap
     return float(best_gap)
@@ -208,15 +232,35 @@ def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, A
         # evaluation; it also guarantees that no non-finite metric escapes.
         return _invalid_result(tolerance_value, nonfinite=True)
 
+    # At sufficiently large offsets, adding the half-unit vertex offsets to a
+    # float64 center rounds them away.  Such a pose still has finite input
+    # fields, but its reconstructed polygon no longer represents a unit square.
+    # Reject it before the SAT path can normalize zero/overflowed edges.
+    with np.errstate(over="ignore", invalid="ignore"):
+        edges = np.roll(square_vertices, -1, axis=1) - square_vertices
+        edge_lengths = np.linalg.norm(edges, axis=2)
+    if not bool(np.isfinite(edge_lengths).all()):
+        return _invalid_result(tolerance_value, nonfinite=True)
+    if not bool(np.all(np.isclose(edge_lengths, 1.0,
+                                  rtol=_UNIT_EDGE_TOLERANCE,
+                                  atol=_UNIT_EDGE_TOLERANCE))):
+        return _invalid_result(tolerance_value)
+
     half_side = 0.5 * side_value
     wall_clearances = half_side - np.abs(square_vertices)
+    if not bool(np.isfinite(wall_clearances).all()):
+        return _invalid_result(tolerance_value, nonfinite=True)
     min_wall_clearance = float(wall_clearances.min())
 
     pair_separations: list[float] = []
     for first_index in range(square_vertices.shape[0] - 1):
         first = square_vertices[first_index]
         for second_index in range(first_index + 1, square_vertices.shape[0]):
-            pair_separations.append(_pair_separation(first, square_vertices[second_index]))
+            try:
+                separation = _pair_separation(first, square_vertices[second_index])
+            except ValueError:
+                return _invalid_result(tolerance_value, nonfinite=True)
+            pair_separations.append(separation)
 
     if pair_separations:
         min_pair_separation: float | None = float(min(pair_separations))

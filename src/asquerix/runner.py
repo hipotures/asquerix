@@ -3,6 +3,8 @@ from dataclasses import asdict
 import hashlib
 import importlib.metadata
 import json
+import math
+from numbers import Real
 from pathlib import Path
 import platform
 import signal
@@ -87,17 +89,47 @@ def select_indices(records, *, sample_every, audit_ids, keep_best, threshold=Non
     return reasons, candidates
 
 
+def _runner_integer(value, name, *, minimum, maximum):
+    """Validate a bounded runner integer without accepting bool or floats."""
+
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        raise ValueError(f"{name} must be an integer")
+    converted = int(value)
+    if not minimum <= converted <= maximum:
+        raise ValueError(f"{name} must be in [{minimum},{maximum}]")
+    return converted
+
+
+def _runner_seconds(value):
+    """Validate a positive finite wall-time budget and return a float."""
+
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        raise ValueError("max_seconds must be positive and finite")
+    converted = float(value)
+    if not math.isfinite(converted) or converted <= 0.0:
+        raise ValueError("max_seconds must be positive and finite")
+    return converted
+
+
 def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cuda:0",
         output="runs/run", sample_every=1000, keep_best=10, max_images=10,
         audit_size=16, failure_examples=3, retain_all=False, max_seconds=30.0,
         batch_factory=Batch):
     config.validate()
-    if not 1 <= trials <= 2**31 - 1 or not 0 <= trial_offset <= 2**64 - trials:
-        raise ValueError("trials must be in [1,2**31-1] and the global range must fit uint64")
-    if not 1 <= batch_size <= 65536 or not np.isfinite(max_seconds) or max_seconds <= 0:
-        raise ValueError("batch_size must be in [1,65536]; max_seconds must be positive and finite")
-    if min(sample_every, keep_best, max_images, audit_size, failure_examples) < 0:
-        raise ValueError("output selection counts must be non-negative")
+    trials = _runner_integer(trials, "trials", minimum=1, maximum=2**31 - 1)
+    batch_size = _runner_integer(batch_size, "batch_size", minimum=1, maximum=65536)
+    trial_offset = _runner_integer(trial_offset, "trial_offset", minimum=0, maximum=2**64 - 1)
+    if trial_offset > 2**64 - trials:
+        raise ValueError("trial_offset plus trials must fit unsigned 64 bits")
+    sample_every = _runner_integer(sample_every, "sample_every", minimum=0, maximum=2**64 - 1)
+    keep_best = _runner_integer(keep_best, "keep_best", minimum=0, maximum=2**31 - 1)
+    max_images = _runner_integer(max_images, "max_images", minimum=0, maximum=2**31 - 1)
+    audit_size = _runner_integer(audit_size, "audit_size", minimum=0, maximum=2**31 - 1)
+    failure_examples = _runner_integer(failure_examples, "failure_examples", minimum=0, maximum=2**31 - 1)
+    max_seconds = _runner_seconds(max_seconds)
+    if not isinstance(retain_all, (bool, np.bool_)):
+        raise ValueError("retain_all must be a boolean")
+    retain_all = bool(retain_all)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     started = perf_counter()
@@ -193,15 +225,19 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
                     chunk = worthy[:keep_best]
                     collect({i: {"best_candidate"} for i in chunk})
                     remaining = [i for i in remaining if i not in chunk]
-                # Keep final leaderboard plus the explicitly bounded other rules.
+                # Preserve checked valid/indeterminate candidate geometry after
+                # supersession. Invalid debug examples retain their explicit cap.
                 leader_ids = {r["trial_id"] for r in leaderboard}
                 for tid, doc in list(documents.items()):
                     if doc["selection_reasons"] == ["best_candidate"] and tid not in leader_ids:
-                        if doc["validation_status"] == "INVALID" and failure_count < failure_examples:
-                            doc["selection_reasons"].append("invalid_candidate")
-                            failure_count += 1
+                        if doc["validation_status"] == "INVALID":
+                            if failure_count < failure_examples:
+                                doc["selection_reasons"].append("invalid_candidate")
+                                failure_count += 1
+                            else:
+                                del documents[tid]
                         else:
-                            del documents[tid]
+                            doc["selection_reasons"].append("superseded_candidate")
                 begin = perf_counter()
                 for record in current:
                     scalar_file.write(json.dumps(record, allow_nan=False) + "\n")
@@ -245,15 +281,8 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
         timings["render_seconds"] = perf_counter() - begin
         metadata["svg_count"] = len(paths)
         write_json(output / "environment.json", metadata)
-        begin = perf_counter()
-        timings["end_to_end_seconds"] = perf_counter() - started
-        write_report(output, records, timings, metadata={"stop_reason": metadata["stop_reason"],
-                     "requested_trials": trials, "retained_pose_count": len(documents),
-                     "leaderboard": leaderboard, "solver": asdict(config)})
-        timings["report_seconds"] = perf_counter() - begin
-        timings["end_to_end_seconds"] = perf_counter() - started
         summary = write_report(output, records, timings, metadata={"stop_reason": metadata["stop_reason"],
                      "requested_trials": trials, "retained_pose_count": len(documents),
-                     "leaderboard": leaderboard, "solver": asdict(config)})
+                     "leaderboard": leaderboard, "solver": asdict(config)}, started_at=started)
         return_value = {"directory": str(output), "summary": summary}
     return return_value

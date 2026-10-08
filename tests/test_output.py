@@ -68,6 +68,39 @@ def test_render_selected_preserves_full_width_trial_ids(tmp_path: Path) -> None:
     assert f"trial_id={second}" in paths[1].read_text(encoding="utf-8")
 
 
+def test_render_selected_disambiguates_sanitized_identifier_collisions(tmp_path: Path) -> None:
+    paths = render_selected(
+        [pose_document("a/b", 1.0), pose_document("a?b", 2.0)],
+        tmp_path,
+        max_images=2,
+    )
+
+    assert [path.name for path in paths] == ["trial-a_b.svg", "trial-a_b-2.svg"]
+    assert "trial_id=a/b" in paths[0].read_text(encoding="utf-8")
+    assert "trial_id=a?b" in paths[1].read_text(encoding="utf-8")
+
+
+def test_unknown_validation_status_is_reported_as_invalid_data(tmp_path: Path) -> None:
+    document = pose_document(8, 1.0, status="future-status")
+    rendered = render_pose(document, tmp_path / "unknown.svg")
+    assert "validation=INVALID DEBUG" in rendered.read_text(encoding="utf-8")
+
+    summary = summarize(
+        [
+            {
+                "trial_id": 8,
+                "side": 1.0,
+                "gpu_status": "GPU_FEASIBLE",
+                "validation_status": "future-status",
+                "termination_reason": "STEP_FLOOR_REACHED",
+            }
+        ],
+        {},
+    )
+    assert summary["validation_status_counts"] == {"INVALID": 1}
+    assert summary["audit_coverage"]["invalid_trials"] == 1
+
+
 def test_summarize_separates_gpu_acceptance_validation_and_failures() -> None:
     records = [
         {
@@ -197,3 +230,20 @@ def test_write_report_contains_observed_histogram_and_machine_summary(tmp_path: 
     assert histogram.count('class="bar"') == 2
     assert "GPU-feasible trials: 1" in report
     assert "Trials without an accepted pose: 1" in report
+def test_report_timing_includes_written_histogram_and_markdown(tmp_path, monkeypatch):
+    from asquerix import output
+    calls = []
+    def clock():
+        calls.append(1)
+        if len(calls) == 2:
+            assert (tmp_path / "report.md").is_file()
+            assert (tmp_path / "histogram.svg").is_file()
+            assert not (tmp_path / "summary.json").exists()
+        return 10.0 if len(calls) == 1 else 15.0
+    monkeypatch.setattr(output, "perf_counter", clock)
+    summary = output.write_report(tmp_path, [], {"report_seconds": 0}, started_at=1)
+    assert summary["timings"]["report_seconds"] == 5
+    assert summary["timings"]["end_to_end_seconds"] == 14
+    assert "excludes final summary" in summary["timing_boundary"]
+    import json
+    assert json.loads((tmp_path / "summary.json").read_text()) == summary

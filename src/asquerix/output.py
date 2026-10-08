@@ -15,6 +15,7 @@ import math
 from pathlib import Path
 import re
 from typing import Any
+from time import perf_counter
 
 import numpy as np
 
@@ -154,7 +155,8 @@ def _document_status(document: Mapping[str, Any]) -> str:
         raw = document.get("validation_status", "NOT_CHECKED")
     if raw is None:
         return "NOT_CHECKED"
-    return str(raw).upper()
+    status = str(raw).upper()
+    return status if status in _VALIDATION_STATUSES else "INVALID"
 
 
 def _pose_array(document: Mapping[str, Any]) -> np.ndarray | None:
@@ -305,6 +307,7 @@ def render_selected(documents: list[dict], directory: Path, max_images: int) -> 
 
     paths: list[Path] = []
     seen: set[tuple[str, Any]] = set()
+    used_filenames: set[str] = set()
     for _, fallback_index, document in indexed:
         trial = _trial_id(document, None)
         token = _id_token(trial) if trial is not None else ("missing", fallback_index)
@@ -313,7 +316,13 @@ def render_selected(documents: list[dict], directory: Path, max_images: int) -> 
         seen.add(token)
         if len(paths) >= int(max_images):
             break
-        filename = f"trial-{_safe_filename_id(trial if trial is not None else fallback_index)}.svg"
+        filename_stem = _safe_filename_id(trial if trial is not None else fallback_index)
+        filename = f"trial-{filename_stem}.svg"
+        suffix = 2
+        while filename in used_filenames:
+            filename = f"trial-{filename_stem}-{suffix}.svg"
+            suffix += 1
+        used_filenames.add(filename)
         paths.append(render_pose(dict(document), output_directory / filename))
     return paths
 
@@ -324,7 +333,8 @@ def _record_validation_status(record: Mapping[str, Any]) -> str:
         raw = record["validation"].get("status")
     if raw is None:
         return "NOT_CHECKED"
-    return str(raw).upper()
+    status = str(raw).upper()
+    return status if status in _VALIDATION_STATUSES else "INVALID"
 
 
 def _record_side(record: Mapping[str, Any]) -> float | None:
@@ -711,12 +721,21 @@ def write_report(
     records: list[dict],
     timings: dict,
     metadata: Any = None,
+    *,
+    started_at: float | None = None,
 ) -> dict:
     """Write strict JSON, Markdown, and an observed-data histogram SVG."""
 
     output_directory = Path(directory)
     output_directory.mkdir(parents=True, exist_ok=True)
-    summary = summarize(records, timings)
+    report_started = perf_counter()
+    # The Markdown is written before its own elapsed time exists. The final
+    # summary is the canonical timing record and is serialized only once.
+    report_timings = dict(timings)
+    if started_at is not None:
+        report_timings.pop("report_seconds", None)
+        report_timings.pop("end_to_end_seconds", None)
+    summary = summarize(records, report_timings)
     if metadata is not None:
         summary["metadata"] = _json_value(metadata)
     summary["artifacts"] = {
@@ -725,13 +744,27 @@ def write_report(
         "histogram": "histogram.svg",
     }
 
+    histogram_path = output_directory / "histogram.svg"
+    histogram_path.write_text(_histogram_svg(summary["histogram"]), encoding="utf-8")
+    report_path = output_directory / "report.md"
+    markdown = _report_markdown(summary, metadata)
+    if started_at is not None:
+        markdown += ("\nFinal report and end-to-end timings are in `summary.json`. "
+                     "Their boundary includes this report and histogram; it excludes "
+                     "the final summary's own serialization.\n")
+    report_path.write_text(markdown, encoding="utf-8")
+    if started_at is not None:
+        completed = perf_counter()
+        timings["report_seconds"] = completed - report_started
+        timings["end_to_end_seconds"] = completed - started_at
+        summary["timings"] = _json_value(timings)
+        summary["timing_boundary"] = "Includes report and histogram; excludes final summary JSON serialization."
+        summary["throughput"]["end_to_end_seconds"] = _throughput_metrics(
+            timings["end_to_end_seconds"], summary["attempted_trials"], summary["accepted_trials"],
+            "End-to-end through report/histogram persistence; excludes final summary serialization.")
     summary_path = output_directory / "summary.json"
     summary_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
-    histogram_path = output_directory / "histogram.svg"
-    histogram_path.write_text(_histogram_svg(summary["histogram"]), encoding="utf-8")
-    report_path = output_directory / "report.md"
-    report_path.write_text(_report_markdown(summary, metadata), encoding="utf-8")
     return summary

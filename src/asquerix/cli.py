@@ -59,8 +59,15 @@ def main(argv=None):
             paths = sorted((args.path / "poses").glob("*.json")) if args.path.is_dir() else [args.path]
             documents = [json.loads(path.read_text()) for path in paths]
             if args.command == "validate":
-                results = [{"trial_id": d.get("trial_id", d.get("fixture_id")), **validate_document(d, args.tolerance)}
-                           for d in documents]
+                results = []
+                for d in documents:
+                    no_pose = (isinstance(d, dict) and d.get("termination_reason") == "INIT_FAILED"
+                               and d.get("gpu_status") == "NO_ACCEPTED_POSE"
+                               and d.get("side") is None and d.get("poses") == [])
+                    validation = ({"status": "NOT_CHECKED", "diagnostic": "Initialization exhausted; no final pose exists."}
+                                  if no_pose else validate_document(d, args.tolerance))
+                    identifier = d.get("trial_id", d.get("fixture_id")) if isinstance(d, dict) else None
+                    results.append({"trial_id": identifier, **validation})
                 print(json.dumps(results, indent=2, allow_nan=False))
                 return 1 if any(r["status"] == "INVALID" for r in results) else 0
             rendered = render_selected(documents, args.output, args.max_images)
