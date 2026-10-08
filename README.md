@@ -1,0 +1,114 @@
+# Asquerix
+
+A standalone NVIDIA Warp proof of concept for wall-driven quasistatic compression of freely translating and rotating unit squares. Every integer `1 <= n <= 32` is supported. `n` counts squares in one world, `trials` counts independent worlds, and `batch_size` counts worlds submitted together.
+
+This searches for feasible constructions and potential **upper bounds**. Stagnation and unsuccessful searches establish neither lower bounds nor optimality. Float64 validation is a numerical check, not a rigorous certificate.
+
+## Setup and tested commands
+
+Tested versions: Python 3.14.7, Warp 1.18.0, NumPy 2.5.3, pytest 9.1.1. Install the isolated environment from the checked-in lock:
+
+```bash
+uv sync --locked
+uv run asquerix diagnose
+uv run pytest -q
+```
+
+The default Warp wheel uses CUDA 13.4 and requires an R580 or newer driver and a Turing or newer GPU. The inspected machine has a display-attached RTX 4070 Ti, driver 615.71.09, and 12,282 MiB memory. No driver changes were made. Wheel URLs and hashes are in `uv.lock`. See [official compatibility documentation](https://nvidia.github.io/warp/stable/user_guide/compatibility.html).
+
+CUDA tests explicitly skip when CUDA is unavailable; independent CPU tests still run. GPU runs fail with a diagnostic rather than substituting CPU execution. In the original Codex sandbox `/dev/nvidia*` was hidden; authorized execution outside that sandbox exposed the GPU.
+
+A short run retains and independently checks every pose:
+
+```bash
+uv run asquerix run --n 12 --trials 8 --batch-size 8 --retain-all --sample-every 0 --max-images 3 --max-seconds 30 --output runs/short
+uv run asquerix validate runs/short
+uv run asquerix render runs/short --output runs/short-rerender --max-images 3
+uv run asquerix report runs/short
+```
+
+Run directories must not already exist, to protect previous results. Offline commands use saved coordinates without running or repairing a simulation.
+
+A longer, explicitly user-initiated search:
+
+```bash
+uv run asquerix run --n 12 --trials 12288 --batch-size 512 --seed 20261008 --trial-offset 0 --sample-every 1024 --audit-size 64 --keep-best 10 --max-images 3 --max-seconds 120 --output runs/long
+```
+
+This is the solver and runner configuration exercised by the extended measurements: three complete 12,288-trial runs, each with more than 28 seconds of timed GPU work. The runtime limit applies to scheduling after setup and warm-up. An already submitted batch drains before saving results. Elapsed time, deadline overrun, and stopping drain are recorded. Ctrl-C stops new batches and preserves completed output. Change `trial_offset` to use a new global trial range.
+
+Reproduce the bounded pilot and compare runs:
+
+```bash
+uv run python -m asquerix.pilot --output runs/pilot --max-seconds 300
+uv run asquerix compare runs/pilot/sweep-b8 runs/pilot/sweep-b32 runs/pilot/sweep-b128 runs/pilot/sweep-b512
+```
+
+The pilot uses identical seed, global trial IDs, initializer, tolerances, and full budgets for the `n=12` sweep. It checks scalar partition equality, chooses the measured fastest size, repeats it three times, and runs `n=11,16` controls. Tiny control runs audit every pose first. All loops are bounded; a wall limit stops scheduling rather than cancelling an in-flight kernel.
+
+The short high-throughput measurements in that initial sweep are preliminary. The principal throughput result uses three longer matched runs. Reproduce those with fresh destinations:
+
+```bash
+uv run python artifacts/pilot/extended-benchmark.py --output runs/extended-archive-new --runs-output runs/extended-new
+```
+
+The extended script preserves every scalar record in gzip archives, with uncompressed SHA-256 hashes. Its uncompressed run directories remain under `runs/`. See [the measured report](artifacts/pilot/REPORT.md) for durations, variability, audit coverage, and limitations.
+
+## Geometry and numerical method
+
+The container is `[-L/2,L/2]^2`. A pose is `(x,y,theta)`, with radians and square side exactly one. With `u=(cos(theta),sin(theta))`, `v=(-sin(theta),cos(theta))`, vertices are `c +/- u/2 +/- v/2`. Projection support is `h(theta,a)=(abs(u.a)+abs(v.a))/2` for a unit axis `a`. The exact SAT signed separation is:
+
+```text
+g = max over u_i,v_i,u_j,v_j of abs((c_j-c_i).a) - h_i(a) - h_j(a)
+```
+
+Nonnegative `g` means disjoint interiors in exact arithmetic, with equality permitting contact. Wall clearance is separate. Every pair is checked.
+
+Initialization uses bounded rejection sampling on the GPU. Centers are at least `sqrt(2)/2 + guard` from initial walls; squared center distances must be at least `2 + 4*guard`. Orientations are sampled from `[0,pi/2)`. This is conservative and does not sample all feasible packings uniformly. Dense requests can return `INIT_FAILED` despite the existence of a packing. This initializer requires `initial_side > sqrt(2)+2*guard`. No automatic resizing or grid substitution occurs.
+
+Compression proposes `L-step` without rescaling centers. Sequential contact sweeps project constraints into translation and rotation coordinates. The gradient includes derivatives of the moving SAT axis and support functions. For axis owner `i`:
+
+```text
+d = c_j-c_i, a_perp = (-a_y,a_x), sigma = sign(d.a)
+D_j = (sign(u_j.a)*(v_j.a) - sign(v_j.a)*(u_j.a))/2
+gradient_c_i = -sigma*a, gradient_c_j = sigma*a
+gradient_theta_i = sigma*(d.a_perp) + D_j
+gradient_theta_j = -D_j
+```
+
+The projection scalar is `(guard-g)/(sum of mobility-weighted squared gradients)`, multiplied by relaxation `0.8`. Translation mobility is one, angular mobility `0.3`. Corrections are capped at `0.1` length units and `0.08` radians per body/contact. These are numerical mobilities, not inertial dynamics. Geometry is recomputed after updates and every sweep.
+
+Axes tied within `1e-6` have averaged gradients; support cusps use zero derivative within `1e-6`. Symmetric aligned face contacts have zero torque; asymmetric contacts can translate and rotate. Coincident centers use deterministic axis/sign choices. Tests check derivatives for both axis owners against finite differences.
+
+Search uses FP32 with fast math disabled. Default `guard=2e-5` is separate from `acceptance_tolerance=2e-6`. Acceptance requires raw pair and wall clearances at least `1.8e-5`. The unit-square geometry, clearance target, residual tolerance, and independent validation policy are distinct.
+
+Budgets: 2000 proposals per square, 128 compression attempts, 120 sweeps per attempt. Failure restores all accepted pose components and the previous side, then halves the initial `0.2` step to a `1e-4` floor. Accepted sides are nonincreasing. Four consecutive sweeps with maximum individual correction at most `1e-7` mark relaxation stagnation. This conservative motion measure cannot cancel signed corrections; feasibility is checked separately.
+
+Termination reasons include `STEP_FLOOR_REACHED`, `STAGNATED`, `BUDGET_EXHAUSTED`, `INIT_FAILED`, and `NUMERICAL_FAILURE`. A feasible pose may exhaust its budget. Transient overlaps are search residuals; continuous collision-free trajectories between corrections are not established.
+
+## GPU mapping and reproducibility
+
+One CUDA thread owns a world, with block size 32 and preallocated `(square,world)` pose/rollback storage. A fixed batch submission uses kernels of at most 16 compression attempts, retaining state on the device: eight kernels for the default budget. The host submits this predetermined sequence and reads nothing until the batch finishes. Initialization, relaxation, compression decisions, acceptance, and rollback are on the GPU. No per-trial GPU launches or per-contact/sweep host synchronization occurs. CUDA events measure total work and maximum stage duration.
+
+All trials transfer compact scalar records. Selected poses use a batched GPU gather. Selection retains the independent numerical leaderboard, global-ID periodic samples, a bounded reproducible random audit sample, and bounded failure examples. Small correctness runs explicitly transfer every pose.
+
+RNG identity is `(seed, global_trial_id)`, both uint64. SplitMix64 starts at `seed XOR mix64(global_trial_id)`, adds its 64-bit Weyl constant per draw, and converts the top 24 bits to FP32. Out-of-range identifiers are rejected rather than truncated. Tests cover IDs near `2**64-1`, distinct sampled worlds, repetition, and partition equivalence. Statistical independence is not proved. Bitwise reproducibility is tested on the same hardware/configuration/kernel/dependency versions; cross-hardware/compiler/version equivalence is not promised.
+
+Explicit device selection and disjoint global ID ranges permit later independent device assignments. Multi-GPU scheduling is outside this milestone.
+
+## Validation and evidence
+
+The CPU validator independently reconstructs float64 vertices, derives edge-normal axes, projects polygons, and checks every pair and wall. It never calls GPU support/gradient helpers. Saved-document validation also checks that pose count matches `n`. At default tolerance `1e-8`:
+
+- `NUMERICALLY_VALIDATED`: every clearance is strictly greater than tolerance.
+- `INDETERMINATE`: all clearances are at least negative tolerance, with at least one near contact.
+- `INVALID`: larger violations, malformed/count-inconsistent records, or nonfinite data.
+- `NOT_CHECKED`: no independent geometry check exists.
+
+`GPU_FEASIBLE` remains a separate search status. Exact fixture tangencies remain numerically indeterminate; slightly separated derivatives exercise strict validation. The eleven-square Trump fixture includes coordinates, exact polynomial/isolating interval, immutable source hash/revision, attribution, and MIT notice. The [current case record](https://jlevy.github.io/squares/cases/11.html) reports optimality with its stated machine-check/review qualifications. This program tests the construction without reproducing the global proof. References never become random-solver inputs.
+
+Each run stores configuration, hardware/dependency/source-hash provenance, `trials.jsonl`, audit IDs, retained poses, validation diagnostics, sparse SVGs, `summary.json`, `report.md`, and a histogram of observed data. JSON preserves round-trip values. SVG uses actual vertices and container at equal scale. `max_images` is independent of retained coordinates. Independent leaderboards exclude invalid/indeterminate results and break ties by global ID. Histograms distinguish GPU acceptance from the selected independently checked subset; the latter is not an unbiased whole-run distribution.
+
+Principal throughput includes initialization and full compression, with synchronized boundaries and CUDA events. Module loading, warm-up, transfers/selection, validation, persistence, rendering/reporting, and end-to-end time are separate. Amortized microseconds/trial denote throughput rather than individual-world latency. The display GPU had other workloads; repeat variability is reported.
+
+Evidence is retained under [artifacts/pilot](artifacts/pilot). Ordinary future runs are ignored under `runs/`. Do not commit huge new datasets without a durable location and manifest.

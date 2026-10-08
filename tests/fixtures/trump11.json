@@ -1,0 +1,78 @@
+{
+  "fixture_id": "trump11",
+  "description": "Reconstruction of Walter Trump's 1979 eleven-square construction",
+  "n": 11,
+  "side": 3.8770835900228144,
+  "coordinate_convention": "Square centers use the centered container [-side/2, side/2]^2; angles are radians and every square has side 1.",
+  "poses": [
+    [-1.4385417950114072, -1.4385417950114072, 0.0],
+    [1.4385417950114072, -1.4385417950114072, 0.0],
+    [0.5940165193382074, 1.4385417950114072, 0.0],
+    [-1.4385417950114072, 1.4385417950114072, 0.0],
+    [-0.4385417950114072, 1.4385417950114072, 0.0],
+    [-1.4385417950114072, 0.4385417950114072, 0.0],
+    [-0.6662878989674077, -0.4859836210477493, 0.7013071055461422],
+    [-0.0020669012138667675, -1.2339336251496478, 0.7013071055461422],
+    [0.021071032880374263, 0.2499830946842354, 0.7013071055461422],
+    [0.6852920306339154, -0.4979669094176631, 0.7013071055461422],
+    [1.2339336251496476, 0.4022546146993915, 0.7013071055461422]
+  ],
+  "construction": {
+    "parameter": "u = tan(a/2)",
+    "u_minimal_polynomial_coefficients_high_to_low": [5, -10, -2, 14, 12, -6, 2, 2, -1],
+    "u_minimal_polynomial": "5u^8 - 10u^7 - 2u^6 + 14u^5 + 12u^4 - 6u^3 + 2u^2 + 2u - 1 = 0",
+    "u_isolating_interval": ["0.36", "0.37"],
+    "angle": "a = 2 atan(u)",
+    "trigonometric_substitution": {
+      "cos_a": "(1 - u^2) / (1 + u^2)",
+      "sin_a": "2u / (1 + u^2)"
+    },
+    "side": "s = (6u + 4) / (1 + 2u - u^2) = 2 + (2 + sin(a)) / (cos(a) + sin(a))",
+    "placement_parameters": {
+      "r1": "1 - (s - 3) cos(a)",
+      "u1": "((1 + r1) cos(a) - 1) / sin(a)",
+      "v1": "cos(a) - sin(a)",
+      "v2": "(s - 1) / sin(a) - r1 - (3 + u1) cos(a) / sin(a)",
+      "x0": "1 + 2 / cos(a) - (s - 2) sin(a) / cos(a)"
+    },
+    "axis_aligned_squares": [
+      "(0, 0)",
+      "(s - 1, 0)",
+      "(x0, s - 1)",
+      "(0, s - 1)",
+      "(1, s - 1)",
+      "(0, s - 2)"
+    ],
+    "tilted_square_offsets": [
+      "(0, 0)",
+      "(u1, -1)",
+      "(1, v1)",
+      "(u1 + 1, v1 - 1)",
+      "(u1 + 2, -v2)"
+    ],
+    "tilted_transform": "translate(1, 1) rotate(a) translate(0, -r1) applied to each unit-square corner"
+  },
+  "provenance": {
+    "case_record_url": "https://jlevy.github.io/squares/cases/11.html",
+    "source_repository": "https://github.com/jlevy/squares",
+    "source_artifact": "asquerix_trump11_packing.py",
+    "source_commit": "176e8ad14d5b93f3a1f3d5a9e04ab1dfdb8c704b",
+    "source_sha256": "3b4eae938c37c13af6252ac5d83fa99aa95f6b1627b99920c5df8be94c56bea9",
+    "source_license": "MIT",
+    "license_commit": "f0ec5b663b10167f1ff5ccbc3b2a3de8dd1ee9ae",
+    "license_path": "LICENSE",
+    "copyright": "Copyright (c) 2026 Joshua Levy",
+    "retrieved_on": "2026-10-08",
+    "attribution": [
+      "Walter Trump (1979), original construction",
+      "David Ellsworth, coordinate reconstruction",
+      "Joshua Levy and The Squares Project, source equations and case record"
+    ]
+  },
+  "proof_status": {
+    "case_record_status": "V3/C3/S5",
+    "review_status": "review pending",
+    "reported_side_decimal": "3.8770835900228141773078970601...",
+    "fixture_scope": "This fixture tests the stated construction and its numerical geometry only; it makes no global optimality assertion."
+  }
+}

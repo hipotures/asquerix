@@ -1,0 +1,20 @@
+[project]
+name = "asquerix"
+version = "0.1.0"
+description = "Batched GPU quasistatic compression of rotating unit squares"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2.3,<3", "warp-lang==1.18.0"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+asquerix = "asquerix.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gpu: requires an accessible CUDA device; never substitutes CPU"]
