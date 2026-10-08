@@ -27,3 +27,27 @@ uv run --locked python tools/check_artifacts.py artifacts/audit/campaign --outpu
 The initialization prompts were untracked one-time assignment files and have been removed from the original checkout at the user's request. Current project instructions are tracked as `AGENTS.md`. Manifest instruction hashes in historical archives are preserved as historical provenance.
 
 Production publication verification is recorded below only after an actual bounded CLI run and remote confirmation. Such runs test orchestration, not solver throughput; their small sample is not a benchmark claim.
+
+
+## Confirmed production publications
+
+Code revision used by both clean-worktree runs: `cb2b5eb45002c68fd264714ff14e00cf3d8880b6`.
+
+| CLI mode | Completion | Independent validation | Confirmed results commit | Published directory |
+| --- | --- | --- | --- | --- |
+| Rich TTY | COMPLETED, 8/8 | 8/8 numerically validated | [`119e2b9`](https://github.com/hipotures/asquerix/commit/119e2b9acb8d7b0fb88766aa93556d9cf01a24ab) | `experiments/workflow-rich-smoke/run-20261008T221818Z-cd07e203ab07` |
+| Quiet `--json`, 0.001-second scheduling budget | PARTIAL, 4/8 | 4/4 numerically validated | [`5aa9290`](https://github.com/hipotures/asquerix/commit/5aa9290a670ac54389c0507d9ece6c240185b3eb) | `experiments/workflow-json-partial-smoke/run-20261008T221834Z-81cb5fb7803d` |
+
+Both used the unchanged default N=12 scientific workload, seed 20261008, batch size 4, and global trial range starting at zero. The Rich run used 1.8356705322265623 seconds of CUDA-event work; the partial run used 0.9016453247070313 seconds. These are bounded workflow smoke tests, not performance estimates from a sufficiently large benchmark population. The partial run drained exactly one batch and scheduled no second batch.
+
+Both successful pushes were confirmed against the remote. Every published blob was read from Git and checked against the local bytes and manifest SHA-256: 18 hashed data files for the full run and 14 for the partial run, plus each manifest. Gzip files decompressed successfully. The independent maintained checker reported zero geometry, SVG and summary mismatches for both. Compare displayed a warning because their completed trial sets differ. Quiet stdout contained no ANSI sequences or raw JSON payload; initialization/JIT diagnostics remained on stderr.
+
+Full local publication receipts are retained in `workflow-publications.json.gz`, with computation/publication/total timings and confirmed commit URLs. The production result commits already contain compressed scientific files, reports, histograms and selected SVGs. The active main checkout remains at `d4884c9`; the detached benchmark worktree remains at `61f77c6`. Integration is delivered as a pull request to preserve concurrent development.
+
+Tested smoke commands (use fresh output paths when repeating):
+
+```bash
+uv run --locked asquerix run --experiment workflow-rich-smoke --n 12 --trials 8 --batch-size 4 --retain-all --sample-every 0 --audit-size 8 --keep-best 3 --max-images 2 --max-seconds 30 --output runs/workflow-rich-smoke
+uv run --locked asquerix run --experiment workflow-json-partial-smoke --n 12 --trials 8 --batch-size 4 --retain-all --sample-every 0 --audit-size 8 --keep-best 3 --max-images 2 --max-seconds 0.001 --json --output runs/workflow-json-partial-smoke
+uv run --locked asquerix compare runs/workflow-rich-smoke runs/workflow-json-partial-smoke
+```
