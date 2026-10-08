@@ -381,6 +381,9 @@ def simulate(cfg: Parameters, offset: wp.uint64,
                 if stagnant >= cfg.stagnation_sweeps:
                     stalled = 1
                     break
+            # The configured floor is an admissible step, not an untried
+            # stopping threshold. Remember whether THIS attempt used it.
+            floor_failed = int(success == 0 and result.final_step <= cfg.step_floor)
             if success == 1:
                 result.side = proposed_side
                 result.accepted += 1
@@ -390,12 +393,12 @@ def simulate(cfg: Parameters, offset: wp.uint64,
                 result.rejected += 1
                 for i in range(cfg.n):
                     work[i, world] = accepted_pose[i, world]
-                result.final_step *= cfg.step_reduction
+                result.final_step = wp.max(cfg.step_floor, result.final_step * cfg.step_reduction)
             if debug == 1:
                 trace[attempt, world] = result.side
             if result.termination == 4:
                 break
-            if result.final_step < cfg.step_floor:
+            if floor_failed == 1:
                 result.termination = 1
                 if stalled == 1:
                     result.termination = 2
