@@ -226,4 +226,3 @@ def pose_paths(directory: str | os.PathLike[str]) -> list[Path]:
     for path in root.glob("trial-*.json"):
         selected.setdefault(path.name, path)
     return [selected[key] for key in sorted(selected)]
-

@@ -114,4 +114,3 @@ def test_maintained_script_defaults_do_not_target_historical_artifacts() -> None
         assert "artifacts/pilot/stop-sigint" not in text
     assert "runs/audit-archive" in (ROOT / "tools/reproduce_audit.py").read_text(encoding="utf-8")
     assert "runs/extended-archive" in (ROOT / "tools/extended_benchmark.py").read_text(encoding="utf-8")
-

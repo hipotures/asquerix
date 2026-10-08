@@ -115,4 +115,3 @@ def test_run_id_rejects_unsafe_values(tmp_path: Path, fake_environment, run_id: 
             failure_examples=0,
             batch_factory=_factory(),
         )
-

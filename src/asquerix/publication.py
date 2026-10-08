@@ -740,4 +740,3 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
         _write_receipt(output, result)
         if snapshot_directory is not None:
             shutil.rmtree(snapshot_directory, ignore_errors=True)
-
