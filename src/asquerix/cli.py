@@ -23,10 +23,11 @@ def _saved(paths):
         print(f"{label}: {path}")
 
 
-def _console():
+def _console(*, file=None):
     from rich.console import Console
-    tty = bool(sys.stdout.isatty())
-    return Console(file=sys.stdout, force_terminal=tty, color_system="auto" if tty else None,
+    stream = sys.stdout if file is None else file
+    tty = bool(sys.stdout.isatty() and stream.isatty())
+    return Console(file=stream, force_terminal=tty, color_system="auto" if tty else None,
                    markup=False, highlight=False)
 
 
@@ -131,7 +132,7 @@ def main(argv=None):
             from .runner import run
             from .publication import publish
             from .presentation import PlainProgress, RunProgress
-            display = PlainProgress() if args.json else RunProgress(console)
+            display = PlainProgress() if args.json else RunProgress(_console(file=sys.stderr))
             options = vars(args).copy()
             for key in ("command", "json", "no_push"):
                 options.pop(key)

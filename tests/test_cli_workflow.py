@@ -163,3 +163,50 @@ def test_cli_default_publication_and_failure_are_separate_from_computation(tmp_p
     assert '"statistics"' not in capture.out and "\x1b" not in capture.out
     assert read_json(output / "summary.json")["record_count"] == 2
     assert read_json(output / "publication.json")["status"] == "PUSH_FAILED"
+
+
+def test_tty_runtime_diagnostics_are_managed_above_progress_on_stderr(tmp_path, monkeypatch, fake_run):
+    class TTYBuffer(StringIO):
+        def isatty(self):
+            return True
+    stdout, stderr = TTYBuffer(), TTYBuffer()
+    monkeypatch.setenv('TERM', 'xterm-256color')
+    monkeypatch.setattr(sys, 'stdout', stdout)
+    monkeypatch.setattr(sys, 'stderr', stderr)
+    actual_run = runner.run
+    def run(config, **options):
+        from rich.file_proxy import FileProxy
+        assert isinstance(sys.stdout, FileProxy)
+        assert isinstance(sys.stderr, FileProxy)
+        print('Warp initialization diagnostic')
+        print('CUDA compilation diagnostic', file=sys.stderr)
+        result = actual_run(config, **options)
+        sys.stderr.write('Final diagnostic without newline')
+        return result
+    monkeypatch.setattr(runner, 'run', run)
+    monkeypatch.setattr(publication, 'publish', lambda *args, **kwargs: dict(status='LOCAL_ONLY', seconds=0, error=None))
+    assert cli.main(['run', '--experiment', 'tty-diagnostics', '--n', '1', '--trials', '2', '--max-attempts', '0', '--no-push', '--output', str(tmp_path/'run')]) == 0
+    output, diagnostics = stdout.getvalue(), stderr.getvalue()
+    assert 'COMPLETED + LOCAL_ONLY' in output
+    for message in ('Warp initialization diagnostic', 'CUDA compilation diagnostic', 'Final diagnostic without newline'):
+        assert diagnostics.count(message) == 1
+        assert message not in output
+
+
+def test_tty_runtime_failure_keeps_traceback_on_stderr(tmp_path, monkeypatch):
+    class TTYBuffer(StringIO):
+        def isatty(self):
+            return True
+    stdout, stderr = TTYBuffer(), TTYBuffer()
+    monkeypatch.setenv('TERM', 'xterm-256color')
+    monkeypatch.setattr(sys, 'stdout', stdout)
+    monkeypatch.setattr(sys, 'stderr', stderr)
+    def run(*args, **kwargs):
+        print('CUDA compiler detail', file=sys.stderr)
+        raise RuntimeError('CUDA compilation failed')
+    monkeypatch.setattr(runner, 'run', run)
+    assert cli.main(['run', '--no-push', '--output', str(tmp_path/'failure')]) == 2
+    assert 'CUDA compiler detail' in stderr.getvalue()
+    assert 'Traceback' in stderr.getvalue()
+    assert 'RuntimeError: CUDA compilation failed' in stderr.getvalue()
+    assert 'CUDA compilation failed' not in stdout.getvalue()

@@ -54,7 +54,7 @@ class RunProgress:
             TextColumn("{task.completed:.0f}/{task.total:.0f}"),
             TimeElapsedColumn(), TimeRemainingColumn(),
             console=self.console, refresh_per_second=2, transient=True,
-            redirect_stdout=False, redirect_stderr=False,
+            redirect_stdout=True, redirect_stderr=True,
         )
         self.task = self.progress.add_task("Preparing", total=1)
         self.progress.start()
@@ -62,6 +62,8 @@ class RunProgress:
 
     def __exit__(self, *exc):
         if self.progress:
+            sys.stdout.flush()
+            sys.stderr.flush()
             self.progress.stop()
         return False
 
