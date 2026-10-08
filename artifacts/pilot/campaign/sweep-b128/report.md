@@ -1,0 +1,372 @@
+# Compression run report
+
+This report is generated from the persisted trial records. GPU acceptance and independent numerical validation are reported as separate populations.
+
+## Outcome
+
+- Attempted trials: 512
+- GPU-feasible trials: 512
+- Trials without an accepted pose: 0
+- Budget-exhausted trials: 288
+- Other initialization failures: 0
+- Numerical failures: 0
+
+## Container-side statistics
+
+| subset | count | best | median | q05 | q95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GPU accepted | 512 | 4.000207901 | 4.5908305645 | 4.25608584881 | 5.50948233604 |
+| Independently numerically validated | 68 | 4.000207901 | 4.30118250847 | 4.10160007477 | 5.46605596542 |
+
+## Solver iteration statistics
+
+| metric | count | min | median | q95 | max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Attempts | 512 | 35 | 128 | 128 | 128 |
+| Sweeps | 512 | 1798 | 11236 | 12473.1 | 13039 |
+
+## Independent validation coverage
+
+- Audited trials: 68 / 512 (0.133)
+- Numerically validated: 68
+- Indeterminate: 0
+- Invalid: 0
+- Not checked: 444
+
+## Termination reasons
+
+- `BUDGET_EXHAUSTED`: 288
+- `STEP_FLOOR_REACHED`: 224
+
+## Timing
+
+- `device_seconds`: 5.14079956055
+- `end_to_end_seconds`: 6.58661073301
+- `max_stage_seconds`: 0.187596801758
+- `module_load_seconds`: 0.000593599019339
+- `persistence_seconds`: 0.0122476929973
+- `render_seconds`: 0.00192152400268
+- `report_seconds`: 0.00511744999676
+- `simulation_seconds`: 5.14146302996
+- `transfer_seconds`: 0.00441854304518
+- `validation_seconds`: 0.513033031923
+- `warmup_seconds`: 0.85619633997
+
+## Amortized throughput
+
+- `simulation_seconds`: attempted 99.5825501452 trials/s; GPU-feasible 99.5825501452 trials/s. Amortized throughput over the synchronized simulation interval; not individual-trial latency.
+- `device_seconds`: attempted 99.5954022268 trials/s; GPU-feasible 99.5954022268 trials/s. Amortized throughput over the synchronized device timing interval; not individual-trial latency.
+- `end_to_end_seconds`: attempted 77.733453631 trials/s; GPU-feasible 77.733453631 trials/s. Amortized throughput over the end-to-end wall-clock interval; not individual-trial latency.
+
+The accompanying `histogram.svg` contains only the observed final accepted sides. Failed trials and records without an accepted side are excluded from those histograms and remain counted above.
+
+## Metadata
+
+```json
+{
+  "leaderboard": [
+    {
+      "accepted": 73,
+      "attempts": 84,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.8018671474662185e-05,
+        "min_wall_clearance": 1.7999812542690563e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.800060272216797e-05,
+      "n": 12,
+      "proposals": 21,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.000207901000977,
+      "sweeps": 6312,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 476,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 50,
+      "attempts": 61,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.800059886614136e-05,
+        "min_wall_clearance": 1.814166803626449e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.806020736694336e-05,
+      "min_wall_clearance_gpu": 1.811981201171875e-05,
+      "n": 12,
+      "proposals": 19,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.022663593292236,
+      "sweeps": 4221,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 420,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 104,
+      "attempts": 115,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.804317394382693e-05,
+        "min_wall_clearance": 1.8254326491273787e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.823902130126953e-05,
+      "n": 12,
+      "proposals": 22,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.064260959625244,
+      "sweeps": 10126,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 489,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 119,
+      "attempts": 128,
+      "final_step": 0.0003906250058207661,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.8054181375237732e-05,
+        "min_wall_clearance": 1.821275072089179e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.817941665649414e-05,
+      "n": 12,
+      "proposals": 22,
+      "rejected": 9,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.098037242889404,
+      "sweeps": 11284,
+      "termination_reason": "BUDGET_EXHAUSTED",
+      "trial_id": 187,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 119,
+      "attempts": 128,
+      "final_step": 0.0003906250058207661,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.806410532464043e-05,
+        "min_wall_clearance": 1.8616998679554797e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.806020736694336e-05,
+      "min_wall_clearance_gpu": 1.8596649169921875e-05,
+      "n": 12,
+      "proposals": 17,
+      "rejected": 9,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.108216762542725,
+      "sweeps": 11712,
+      "termination_reason": "BUDGET_EXHAUSTED",
+      "trial_id": 337,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 33,
+      "attempts": 44,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.8090549668281497e-05,
+        "min_wall_clearance": 1.8193342828265457e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.811981201171875e-05,
+      "min_wall_clearance_gpu": 1.817941665649414e-05,
+      "n": 12,
+      "proposals": 20,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.122661590576172,
+      "sweeps": 2677,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 333,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 65,
+      "attempts": 76,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.8018403630082336e-05,
+        "min_wall_clearance": 1.8694003013131066e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.8715858459472656e-05,
+      "n": 12,
+      "proposals": 19,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.126570701599121,
+      "sweeps": 5447,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 274,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 105,
+      "attempts": 116,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.7949670138392437e-05,
+        "min_wall_clearance": 1.8634398431416344e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.8656253814697266e-05,
+      "n": 12,
+      "proposals": 13,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.145893096923828,
+      "sweeps": 10857,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 389,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 85,
+      "attempts": 96,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.8243168949466648e-05,
+        "min_wall_clearance": 1.8098766805252353e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.823902130126953e-05,
+      "min_wall_clearance_gpu": 1.811981201171875e-05,
+      "n": 12,
+      "proposals": 21,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.145905017852783,
+      "sweeps": 8375,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 392,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    },
+    {
+      "accepted": 104,
+      "attempts": 115,
+      "final_step": 9.765625145519152e-05,
+      "gpu_status": "GPU_FEASIBLE",
+      "independent_validation": {
+        "max_penetration": 0.0,
+        "min_pair_separation": 1.794886837322429e-05,
+        "min_wall_clearance": 1.8797319063956763e-05,
+        "nonfinite": false,
+        "status": "NUMERICALLY_VALIDATED",
+        "tolerance": 1e-08,
+        "validator_version": "cpu-f64-projection-v1"
+      },
+      "max_penetration": 0.0,
+      "min_pair_separation_gpu": 1.800060272216797e-05,
+      "min_wall_clearance_gpu": 1.8775463104248047e-05,
+      "n": 12,
+      "proposals": 13,
+      "rejected": 11,
+      "rng_scheme": "splitmix64-counter-v1",
+      "seed": 20261008,
+      "side": 4.1554670333862305,
+      "sweeps": 9824,
+      "termination_reason": "STEP_FLOOR_REACHED",
+      "trial_id": 136,
+      "validation_status": "NUMERICALLY_VALIDATED"
+    }
+  ],
+  "requested_trials": 512,
+  "retained_pose_count": 45,
+  "solver": {
+    "acceptance_tolerance": 2e-06,
+    "guard": 2e-05,
+    "initial_side": 10.0,
+    "max_attempts": 128,
+    "max_rotation": 0.08,
+    "max_sweeps": 120,
+    "max_translation": 0.1,
+    "motion_tolerance": 1e-07,
+    "n": 12,
+    "proposals_per_square": 2000,
+    "relaxation": 0.8,
+    "rotation_mobility": 0.3,
+    "seed": 20261008,
+    "stagnation_sweeps": 4,
+    "step": 0.2,
+    "step_floor": 0.0001,
+    "step_reduction": 0.5
+  },
+  "stop_reason": "TRIALS_COMPLETED"
+}
+```

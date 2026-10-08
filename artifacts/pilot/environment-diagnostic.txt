@@ -1,0 +1,59 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+{
+  "python": "3.14.7",
+  "platform": "Linux-7.2.9-1-cachyos-x86_64-with-glibc2.44",
+  "dependencies": {
+    "numpy": "2.5.3",
+    "warp-lang": "1.18.0",
+    "asquerix": "0.1.0"
+  },
+  "wheel_variant": "warp-lang 1.18.0 default PyPI CUDA 13.4 wheel",
+  "gpu_query": {
+    "command": [
+      "nvidia-smi",
+      "--query-gpu=name,uuid,driver_version,memory.total,memory.used,display_active,compute_mode",
+      "--format=csv"
+    ],
+    "exit_code": 0,
+    "stdout": "name, uuid, driver_version, memory.total [MiB], memory.used [MiB], display_active, compute_mode\nNVIDIA GeForce RTX 4070 Ti, GPU-64d50ac7-f623-65a8-8784-b9ec14d16527, 615.71.09, 12282 MiB, 2889 MiB, Enabled, Default\n",
+    "stderr": ""
+  },
+  "git_revision": {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exit_code": 0,
+    "stdout": "0f20dd80b3c94a2aca0053abec11cd6c935667b3\n",
+    "stderr": ""
+  },
+  "git_status": {
+    "command": [
+      "git",
+      "status",
+      "--porcelain"
+    ],
+    "exit_code": 0,
+    "stdout": "?? .gitignore\n?? AGENTS.md\n?? PROMPT_01_IMPLEMENTATION.md\n?? PROMPT_02_AUDIT.md\n?? artifacts/\n?? pyproject.toml\n?? src/\n?? tests/\n?? uv.lock\n",
+    "stderr": ""
+  },
+  "source_sha256": {
+    "src/asquerix/__init__.py": "c19be6368e542bec9deb8f78940873187775172e6d6b2a619ee121b30af82be1",
+    "src/asquerix/cli.py": "fc4dfc31bde115d6d694800f19e7570aa9fb95aa0e8a7c4dc5f4a0d7af0f3899",
+    "src/asquerix/geometry.py": "6d4ddbe08446a5a8a82220811fd17c38553a1f78593fc4a25a64292d55d82472",
+    "src/asquerix/gpu.py": "3ceb6c3cbb1bc351b422adcbb13c278d9f979466260d9e6b7bb38d6db9cdd817",
+    "src/asquerix/output.py": "6434c5654f1599e00f2cc236ce2fb1d04cc52d4956e1d3bfa9bff86118db9926",
+    "src/asquerix/runner.py": "57a762a731911ca38147748b0a4fc1a0a6b7db3031f2fec1847beaf54cb1400d"
+  },
+  "cuda_devices": [
+    "cuda:0"
+  ],
+  "cuda_available": true
+}

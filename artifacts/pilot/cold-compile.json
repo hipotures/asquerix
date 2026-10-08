@@ -1,0 +1,11 @@
+{
+  "fresh_warp_cache": "/tmp/asquerix-cold-final",
+  "jit_and_module_load_seconds": 0.9910669459786732,
+  "runtime_setup_and_jit_seconds": 1.2874712409975473,
+  "kernel_properties": {
+    "register_count": 139,
+    "local_memory_size": 32
+  },
+  "python": "3.14.7",
+  "note": "Fresh Warp cache; CUDA driver cache was not cleared. No simulation trials executed."
+}

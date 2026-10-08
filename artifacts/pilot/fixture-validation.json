@@ -1,0 +1,12 @@
+[
+  {
+    "trial_id": "trump11",
+    "status": "INDETERMINATE",
+    "min_pair_separation": -2.220446049250313e-16,
+    "max_penetration": 2.220446049250313e-16,
+    "min_wall_clearance": 0.0,
+    "nonfinite": false,
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v1"
+  }
+]

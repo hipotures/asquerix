@@ -1,0 +1,74 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+Module asquerix.gpu c72ae0f load on device 'cuda:0' took 4.84 ms  (cached)
+Completed 4/4 trials; best numerical side=none
+{
+  "directory": "artifacts/pilot/init-failed",
+  "throughput": {
+    "simulation_seconds": {
+      "seconds": 0.00019863402121700346,
+      "attempted_trials_per_second": 20137.537243079245,
+      "gpu_feasible_trials_per_second": 0.0,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency."
+    },
+    "device_seconds": {
+      "seconds": 7.168000098317862e-06,
+      "attempted_trials_per_second": 558035.706631574,
+      "gpu_feasible_trials_per_second": 0.0,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency."
+    },
+    "end_to_end_seconds": {
+      "seconds": 0.613530675007496,
+      "attempted_trials_per_second": 6.519641418012439,
+      "gpu_feasible_trials_per_second": 0.0,
+      "meaning": "Amortized throughput over the end-to-end wall-clock interval; not individual-trial latency."
+    }
+  },
+  "statistics": {
+    "gpu_accepted": {
+      "count": 0,
+      "best": null,
+      "min": null,
+      "max": null,
+      "worst": null,
+      "mean": null,
+      "median": null,
+      "q05": null,
+      "q25": null,
+      "q75": null,
+      "q95": null,
+      "quantiles": {
+        "q05": null,
+        "q25": null,
+        "q50": null,
+        "q75": null,
+        "q95": null
+      }
+    },
+    "numerically_validated": {
+      "count": 0,
+      "best": null,
+      "min": null,
+      "max": null,
+      "worst": null,
+      "mean": null,
+      "median": null,
+      "q05": null,
+      "q25": null,
+      "q75": null,
+      "q95": null,
+      "quantiles": {
+        "q05": null,
+        "q25": null,
+        "q50": null,
+        "q75": null,
+        "q95": null
+      }
+    }
+  }
+}

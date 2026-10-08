@@ -1,0 +1,521 @@
+{
+  "accepted_trials": 512,
+  "artifacts": {
+    "histogram": "histogram.svg",
+    "report": "report.md",
+    "summary": "summary.json"
+  },
+  "attempted_trials": 512,
+  "audit_coverage": {
+    "audited_trials": 46,
+    "coverage_fraction": 0.08984375,
+    "indeterminate_trials": 0,
+    "invalid_trials": 0,
+    "not_checked_trials": 466,
+    "numerically_validated_trials": 46,
+    "total_trials": 512
+  },
+  "counters": {
+    "accepted": 46700,
+    "attempts": 51570,
+    "rejected": 4870,
+    "sweeps": 4728495
+  },
+  "failure_counts": {
+    "budget_exhausted": 313,
+    "initialization_failed": 0,
+    "no_accepted_pose": 0,
+    "numerical_failure": 0,
+    "total": 0
+  },
+  "gpu_status_counts": {
+    "GPU_FEASIBLE": 512
+  },
+  "histogram": {
+    "gpu_accepted": {
+      "count": 512,
+      "counts": [
+        4,
+        20,
+        94,
+        141,
+        147,
+        60,
+        24,
+        9,
+        8,
+        5
+      ],
+      "edges": [
+        4.58729362487793,
+        4.801082420349121,
+        5.014871215820312,
+        5.228660011291504,
+        5.4424488067626955,
+        5.656237602233887,
+        5.870026397705078,
+        6.083815193176269,
+        6.297603988647461,
+        6.5113927841186525,
+        6.725181579589844
+      ],
+      "population": "GPU_FEASIBLE"
+    },
+    "numerically_validated": {
+      "count": 46,
+      "counts": [
+        6,
+        6,
+        8,
+        14,
+        8,
+        2,
+        2
+      ],
+      "edges": [
+        4.58729362487793,
+        4.8420089312962125,
+        5.096724237714495,
+        5.351439544132778,
+        5.606154850551061,
+        5.860870156969343,
+        6.115585463387625,
+        6.370300769805908
+      ],
+      "population": "GPU_FEASIBLE + NUMERICALLY_VALIDATED"
+    }
+  },
+  "iteration_statistics": {
+    "attempts": {
+      "best": 34.0,
+      "count": 512,
+      "max": 128.0,
+      "mean": 100.72265625,
+      "median": 128.0,
+      "min": 34.0,
+      "q05": 38.0,
+      "q25": 58.75,
+      "q75": 128.0,
+      "q95": 128.0,
+      "quantiles": {
+        "q05": 38.0,
+        "q25": 58.75,
+        "q50": 128.0,
+        "q75": 128.0,
+        "q95": 128.0
+      },
+      "worst": 128.0
+    },
+    "sweeps": {
+      "best": 1863.0,
+      "count": 512,
+      "max": 13282.0,
+      "mean": 9235.341796875,
+      "median": 11890.5,
+      "min": 1863.0,
+      "q05": 2224.1,
+      "q25": 4734.0,
+      "q75": 12430.75,
+      "q95": 12833.25,
+      "quantiles": {
+        "q05": 2224.1,
+        "q25": 4734.0,
+        "q50": 11890.5,
+        "q75": 12430.75,
+        "q95": 12833.25
+      },
+      "worst": 13282.0
+    }
+  },
+  "metadata": {
+    "leaderboard": [
+      {
+        "accepted": 118,
+        "attempts": 128,
+        "final_step": 0.00019531250291038305,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8013942172934172e-05,
+          "min_wall_clearance": 1.8216353227185067e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.823902130126953e-05,
+        "n": 16,
+        "proposals": 38,
+        "rejected": 10,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.58729362487793,
+        "sweeps": 12215,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 306,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 120,
+        "attempts": 128,
+        "final_step": 0.0007812500116415322,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.7960198523070403e-05,
+          "min_wall_clearance": 1.8214287446305377e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.823902130126953e-05,
+        "n": 16,
+        "proposals": 44,
+        "rejected": 8,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.602365970611572,
+        "sweeps": 12868,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 11,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 31,
+        "attempts": 42,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8047109053231924e-05,
+          "min_wall_clearance": 1.8439690931959518e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.8417835235595703e-05,
+        "n": 16,
+        "proposals": 35,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.709184169769287,
+        "sweeps": 2760,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 20,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 31,
+        "attempts": 42,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8033618980506372e-05,
+          "min_wall_clearance": 1.840794091378939e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.8417835235595703e-05,
+        "n": 16,
+        "proposals": 37,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.710551738739014,
+        "sweeps": 2406,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 274,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 118,
+        "attempts": 128,
+        "final_step": 0.00019531250291038305,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8401785155441885e-05,
+          "min_wall_clearance": 1.8158118702427117e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.8298625946044922e-05,
+        "min_wall_clearance_gpu": 1.811981201171875e-05,
+        "n": 16,
+        "proposals": 36,
+        "rejected": 10,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.8089776039123535,
+        "sweeps": 12060,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 23,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 34,
+        "attempts": 45,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8207353273735905e-05,
+          "min_wall_clearance": 1.8976132940551338e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.823902130126953e-05,
+        "min_wall_clearance_gpu": 1.895427703857422e-05,
+        "n": 16,
+        "proposals": 38,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.812699794769287,
+        "sweeps": 2943,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 48,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 31,
+        "attempts": 42,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.793019942120111e-05,
+          "min_wall_clearance": 1.85793447551319e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.8596649169921875e-05,
+        "n": 16,
+        "proposals": 29,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.858598232269287,
+        "sweeps": 2468,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 395,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 120,
+        "attempts": 128,
+        "final_step": 0.0007812500116415322,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8039778296147224e-05,
+          "min_wall_clearance": 1.878981244374245e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.8030405044555664e-05,
+        "min_wall_clearance_gpu": 1.8835067749023438e-05,
+        "n": 16,
+        "proposals": 38,
+        "rejected": 8,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.873459339141846,
+        "sweeps": 11841,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 106,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 57,
+        "attempts": 68,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8095122544137254e-05,
+          "min_wall_clearance": 1.8005989369740405e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.811981201171875e-05,
+        "min_wall_clearance_gpu": 1.800060272216797e-05,
+        "n": 16,
+        "proposals": 49,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.882819652557373,
+        "sweeps": 5630,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 266,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 120,
+        "attempts": 128,
+        "final_step": 0.0007812500116415322,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8003232856944607e-05,
+          "min_wall_clearance": 1.8141667819548957e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.811981201171875e-05,
+        "n": 16,
+        "proposals": 76,
+        "rejected": 8,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.932834148406982,
+        "sweeps": 9902,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 261,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      }
+    ],
+    "requested_trials": 512,
+    "retained_pose_count": 46,
+    "solver": {
+      "acceptance_tolerance": 2e-06,
+      "guard": 2e-05,
+      "initial_side": 10.0,
+      "max_attempts": 128,
+      "max_rotation": 0.08,
+      "max_sweeps": 120,
+      "max_translation": 0.1,
+      "motion_tolerance": 1e-07,
+      "n": 16,
+      "proposals_per_square": 2000,
+      "relaxation": 0.8,
+      "rotation_mobility": 0.3,
+      "seed": 20261008,
+      "stagnation_sweeps": 4,
+      "step": 0.2,
+      "step_floor": 0.0001,
+      "step_reduction": 0.5
+    },
+    "stop_reason": "TRIALS_COMPLETED"
+  },
+  "no_accepted_pose_trials": 0,
+  "record_count": 512,
+  "statistics": {
+    "gpu_accepted": {
+      "best": 4.58729362487793,
+      "count": 512,
+      "max": 6.725181579589844,
+      "mean": 5.462404233403504,
+      "median": 5.43633770942688,
+      "min": 4.58729362487793,
+      "q05": 5.034701204299926,
+      "q25": 5.250437140464783,
+      "q75": 5.62633490562439,
+      "q95": 6.013187718391419,
+      "quantiles": {
+        "q05": 5.034701204299926,
+        "q25": 5.250437140464783,
+        "q50": 5.43633770942688,
+        "q75": 5.62633490562439,
+        "q95": 6.013187718391419
+      },
+      "worst": 6.725181579589844
+    },
+    "numerically_validated": {
+      "best": 4.58729362487793,
+      "count": 46,
+      "max": 6.370300769805908,
+      "mean": 5.365678963453873,
+      "median": 5.414351463317871,
+      "min": 4.58729362487793,
+      "q05": 4.709526062011719,
+      "q25": 5.0881874561309814,
+      "q75": 5.601769685745239,
+      "q95": 6.088673114776611,
+      "quantiles": {
+        "q05": 4.709526062011719,
+        "q25": 5.0881874561309814,
+        "q50": 5.414351463317871,
+        "q75": 5.601769685745239,
+        "q95": 6.088673114776611
+      },
+      "worst": 6.370300769805908
+    }
+  },
+  "termination_counts": {
+    "BUDGET_EXHAUSTED": 313,
+    "STEP_FLOOR_REACHED": 199
+  },
+  "throughput": {
+    "device_seconds": {
+      "attempted_trials_per_second": 241.95650982552587,
+      "gpu_feasible_trials_per_second": 241.95650982552587,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency.",
+      "seconds": 2.116082763671875
+    },
+    "end_to_end_seconds": {
+      "attempted_trials_per_second": 116.51681227764628,
+      "gpu_feasible_trials_per_second": 116.51681227764628,
+      "meaning": "Amortized throughput over the end-to-end wall-clock interval; not individual-trial latency.",
+      "seconds": 4.394215650012484
+    },
+    "simulation_seconds": {
+      "attempted_trials_per_second": 241.942413647566,
+      "gpu_feasible_trials_per_second": 241.942413647566,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency.",
+      "seconds": 2.116206052014604
+    }
+  },
+  "timings": {
+    "device_seconds": 2.116082763671875,
+    "end_to_end_seconds": 4.394215650012484,
+    "max_stage_seconds": 0.291655029296875,
+    "module_load_seconds": 0.0003860680153593421,
+    "persistence_seconds": 0.011845316010294482,
+    "render_seconds": 0.0019619799859356135,
+    "report_seconds": 0.0037877320137340575,
+    "simulation_seconds": 2.116206052014604,
+    "transfer_seconds": 0.0012306009593885392,
+    "validation_seconds": 0.6558220879232977,
+    "warmup_seconds": 1.5498976889939513
+  },
+  "validation_status_counts": {
+    "NOT_CHECKED": 466,
+    "NUMERICALLY_VALIDATED": 46
+  }
+}

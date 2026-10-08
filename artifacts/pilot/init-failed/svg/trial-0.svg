@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" preserveAspectRatio="xMidYMid meet">
+<title>Asquerix square compression pose</title>
+<style>
+.container{fill:none;stroke:#222;stroke-width:2}
+.square{fill:#4e79a7;fill-opacity:.32;stroke:#174a7e;stroke-width:1.25}
+.title,.status{font-family:monospace;font-size:16px;fill:#111}
+.status.validated{fill:#18794e}.status.indeterminate{fill:#9a6700}
+.status.invalid{fill:#b42318;font-weight:bold}.status.unchecked{fill:#555}
+.status.unknown{fill:#b42318;font-weight:bold}
+</style>
+<rect width="900" height="900" fill="white"/>
+<rect class="container" x="76" y="76" width="748" height="748"/>
+<metadata>{&quot;n&quot;:2,&quot;poses&quot;:[],&quot;side&quot;:null,&quot;trial_id&quot;:0,&quot;validation_status&quot;:&quot;NOT_CHECKED&quot;}</metadata>
+<text class="title" x="76" y="28">trial_id=0 | n=2 | side=invalid</text>
+<text class="status unchecked" x="76" y="868">validation=INVALID DEBUG</text>
+</svg>

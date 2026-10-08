@@ -1,0 +1,27 @@
+{
+  "accepted": 0,
+  "attempts": 0,
+  "diagnostic": "Initialization exhausted; no complete pose exists.",
+  "final_step": 0.20000000298023224,
+  "gpu_status": "NO_ACCEPTED_POSE",
+  "max_penetration": null,
+  "min_pair_separation_gpu": null,
+  "min_wall_clearance_gpu": null,
+  "n": 2,
+  "poses": [],
+  "proposals": 2,
+  "rejected": 0,
+  "rng_scheme": "splitmix64-counter-v1",
+  "seed": 20261008,
+  "selection_reasons": [
+    "random_audit"
+  ],
+  "side": null,
+  "sweeps": 0,
+  "termination_reason": "INIT_FAILED",
+  "trial_id": 3,
+  "validation": {
+    "status": "NOT_CHECKED"
+  },
+  "validation_status": "NOT_CHECKED"
+}

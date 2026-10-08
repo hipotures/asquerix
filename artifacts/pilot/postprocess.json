@@ -1,0 +1,14 @@
+{
+  "seconds": 3.6001190380193293,
+  "purpose": "Independent revalidation and offline rerender after SVG label/background inspection",
+  "simulation_kernels_unchanged": true,
+  "source_sha256": {
+    "src/asquerix/output.py": "b546fa918324225d8ee00018e29f65af880306874c1a67f760e9a5e1dd9c6e45",
+    "src/asquerix/cli.py": "fc4dfc31bde115d6d694800f19e7570aa9fb95aa0e8a7c4dc5f4a0d7af0f3899",
+    "src/asquerix/runner.py": "57a762a731911ca38147748b0a4fc1a0a6b7db3031f2fec1847beaf54cb1400d",
+    "src/asquerix/geometry.py": "6d4ddbe08446a5a8a82220811fd17c38553a1f78593fc4a25a64292d55d82472",
+    "src/asquerix/pilot.py": "fc708c08988961e13db452a28c7e8ff3c8bb3e8908a97f9d2785bb694758dd19",
+    "src/asquerix/__init__.py": "c19be6368e542bec9deb8f78940873187775172e6d6b2a619ee121b30af82be1",
+    "src/asquerix/gpu.py": "3ceb6c3cbb1bc351b422adcbb13c278d9f979466260d9e6b7bb38d6db9cdd817"
+  }
+}

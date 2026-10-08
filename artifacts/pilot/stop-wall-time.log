@@ -1,0 +1,75 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+Module asquerix.gpu c72ae0f load on device 'cuda:0' took 4.29 ms  (cached)
+Module asquerix.gpu 00b6689 load on device 'cuda:0' took 2.17 ms  (cached)
+Completed 8/64 trials; best numerical side=4.22853422164917
+{
+  "directory": "artifacts/pilot/stop-wall-time",
+  "throughput": {
+    "simulation_seconds": {
+      "seconds": 0.9399852349888533,
+      "attempted_trials_per_second": 8.510771980471445,
+      "gpu_feasible_trials_per_second": 8.510771980471445,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency."
+    },
+    "device_seconds": {
+      "seconds": 0.9399111938476562,
+      "attempted_trials_per_second": 8.5114424132464,
+      "gpu_feasible_trials_per_second": 8.5114424132464,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency."
+    },
+    "end_to_end_seconds": {
+      "seconds": 2.8435184929985553,
+      "attempted_trials_per_second": 2.8134158507138167,
+      "gpu_feasible_trials_per_second": 2.8134158507138167,
+      "meaning": "Amortized throughput over the end-to-end wall-clock interval; not individual-trial latency."
+    }
+  },
+  "statistics": {
+    "gpu_accepted": {
+      "count": 8,
+      "best": 4.22853422164917,
+      "min": 4.22853422164917,
+      "max": 4.561721324920654,
+      "worst": 4.561721324920654,
+      "mean": 4.443541049957275,
+      "median": 4.465832233428955,
+      "q05": 4.256964612007141,
+      "q25": 4.389762759208679,
+      "q75": 4.549373745918274,
+      "q95": 4.558170342445374,
+      "quantiles": {
+        "q05": 4.256964612007141,
+        "q25": 4.389762759208679,
+        "q50": 4.465832233428955,
+        "q75": 4.549373745918274,
+        "q95": 4.558170342445374
+      }
+    },
+    "numerically_validated": {
+      "count": 6,
+      "best": 4.22853422164917,
+      "min": 4.22853422164917,
+      "max": 4.551575660705566,
+      "worst": 4.551575660705566,
+      "mean": 4.41488774617513,
+      "median": 4.425406455993652,
+      "q05": 4.248841643333435,
+      "q25": 4.336430191993713,
+      "q75": 4.520075798034668,
+      "q95": 4.550841689109802,
+      "quantiles": {
+        "q05": 4.248841643333435,
+        "q25": 4.336430191993713,
+        "q50": 4.425406455993652,
+        "q75": 4.520075798034668,
+        "q95": 4.550841689109802
+      }
+    }
+  }
+}

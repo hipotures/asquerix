@@ -1,0 +1,81 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti" (12 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+Module asquerix.gpu c72ae0f load on device 'cuda:0' took 4.92 ms  (cached)
+Module asquerix.gpu 00b6689 load on device 'cuda:0' took 3.33 ms  (cached)
+Completed 512/12288 trials; best numerical side=4.000207901000977
+Completed 1024/12288 trials; best numerical side=4.000207901000977
+Completed 1536/12288 trials; best numerical side=4.000207901000977
+Completed 2048/12288 trials; best numerical side=4.000207901000977
+Completed 2560/12288 trials; best numerical side=4.000207901000977
+Completed 3072/12288 trials; best numerical side=4.000207901000977
+Completed 3584/12288 trials; best numerical side=4.000207901000977
+Completed 4096/12288 trials; best numerical side=4.0002007484436035
+Completed 4608/12288 trials; best numerical side=4.0002007484436035
+Completed 5120/12288 trials; best numerical side=4.0002007484436035
+Completed 5632/12288 trials; best numerical side=4.0002007484436035
+Completed 6144/12288 trials; best numerical side=4.0002007484436035
+Completed 6656/12288 trials; best numerical side=4.000200271606445
+Completed 7168/12288 trials; best numerical side=4.000200271606445
+Completed 7680/12288 trials; best numerical side=4.000200271606445
+Completed 8192/12288 trials; best numerical side=4.000200271606445
+Completed 8704/12288 trials; best numerical side=4.000200271606445
+Completed 9216/12288 trials; best numerical side=4.000200271606445
+Completed 9728/12288 trials; best numerical side=4.000200271606445
+Completed 10240/12288 trials; best numerical side=4.000200271606445
+Completed 10752/12288 trials; best numerical side=4.000200271606445
+Completed 11264/12288 trials; best numerical side=4.000200271606445
+Completed 11776/12288 trials; best numerical side=4.000200271606445
+Completed 12288/12288 trials; best numerical side=4.000200271606445
+Completed 512/12288 trials; best numerical side=4.000207901000977
+Completed 1024/12288 trials; best numerical side=4.000207901000977
+Completed 1536/12288 trials; best numerical side=4.000207901000977
+Completed 2048/12288 trials; best numerical side=4.000207901000977
+Completed 2560/12288 trials; best numerical side=4.000207901000977
+Completed 3072/12288 trials; best numerical side=4.000207901000977
+Completed 3584/12288 trials; best numerical side=4.000207901000977
+Completed 4096/12288 trials; best numerical side=4.0002007484436035
+Completed 4608/12288 trials; best numerical side=4.0002007484436035
+Completed 5120/12288 trials; best numerical side=4.0002007484436035
+Completed 5632/12288 trials; best numerical side=4.0002007484436035
+Completed 6144/12288 trials; best numerical side=4.0002007484436035
+Completed 6656/12288 trials; best numerical side=4.000200271606445
+Completed 7168/12288 trials; best numerical side=4.000200271606445
+Completed 7680/12288 trials; best numerical side=4.000200271606445
+Completed 8192/12288 trials; best numerical side=4.000200271606445
+Completed 8704/12288 trials; best numerical side=4.000200271606445
+Completed 9216/12288 trials; best numerical side=4.000200271606445
+Completed 9728/12288 trials; best numerical side=4.000200271606445
+Completed 10240/12288 trials; best numerical side=4.000200271606445
+Completed 10752/12288 trials; best numerical side=4.000200271606445
+Completed 11264/12288 trials; best numerical side=4.000200271606445
+Completed 11776/12288 trials; best numerical side=4.000200271606445
+Completed 12288/12288 trials; best numerical side=4.000200271606445
+Completed 512/12288 trials; best numerical side=4.000207901000977
+Completed 1024/12288 trials; best numerical side=4.000207901000977
+Completed 1536/12288 trials; best numerical side=4.000207901000977
+Completed 2048/12288 trials; best numerical side=4.000207901000977
+Completed 2560/12288 trials; best numerical side=4.000207901000977
+Completed 3072/12288 trials; best numerical side=4.000207901000977
+Completed 3584/12288 trials; best numerical side=4.000207901000977
+Completed 4096/12288 trials; best numerical side=4.0002007484436035
+Completed 4608/12288 trials; best numerical side=4.0002007484436035
+Completed 5120/12288 trials; best numerical side=4.0002007484436035
+Completed 5632/12288 trials; best numerical side=4.0002007484436035
+Completed 6144/12288 trials; best numerical side=4.0002007484436035
+Completed 6656/12288 trials; best numerical side=4.000200271606445
+Completed 7168/12288 trials; best numerical side=4.000200271606445
+Completed 7680/12288 trials; best numerical side=4.000200271606445
+Completed 8192/12288 trials; best numerical side=4.000200271606445
+Completed 8704/12288 trials; best numerical side=4.000200271606445
+Completed 9216/12288 trials; best numerical side=4.000200271606445
+Completed 9728/12288 trials; best numerical side=4.000200271606445
+Completed 10240/12288 trials; best numerical side=4.000200271606445
+Completed 10752/12288 trials; best numerical side=4.000200271606445
+Completed 11264/12288 trials; best numerical side=4.000200271606445
+Completed 11776/12288 trials; best numerical side=4.000200271606445
+Completed 12288/12288 trials; best numerical side=4.000200271606445

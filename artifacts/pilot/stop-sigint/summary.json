@@ -1,0 +1,307 @@
+{
+  "accepted_trials": 8,
+  "artifacts": {
+    "histogram": "histogram.svg",
+    "report": "report.md",
+    "summary": "summary.json"
+  },
+  "attempted_trials": 8,
+  "audit_coverage": {
+    "audited_trials": 6,
+    "coverage_fraction": 0.75,
+    "indeterminate_trials": 0,
+    "invalid_trials": 0,
+    "not_checked_trials": 2,
+    "numerically_validated_trials": 6,
+    "total_trials": 8
+  },
+  "counters": {
+    "accepted": 849,
+    "attempts": 924,
+    "rejected": 75,
+    "sweeps": 81502
+  },
+  "failure_counts": {
+    "budget_exhausted": 5,
+    "initialization_failed": 0,
+    "no_accepted_pose": 0,
+    "numerical_failure": 0,
+    "total": 0
+  },
+  "gpu_status_counts": {
+    "GPU_FEASIBLE": 8
+  },
+  "histogram": {
+    "gpu_accepted": {
+      "count": 8,
+      "counts": [
+        2,
+        0,
+        2,
+        4
+      ],
+      "edges": [
+        4.22853422164917,
+        4.311830997467041,
+        4.395127773284912,
+        4.478424549102783,
+        4.561721324920654
+      ],
+      "population": "GPU_FEASIBLE"
+    },
+    "numerically_validated": {
+      "count": 6,
+      "counts": [
+        1,
+        1,
+        2,
+        2
+      ],
+      "edges": [
+        4.22853422164917,
+        4.309294581413269,
+        4.390054941177368,
+        4.470815300941467,
+        4.551575660705566
+      ],
+      "population": "GPU_FEASIBLE + NUMERICALLY_VALIDATED"
+    }
+  },
+  "iteration_statistics": {
+    "attempts": {
+      "best": 59.0,
+      "count": 8,
+      "max": 128.0,
+      "mean": 115.5,
+      "median": 128.0,
+      "min": 59.0,
+      "q05": 75.1,
+      "q25": 116.25,
+      "q75": 128.0,
+      "q95": 128.0,
+      "quantiles": {
+        "q05": 75.1,
+        "q25": 116.25,
+        "q50": 128.0,
+        "q75": 128.0,
+        "q95": 128.0
+      },
+      "worst": 128.0
+    },
+    "sweeps": {
+      "best": 4113.0,
+      "count": 8,
+      "max": 11987.0,
+      "mean": 10187.75,
+      "median": 11558.5,
+      "min": 4113.0,
+      "q05": 5794.4,
+      "q25": 9503.5,
+      "q75": 11784.75,
+      "q95": 11968.45,
+      "quantiles": {
+        "q05": 5794.4,
+        "q25": 9503.5,
+        "q50": 11558.5,
+        "q75": 11784.75,
+        "q95": 11968.45
+      },
+      "worst": 11987.0
+    }
+  },
+  "metadata": {
+    "leaderboard": [
+      {
+        "accepted": 119,
+        "attempts": 128,
+        "final_step": 0.0003906250058207661,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.7983070233928977e-05,
+          "min_wall_clearance": 1.8825104854514052e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.800060272216797e-05,
+        "min_wall_clearance_gpu": 1.8835067749023438e-05,
+        "n": 12,
+        "proposals": 18,
+        "rejected": 9,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.22853422164917,
+        "sweeps": 11486,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 0,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 109,
+        "attempts": 120,
+        "final_step": 9.765625145519152e-05,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8154897875821696e-05,
+          "min_wall_clearance": 1.9066736178796617e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.806020736694336e-05,
+        "min_wall_clearance_gpu": 1.9073486328125e-05,
+        "n": 12,
+        "proposals": 21,
+        "rejected": 11,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.3097639083862305,
+        "sweeps": 8917,
+        "termination_reason": "STEP_FLOOR_REACHED",
+        "trial_id": 1,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      },
+      {
+        "accepted": 120,
+        "attempts": 128,
+        "final_step": 0.0007812500116415322,
+        "gpu_status": "GPU_FEASIBLE",
+        "independent_validation": {
+          "max_penetration": 0.0,
+          "min_pair_separation": 1.8014450720915676e-05,
+          "min_wall_clearance": 1.8318203143685707e-05,
+          "nonfinite": false,
+          "status": "NUMERICALLY_VALIDATED",
+          "tolerance": 1e-08,
+          "validator_version": "cpu-f64-projection-v1"
+        },
+        "max_penetration": 0.0,
+        "min_pair_separation_gpu": 1.8030405044555664e-05,
+        "min_wall_clearance_gpu": 1.8298625946044922e-05,
+        "n": 12,
+        "proposals": 21,
+        "rejected": 8,
+        "rng_scheme": "splitmix64-counter-v1",
+        "seed": 20261008,
+        "side": 4.416429042816162,
+        "sweeps": 11735,
+        "termination_reason": "BUDGET_EXHAUSTED",
+        "trial_id": 2,
+        "validation_status": "NUMERICALLY_VALIDATED"
+      }
+    ],
+    "requested_trials": 64,
+    "retained_pose_count": 6,
+    "solver": {
+      "acceptance_tolerance": 2e-06,
+      "guard": 2e-05,
+      "initial_side": 10.0,
+      "max_attempts": 128,
+      "max_rotation": 0.08,
+      "max_sweeps": 120,
+      "max_translation": 0.1,
+      "motion_tolerance": 1e-07,
+      "n": 12,
+      "proposals_per_square": 2000,
+      "relaxation": 0.8,
+      "rotation_mobility": 0.3,
+      "seed": 20261008,
+      "stagnation_sweeps": 4,
+      "step": 0.2,
+      "step_floor": 0.0001,
+      "step_reduction": 0.5
+    },
+    "stop_reason": "SIGINT"
+  },
+  "no_accepted_pose_trials": 0,
+  "record_count": 8,
+  "statistics": {
+    "gpu_accepted": {
+      "best": 4.22853422164917,
+      "count": 8,
+      "max": 4.561721324920654,
+      "mean": 4.443541049957275,
+      "median": 4.465832233428955,
+      "min": 4.22853422164917,
+      "q05": 4.256964612007141,
+      "q25": 4.389762759208679,
+      "q75": 4.549373745918274,
+      "q95": 4.558170342445374,
+      "quantiles": {
+        "q05": 4.256964612007141,
+        "q25": 4.389762759208679,
+        "q50": 4.465832233428955,
+        "q75": 4.549373745918274,
+        "q95": 4.558170342445374
+      },
+      "worst": 4.561721324920654
+    },
+    "numerically_validated": {
+      "best": 4.22853422164917,
+      "count": 6,
+      "max": 4.551575660705566,
+      "mean": 4.41488774617513,
+      "median": 4.425406455993652,
+      "min": 4.22853422164917,
+      "q05": 4.248841643333435,
+      "q25": 4.336430191993713,
+      "q75": 4.520075798034668,
+      "q95": 4.550841689109802,
+      "quantiles": {
+        "q05": 4.248841643333435,
+        "q25": 4.336430191993713,
+        "q50": 4.425406455993652,
+        "q75": 4.520075798034668,
+        "q95": 4.550841689109802
+      },
+      "worst": 4.551575660705566
+    }
+  },
+  "termination_counts": {
+    "BUDGET_EXHAUSTED": 5,
+    "STEP_FLOOR_REACHED": 3
+  },
+  "throughput": {
+    "device_seconds": {
+      "attempted_trials_per_second": 7.4675581793497,
+      "gpu_feasible_trials_per_second": 7.4675581793497,
+      "meaning": "Amortized throughput over the synchronized device timing interval; not individual-trial latency.",
+      "seconds": 1.0713006591796874
+    },
+    "end_to_end_seconds": {
+      "attempted_trials_per_second": 3.2166815548405587,
+      "gpu_feasible_trials_per_second": 3.2166815548405587,
+      "meaning": "Amortized throughput over the end-to-end wall-clock interval; not individual-trial latency.",
+      "seconds": 2.4870351210120134
+    },
+    "simulation_seconds": {
+      "attempted_trials_per_second": 7.466354379105936,
+      "gpu_feasible_trials_per_second": 7.466354379105936,
+      "meaning": "Amortized throughput over the synchronized simulation interval; not individual-trial latency.",
+      "seconds": 1.0714733849745244
+    }
+  },
+  "timings": {
+    "device_seconds": 1.0713006591796874,
+    "end_to_end_seconds": 2.4870351210120134,
+    "max_stage_seconds": 0.15911251831054687,
+    "module_load_seconds": 0.13725865399464965,
+    "persistence_seconds": 0.001611007988685742,
+    "render_seconds": 0.0016714910161681473,
+    "report_seconds": 0.02478562598116696,
+    "simulation_seconds": 1.0714733849745244,
+    "transfer_seconds": 0.010124650987563655,
+    "validation_seconds": 0.05176542705157772,
+    "warmup_seconds": 0.8184384120395407
+  },
+  "validation_status_counts": {
+    "NOT_CHECKED": 2,
+    "NUMERICALLY_VALIDATED": 6
+  }
+}

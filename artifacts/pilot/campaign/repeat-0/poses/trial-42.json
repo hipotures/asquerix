@@ -1,0 +1,102 @@
+{
+  "accepted": 118,
+  "attempts": 128,
+  "final_step": 0.00019531250291038305,
+  "gpu_status": "GPU_FEASIBLE",
+  "independent_validation": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8030799625146088e-05,
+    "min_wall_clearance": 1.8145827287874283e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v1"
+  },
+  "max_penetration": 0.0,
+  "min_pair_separation_gpu": 1.811981201171875e-05,
+  "min_wall_clearance_gpu": 1.811981201171875e-05,
+  "n": 12,
+  "poses": [
+    [
+      0.6380580067634583,
+      -0.6448191404342651,
+      0.4261825978755951
+    ],
+    [
+      1.5996992588043213,
+      0.5997129082679749,
+      0.7933545112609863
+    ],
+    [
+      1.80681312084198,
+      1.8068151473999023,
+      -9.016441708808998e-07
+    ],
+    [
+      0.601395308971405,
+      1.6014161109924316,
+      0.7158546447753906
+    ],
+    [
+      -0.4607248306274414,
+      0.6236926317214966,
+      0.5240798592567444
+    ],
+    [
+      0.5919532775878906,
+      -1.8068134784698486,
+      1.5707968473434448
+    ],
+    [
+      1.7908298969268799,
+      -0.6016227006912231,
+      1.6032984256744385
+    ],
+    [
+      -1.8047999143600464,
+      -1.3510193824768066,
+      1.5667604207992554
+    ],
+    [
+      -0.7917447090148926,
+      -0.6450782418251038,
+      1.5461915731430054
+    ],
+    [
+      -0.6040222644805908,
+      1.8068134784698486,
+      1.5707958936691284
+    ],
+    [
+      1.699898600578308,
+      -1.699939250946045,
+      0.24645592272281647
+    ],
+    [
+      -0.6232659220695496,
+      -1.7244722843170166,
+      0.18225224316120148
+    ]
+  ],
+  "proposals": 21,
+  "rejected": 10,
+  "rng_scheme": "splitmix64-counter-v1",
+  "seed": 20261008,
+  "selection_reasons": [
+    "random_audit"
+  ],
+  "side": 4.6136674880981445,
+  "sweeps": 10849,
+  "termination_reason": "BUDGET_EXHAUSTED",
+  "trial_id": 42,
+  "validation": {
+    "max_penetration": 0.0,
+    "min_pair_separation": 1.8030799625146088e-05,
+    "min_wall_clearance": 1.8145827287874283e-05,
+    "nonfinite": false,
+    "status": "NUMERICALLY_VALIDATED",
+    "tolerance": 1e-08,
+    "validator_version": "cpu-f64-projection-v1"
+  },
+  "validation_status": "NUMERICALLY_VALIDATED"
+}
