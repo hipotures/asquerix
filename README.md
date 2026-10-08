@@ -29,6 +29,8 @@ uv run asquerix report runs/short
 
 Run directories must not already exist, to protect previous results. Offline commands use saved coordinates without running or repairing a simulation.
 
+Integer CLI options accept case-insensitive binary suffixes: `k = 1024`, `m = 1048576`, and `g = 1073741824`. For example, `--trials 1m --batch-size 64k` requests 1,048,576 trials in batches of at most 65,536. `65k` means 66,560; plain `65000` remains 65,000. Fractional prefixes are accepted only when they expand to a whole number (`1.5k = 1536`). Saved configurations contain the expanded integers. The batch-size limit is 1,048,576, so both `--batch-size 1000000` and `--batch-size 1m` are accepted. Large batches allocate storage for every world and require sufficient GPU memory.
+
 A longer, explicitly user-initiated search:
 
 ```bash

@@ -1,5 +1,6 @@
 """Presentation contracts, compressed artifacts, and quiet publication behavior."""
 from io import StringIO
+import argparse
 from pathlib import Path
 import json
 import subprocess
@@ -10,9 +11,26 @@ from rich.console import Console
 
 from asquerix import cli, runner, publication
 from asquerix.output import summarize
-from asquerix.persistence import read_json, write_json
+from asquerix.persistence import read_json, read_jsonl, write_json
 from asquerix.presentation import RunProgress
 from test_runner import _factory
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("65000", 65000), ("0", 0), ("-1", -1),
+    ("64k", 65536), ("65k", 66560), ("1K", 1024),
+    ("1m", 1048576), ("2M", 2097152), ("1g", 1073741824), ("2G", 2147483648),
+    ("1.5k", 1536), ("0.5m", 524288), ("-2k", -2048),
+    ("9007199254740993k", 9223372036854776832),
+])
+def test_integer_options_expand_binary_suffixes_exactly(text, expected):
+    assert cli._integer(text) == expected
+
+
+@pytest.mark.parametrize("text", ["", "k", "1t", "1kb", "1ki", "1.1", "0.1k", "NaNk", "Infm", "1.5.5k"])
+def test_integer_options_reject_malformed_or_nonintegral_values(text):
+    with pytest.raises(argparse.ArgumentTypeError, match="powers of 1024"):
+        cli._integer(text)
 
 
 def experiment(directory, *, batch=2, n=1, seed=123, compressed=True, gpu="Test GPU"):
@@ -169,6 +187,35 @@ def fake_run(monkeypatch):
     def run(config, **options):
         return actual_run(config, **options, batch_factory=_factory())
     monkeypatch.setattr(runner, "run", run)
+
+
+def test_cli_suffixes_preserve_numeric_configuration_and_records(tmp_path, monkeypatch, capsys, fake_run):
+    monkeypatch.setattr(publication, "publish", lambda *args, **kwargs: dict(status="LOCAL_ONLY", seconds=0, error=None))
+    common = ["run", "--experiment", "binary-equivalence", "--n", "1", "--max-attempts", "0", "--max-images", "0",
+              "--sample-every", "0", "--audit-size", "4", "--keep-best", "1", "--json", "--no-push"]
+    directories = [tmp_path / "plain", tmp_path / "binary"]
+    numeric_options = [
+        ["--trials", "1024", "--batch-size", "1048576", "--seed", "1073741824", "--trial-offset", "2097152"],
+        ["--trials", "1k", "--batch-size", "1m", "--seed", "1G", "--trial-offset", "2M"],
+    ]
+    for directory, options in zip(directories, numeric_options):
+        assert cli.main([*common, *options, "--output", str(directory)]) == 0
+    configurations = [read_json(directory / "config.json") for directory in directories]
+    for configuration in configurations:
+        configuration["runner"].pop("run_id")
+    assert configurations[0] == configurations[1]
+    assert configurations[1]["runner"]["batch_size"] == 1048576
+    assert configurations[1]["runner"]["trials"] == 1024
+    assert configurations[1]["solver"]["seed"] == 1073741824
+    assert list(read_jsonl(directories[0] / "trials.jsonl")) == list(read_jsonl(directories[1] / "trials.jsonl"))
+    assert "ERROR:" not in capsys.readouterr().err
+
+
+def test_cli_keeps_batch_limit_after_suffix_expansion(tmp_path, capsys, fake_run):
+    output = tmp_path / "oversized"
+    assert cli.main(["run", "--batch-size", "2m", "--output", str(output), "--no-push"]) == 2
+    assert "batch_size must be in [1,1048576]" in capsys.readouterr().err
+    assert not output.exists()
 
 
 def test_cli_no_push_finalizes_artifacts_and_uses_offline_publisher(tmp_path, monkeypatch, capsys, fake_run):

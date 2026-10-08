@@ -3,6 +3,7 @@ import argparse
 import csv
 from contextlib import redirect_stdout
 from dataclasses import fields
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import sys
 from time import perf_counter
@@ -12,6 +13,24 @@ from uuid import uuid4
 from .geometry import validate_document
 from .output import render_selected, write_report
 from .persistence import pose_paths, read_json, read_jsonl, write_json
+
+
+def _integer(value):
+    """Parse integer options with exact, case-insensitive binary suffixes."""
+    try:
+        suffix = value[-1:].lower()
+        if suffix not in ("k", "m", "g"):
+            return int(value)
+        numerator, denominator = Decimal(value[:-1]).as_integer_ratio()
+        multiplier = 1024 ** ("kmg".index(suffix) + 1)
+        result, remainder = divmod(numerator * multiplier, denominator)
+        if remainder:
+            raise ValueError("Fractional integer result")
+        return result
+    except (InvalidOperation, ValueError, OverflowError):
+        raise argparse.ArgumentTypeError(
+            "expected a whole number, optionally using k, m or g (powers of 1024)"
+        ) from None
 
 
 def _result_path(command, output=None):
@@ -93,15 +112,19 @@ def _comparisons(directories):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Batched GPU compression of rotating unit squares")
     commands = parser.add_subparsers(dest="command", required=True)
-    run_parser = commands.add_parser("run", help="Run a bounded CUDA campaign and publish its artifacts")
+    run_parser = commands.add_parser(
+        "run", help="Run a bounded CUDA campaign and publish its artifacts",
+        epilog="Integer options accept binary suffixes: k=1024, m=1048576, g=1073741824 (case-insensitive).",
+    )
     from .gpu import Config
     defaults = Config()
     for field in fields(Config):
         value = getattr(defaults, field.name)
-        run_parser.add_argument("--" + field.name.replace("_", "-"), type=type(value), default=value)
+        run_parser.add_argument("--" + field.name.replace("_", "-"),
+                                type=_integer if isinstance(value, int) else type(value), default=value)
     for key, default in (("trials", 64), ("batch_size", 32), ("trial_offset", 0), ("sample_every", 1000),
                          ("keep_best", 10), ("max_images", 10), ("audit_size", 16), ("failure_examples", 3)):
-        run_parser.add_argument("--" + key.replace("_", "-"), type=int, default=default)
+        run_parser.add_argument("--" + key.replace("_", "-"), type=_integer, default=default)
     run_parser.add_argument("--max-seconds", type=float, default=30.0)
     run_parser.add_argument("--device", default="cuda:0")
     run_parser.add_argument("--output", type=Path)
@@ -117,7 +140,7 @@ def main(argv=None):
     render = commands.add_parser("render", help="Render saved coordinates offline")
     render.add_argument("path", type=Path)
     render.add_argument("--output", type=Path, required=True)
-    render.add_argument("--max-images", type=int, default=10)
+    render.add_argument("--max-images", type=_integer, default=10)
     report = commands.add_parser("report", help="Regenerate a report from persisted records")
     report.add_argument("directory", type=Path)
     compare = commands.add_parser("compare", help="Compare measured performance and validation coverage")
