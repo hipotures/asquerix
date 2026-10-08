@@ -1,8 +1,8 @@
-"""Safe publication of finalized experiment artifacts to a Git results branch.
+"""Safe publication of finalized experiment artifacts to remote main.
 
 Publication deliberately uses Git's plumbing commands with a temporary index.
-It never checks out the results branch and never changes the caller's active
-branch or index.  The local experiment directory is the source of truth: any
+It never creates a branch or changes the caller's active checkout or index.
+The local experiment directory is the source of truth: any
 publication failure leaves it intact and is recorded in ``publication.json.gz``.
 """
 
@@ -28,7 +28,7 @@ from urllib.parse import urlsplit, urlunsplit
 from .persistence import read_json, write_json
 
 
-RESULTS_BRANCH = "experiment-results"
+PUBLICATION_BRANCH = "main"
 MAX_ARTIFACT_BYTES = 95 * 1024 * 1024
 MAX_TOTAL_ARTIFACT_BYTES = 500 * 1024 * 1024
 PUBLICATION_SCHEMA = "asquerix-publication-v1"
@@ -342,7 +342,7 @@ def _manifest(
         "source_revision": source_revision,
         "code_revision": source_revision,
         "source_revision_source": source_revision_source,
-        "publication_branch": RESULTS_BRANCH,
+        "publication_branch": PUBLICATION_BRANCH,
         "seed": experiment.seed,
         "trial_range": trial_range,
         "requested_trials": experiment.requested_trials,
@@ -446,12 +446,12 @@ def _remote(repo: Path) -> tuple[str, str] | None:
 
 
 def _remote_head(repo: Path, remote: str) -> str | None:
-    output = _git(repo, ["ls-remote", "--heads", remote, f"refs/heads/{RESULTS_BRANCH}"])
+    output = _git(repo, ["ls-remote", "--heads", remote, f"refs/heads/{PUBLICATION_BRANCH}"])
     if not output:
         return None
     first = output.splitlines()[0].split()
     if len(first) != 2 or not re.fullmatch(r"[0-9a-fA-F]{40,64}", first[0]):
-        raise PublicationError(f"unexpected remote branch response for {RESULTS_BRANCH}")
+        raise PublicationError(f"unexpected remote branch response for {PUBLICATION_BRANCH}")
     return first[0]
 
 
@@ -460,7 +460,7 @@ def _fetch_base(repo: Path, remote: str, sha: str | None, namespace: str) -> str
         return None
     ref = f"refs/asquerix/publication/{namespace}"
     try:
-        _git(repo, ["fetch", "--no-tags", remote, f"+refs/heads/{RESULTS_BRANCH}:{ref}"])
+        _git(repo, ["fetch", "--no-tags", remote, f"+refs/heads/{PUBLICATION_BRANCH}:{ref}"])
         fetched = _git(repo, ["rev-parse", ref])
         if fetched != sha:
             # The remote could have moved between ls-remote and fetch.  The
@@ -687,9 +687,13 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
                     # Fetch observed a newer head.  Re-evaluate the branch and
                     # continue the normal ancestry-preserving attempt.
                     remote_sha = base
+                if base is None:
+                    # Initial publication includes committed source, never an
+                    # orphan artifact-only tree or unrelated staged changes.
+                    base = _git(repo_root, ["rev-parse", "HEAD"])
                 if _remote_contains(repo_root, base, artifact_path):
                     result["status"] = "PUSH_FAILED"
-                    result["error"] = f"artifact path already exists on {RESULTS_BRANCH}: {artifact_path}"
+                    result["error"] = f"artifact path already exists on {PUBLICATION_BRANCH}: {artifact_path}"
                     return result
                 _assert_files_unchanged(output, files_without_manifest)
                 message_side = _best_side(experiment.summary)
@@ -702,7 +706,7 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
                 result["local_commit_sha"] = commit
                 result["local_commit_ref"] = unpublished_ref
                 try:
-                    _git(repo_root, ["push", "--porcelain", remote, f"{commit}:refs/heads/{RESULTS_BRANCH}"])
+                    _git(repo_root, ["push", "--porcelain", remote, f"{commit}:refs/heads/{PUBLICATION_BRANCH}"])
                 except PublicationError as exc:
                     last_error = str(exc)
                     newer = _remote_head(repo_root, remote)
@@ -713,7 +717,7 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
                     return result
                 confirmed = _remote_head(repo_root, remote)
                 if not _remote_contains_commit(repo_root, remote, commit, confirmed):
-                    last_error = f"remote did not confirm commit {commit} on {RESULTS_BRANCH}"
+                    last_error = f"remote did not confirm commit {commit} on {PUBLICATION_BRANCH}"
                     if attempt < 2 and confirmed != remote_sha:
                         continue
                     result["status"] = "PUSH_FAILED"

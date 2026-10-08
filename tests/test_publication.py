@@ -5,7 +5,6 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -108,9 +107,9 @@ def _experiment(
     (directory / "histogram.svg").write_text("<svg/>\n", encoding="utf-8")
 
 
-def _remote_results_head(remote: Path) -> str | None:
+def _remote_main_head(remote: Path) -> str | None:
     completed = subprocess.run(
-        ["git", "rev-parse", "--verify", "refs/heads/experiment-results"],
+        ["git", "rev-parse", "--verify", "refs/heads/main"],
         cwd=remote,
         text=True,
         capture_output=True,
@@ -143,7 +142,7 @@ def test_publish_uses_compressed_inputs_and_isolates_active_index(git_repo, tmp_
     result = publication.publish(output, repo=repo)
 
     assert result["status"] == "PUBLISHED"
-    assert result["commit_sha"] == _remote_results_head(remote)
+    assert result["commit_sha"] == _remote_main_head(remote)
     assert result["artifact_path"] == "experiments/n12-s480-b8/run-1"
     assert result["url"].endswith(f"/commit/{result['commit_sha']}") or result["url"].endswith(
         f"#commit/{result['commit_sha']}"
@@ -153,12 +152,17 @@ def test_publish_uses_compressed_inputs_and_isolates_active_index(git_repo, tmp_
     assert _git(repo, "rev-parse", "--abbrev-ref", "HEAD") == "HEAD"
 
     tree = _git(remote, "ls-tree", "-r", "--name-only", result["commit_sha"]).splitlines()
+    assert "README.md" in tree
+    assert "unrelated.txt" not in tree
+    assert _git(remote, "merge-base", "--is-ancestor", head_before, result["commit_sha"]) == ""
+    assert _git(remote, "for-each-ref", "--format=%(refname)", "refs/heads") == "refs/heads/main"
     assert "experiments/n12-s480-b8/run-1/summary.json.gz" in tree
     assert "experiments/n12-s480-b8/run-1/manifest.json.gz" in tree
     assert "experiments/n12-s480-b8/run-1/publication.json.gz" not in tree
     blob = _git(remote, "rev-parse", f"{result['commit_sha']}:experiments/n12-s480-b8/run-1/summary.json.gz")
     assert _git_bytes(remote, "cat-file", "blob", blob) == (output / "summary.json.gz").read_bytes()
     manifest = publication.read_json(output / "manifest.json.gz")
+    assert manifest["publication_branch"] == "main"
     listed = {entry["path"] for entry in manifest["artifacts"]}
     assert "manifest.json.gz" not in listed
     assert "publication.json.gz" not in listed
@@ -176,6 +180,29 @@ def test_publish_uses_compressed_inputs_and_isolates_active_index(git_repo, tmp_
     assert receipt["status"] == "PUBLISHED"
 
 
+def test_initial_remote_main_includes_source_without_creating_helper_branches(git_repo, tmp_path: Path) -> None:
+    repo, remote = git_repo
+    source_head = _git(repo, "rev-parse", "HEAD")
+    _git(remote, "update-ref", "-d", "refs/heads/main")
+    output = tmp_path / "initial-publication"
+    _experiment(output, run_id="initial-publication")
+    (repo / "unrelated.txt").write_text("keep staged\n", encoding="utf-8")
+    _git(repo, "add", "unrelated.txt")
+
+    result = publication.publish(output, repo=repo)
+
+    assert result["status"] == "PUBLISHED"
+    assert result["commit_sha"] == _remote_main_head(remote)
+    assert _git(remote, "show", f"{result['commit_sha']}:README.md") == "test repository"
+    assert _git(remote, "merge-base", "--is-ancestor", source_head, result["commit_sha"]) == ""
+    tree = _git(remote, "ls-tree", "-r", "--name-only", result["commit_sha"]).splitlines()
+    assert "unrelated.txt" not in tree
+    assert _git(repo, "rev-parse", "HEAD") == source_head
+    assert _git(repo, "diff", "--cached", "--name-only") == "unrelated.txt"
+    for directory in (repo, remote):
+        assert _git(directory, "for-each-ref", "--format=%(refname)", "refs/heads") == "refs/heads/main"
+
+
 def test_publish_reads_historical_plain_json_and_updates_branch(git_repo, tmp_path: Path) -> None:
     repo, remote = git_repo
     first = tmp_path / "first"
@@ -187,7 +214,7 @@ def test_publish_reads_historical_plain_json_and_updates_branch(git_repo, tmp_pa
     second_result = publication.publish(second, repo=repo)
 
     assert first_result["status"] == second_result["status"] == "PUBLISHED"
-    assert _remote_results_head(remote) == second_result["commit_sha"]
+    assert _remote_main_head(remote) == second_result["commit_sha"]
     assert _git(remote, "merge-base", "--is-ancestor", first_result["commit_sha"], second_result["commit_sha"]) == ""
     tree = _git(remote, "ls-tree", "-r", "--name-only", second_result["commit_sha"]).splitlines()
     assert "experiments/n12-s480-b8/run-plain/summary.json" in tree
@@ -205,7 +232,7 @@ def test_no_push_creates_manifest_and_keeps_results_local(git_repo, tmp_path: Pa
     assert result["commit_sha"] is None
     assert (output / "manifest.json.gz").is_file()
     assert (output / "publication.json.gz").is_file()
-    assert _remote_results_head(remote) is None
+    assert _remote_main_head(remote) == _git(repo, "rev-parse", "HEAD")
 
 
 def test_manifest_uses_run_start_provenance_timings_and_validated_best(git_repo, tmp_path: Path) -> None:
@@ -276,7 +303,7 @@ def test_corrupted_gzip_is_rejected_before_publication(git_repo, tmp_path: Path)
 
     assert result["status"] == "PUSH_FAILED"
     assert "invalid gzip" in result["error"].lower()
-    assert _remote_results_head(remote) is None
+    assert _remote_main_head(remote) == _git(repo, "rev-parse", "HEAD")
 
 
 def test_missing_repository_is_a_failed_automatic_publication(tmp_path: Path) -> None:
@@ -306,7 +333,7 @@ def test_symlinks_and_unknown_extensions_are_rejected(git_repo, tmp_path: Path) 
     unknown_result = publication.publish(unknown_output, repo=repo)
     assert unknown_result["status"] == "PUSH_FAILED"
     assert "extension" in unknown_result["error"]
-    assert _remote_results_head(remote) is None
+    assert _remote_main_head(remote) == _git(repo, "rev-parse", "HEAD")
 
 
 def test_oversized_artifact_is_rejected_without_data_loss(git_repo, tmp_path: Path, monkeypatch) -> None:
@@ -321,7 +348,7 @@ def test_oversized_artifact_is_rejected_without_data_loss(git_repo, tmp_path: Pa
     assert result["status"] == "PUSH_FAILED"
     assert "safe per-file limit" in result["error"]
     assert (output / "too-large.json").read_bytes() == b"x" * 32
-    assert _remote_results_head(remote) is None
+    assert _remote_main_head(remote) == _git(repo, "rev-parse", "HEAD")
 
 
 def test_existing_artifact_path_is_never_overwritten(git_repo, tmp_path: Path) -> None:
@@ -337,7 +364,7 @@ def test_existing_artifact_path_is_never_overwritten(git_repo, tmp_path: Path) -
     assert first_result["status"] == "PUBLISHED"
     assert duplicate_result["status"] == "PUSH_FAILED"
     assert "already exists" in duplicate_result["error"]
-    assert _remote_results_head(remote) == first_result["commit_sha"]
+    assert _remote_main_head(remote) == first_result["commit_sha"]
 
 
 def test_remote_update_between_observation_and_push_is_retried(git_repo, tmp_path: Path, monkeypatch) -> None:
@@ -345,36 +372,26 @@ def test_remote_update_between_observation_and_push_is_retried(git_repo, tmp_pat
     output = tmp_path / "remote-race"
     _experiment(output, run_id="remote-race")
     real_git = publication._git
-    state = {"moved": False}
+    state = {"competitor": None}
 
     def flaky_git(repo_path, arguments, *, env=None, timeout=30.0):
-        if arguments and arguments[0] == "push" and not state["moved"]:
-            main_commit = real_git(remote, ["rev-parse", "refs/heads/main"])
-            tree = real_git(remote, ["rev-parse", f"{main_commit}^{{tree}}"])
-            competitor_env = os.environ.copy()
-            competitor_env.update(
-                GIT_AUTHOR_NAME="Concurrent publisher",
-                GIT_AUTHOR_EMAIL="concurrent@example.invalid",
-                GIT_COMMITTER_NAME="Concurrent publisher",
-                GIT_COMMITTER_EMAIL="concurrent@example.invalid",
-            )
-            competitor = real_git(
-                remote,
-                ["commit-tree", tree, "-p", main_commit, "-m", "concurrent result"],
-                env=competitor_env,
-            )
-            real_git(remote, ["update-ref", "refs/heads/experiment-results", competitor])
-            state["moved"] = True
+        if arguments and arguments[0] == "push" and state["competitor"] is None:
+            (repo / "concurrent-source.txt").write_text("concurrent source\n", encoding="utf-8")
+            _git(repo, "add", "concurrent-source.txt")
+            _git(repo, "commit", "-m", "concurrent source")
+            _git(repo, "push", "origin", "main")
+            state["competitor"] = _git(repo, "rev-parse", "HEAD")
         return real_git(repo_path, arguments, env=env, timeout=timeout)
 
     monkeypatch.setattr(publication, "_git", flaky_git)
     result = publication.publish(output, repo=repo)
 
     assert result["status"] == "PUBLISHED"
-    assert result["commit_sha"] == _remote_results_head(remote)
+    assert result["commit_sha"] == _remote_main_head(remote)
     parents = _git(remote, "rev-list", "--parents", "-n", "1", result["commit_sha"]).split()
     assert len(parents) == 2
-    assert state["moved"]
+    assert parents[1] == state["competitor"]
+    assert _git(remote, "show", f"{result['commit_sha']}:concurrent-source.txt") == "concurrent source"
 
 
 def test_push_failure_preserves_local_artifacts(git_repo, tmp_path: Path) -> None:
@@ -394,7 +411,7 @@ def test_push_failure_preserves_local_artifacts(git_repo, tmp_path: Path) -> Non
     assert _git(repo, "rev-parse", result["local_commit_ref"]) == result["local_commit_sha"]
     assert (output / "summary.json.gz").is_file()
     assert (output / "publication.json.gz").is_file()
-    assert _remote_results_head(remote) is None
+    assert _remote_main_head(remote) == _git(repo, "rev-parse", "HEAD")
 
 
 def test_concurrent_publishers_serialize_and_preserve_both_runs(git_repo, tmp_path: Path) -> None:
@@ -407,8 +424,9 @@ def test_concurrent_publishers_serialize_and_preserve_both_runs(git_repo, tmp_pa
         results = list(pool.map(lambda path: publication.publish(path, repo=repo), outputs))
 
     assert [result["status"] for result in results] == ["PUBLISHED", "PUBLISHED"]
-    head = _remote_results_head(remote)
+    head = _remote_main_head(remote)
     tree = _git(remote, "ls-tree", "-r", "--name-only", head).splitlines()
+    assert "README.md" in tree
     assert "experiments/n12-s480-b8/one/summary.json.gz" in tree
     assert "experiments/n12-s480-b8/two/summary.json.gz" in tree
 

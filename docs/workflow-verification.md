@@ -1,6 +1,6 @@
 # Experiment workflow verification
 
-The workflow changes are developed in an isolated worktree on `feat/experiment-workflow`. The active `main` checkout and detached floor-check worktree are not switched or updated. Local runtime output is ignored; published artifacts belong to the separate `experiment-results` branch.
+Initial verification was performed in a worktree on `feat/experiment-workflow`, with publications on `experiment-results`. The original `main` checkout and detached floor-check worktree were unchanged during that verification. The later main-only integration is documented below; these initial results retain their original provenance.
 
 ## Scientific scope
 
@@ -42,7 +42,7 @@ Both used the unchanged default N=12 scientific workload, seed 20261008, batch s
 
 Both successful pushes were confirmed against the remote. Every published blob was read from Git and checked against the local bytes and manifest SHA-256: 18 hashed data files for the full run and 14 for the partial run, plus each manifest. Gzip files decompressed successfully. The independent maintained checker reported zero geometry, SVG and summary mismatches for both. Compare displayed a warning because their completed trial sets differ. Quiet stdout contained no ANSI sequences or raw JSON payload; initialization/JIT diagnostics remained on stderr.
 
-Full local publication receipts are retained in `workflow-publications.json.gz`, with computation/publication/total timings and confirmed commit URLs. The production result commits already contain compressed scientific files, reports, histograms and selected SVGs. The active main checkout remains at `d4884c9`; the detached benchmark worktree remains at `61f77c6`. Integration is delivered as a pull request to preserve concurrent development.
+Full local publication receipts are retained in `workflow-publications.json.gz`, with computation/publication/total timings and confirmed commit URLs. The production result commits contain compressed scientific files, reports, histograms and selected SVGs. At the time of initial verification, the main checkout was at `d4884c9`, the detached benchmark worktree was at `61f77c6`, and integration was submitted as a pull request.
 
 Tested smoke commands (use fresh output paths when repeating):
 
@@ -53,3 +53,11 @@ uv run --locked asquerix compare runs/workflow-rich-smoke runs/workflow-json-par
 ```
 
 Quiet `diagnose` saved the actual CUDA environment as gzip and printed only its path. `report --json` was exercised on a private copy of the completed compressed run; regenerated statistics retained all eight records. Published run directories were not modified by this offline verification.
+
+## Main-only integration
+
+At the user's request, development and automatic publication now use `main`. Project instructions prohibit creating branches or worktrees without explicit user permission. The workflow and historical publication commits are merged with their original histories; archived experiment files are not reformatted. The terminal fix redirects Warp diagnostics through the active Rich display and preserves stderr tracebacks.
+
+Publication adds only finalized experiment paths to remote `main`, preserving its source tree and using the existing temporary index and shared repository lock. It leaves local HEAD, staged files and the checkout unchanged, including detached HEAD. Initial publication to an empty remote includes committed source rather than an orphan results tree. Concurrent source commits and result publications are preserved through fast-forward retries. No helper branch is created.
+
+The full suite executed from `/home/user/DEV/asquerix` after integration: **183 passed, 0 failed, 0 skipped** in 10.73 seconds, including the real-CUDA regressions. Two upstream Warp ctypes deprecation warnings remain. All 17 publication tests use temporary local Git remotes and cover the main-only policy, initial remote creation, unrelated staged changes, detached HEAD, concurrency, source changes during a push, failed pushes and artifact preservation. The GPU solver, CPU geometry validator, pilot archive and audit archive remain byte-for-byte unchanged from `d4884c9`.
