@@ -18,3 +18,22 @@ def test_invalid_config(arguments):
 def test_cpu_device_is_never_a_gpu_fallback():
     with pytest.raises(ValueError, match="CPU fallback"):
         Batch(Config(n=1), 1, "cpu")
+
+
+@pytest.mark.parametrize("capacity", [1000000, 1048576])
+def test_million_world_batch_passes_validation_before_gpu_allocation(monkeypatch, capacity):
+    from asquerix import gpu
+
+    def reached_initialization():
+        raise RuntimeError("GPU initialization reached")
+    monkeypatch.setattr(gpu.wp, "init", reached_initialization)
+    with pytest.raises(RuntimeError, match="GPU initialization reached"):
+        Batch(Config(n=1), capacity)
+
+
+def test_capacity_above_one_binary_million_is_rejected_before_gpu_initialization(monkeypatch):
+    from asquerix import gpu
+
+    monkeypatch.setattr(gpu.wp, "init", lambda: pytest.fail("GPU must not be initialized"))
+    with pytest.raises(ValueError, match=r"batch_size must be in \[1,1048576\]"):
+        Batch(Config(n=1), 1048577)

@@ -448,8 +448,8 @@ class Batch:
     """Reusable GPU storage. Readbacks happen only at completed batch boundaries."""
     def __init__(self, config, capacity, device="cuda:0", debug=False):
         config.validate()
-        if isinstance(capacity, bool) or not isinstance(capacity, Integral) or not 1 <= capacity <= 65536:
-            raise ValueError("batch_size must be in [1,65536]")
+        if isinstance(capacity, bool) or not isinstance(capacity, Integral) or not 1 <= capacity <= 1048576:
+            raise ValueError("batch_size must be in [1,1048576]")
         capacity = int(capacity)
         wp.init()
         self.device = wp.get_device(device)

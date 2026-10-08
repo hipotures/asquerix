@@ -157,7 +157,7 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
         batch_factory=Batch, progress=None):
     config.validate()
     trials = _runner_integer(trials, "trials", minimum=1, maximum=2**31 - 1)
-    batch_size = _runner_integer(batch_size, "batch_size", minimum=1, maximum=65536)
+    batch_size = _runner_integer(batch_size, "batch_size", minimum=1, maximum=1048576)
     trial_offset = _runner_integer(trial_offset, "trial_offset", minimum=0, maximum=2**64 - 1)
     if trial_offset > 2**64 - trials:
         raise ValueError("trial_offset plus trials must fit unsigned 64 bits")
