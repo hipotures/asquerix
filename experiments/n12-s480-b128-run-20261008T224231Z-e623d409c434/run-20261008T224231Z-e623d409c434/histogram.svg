@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="610" viewBox="0 0 1100 610">
+<title>Final accepted container-side histograms</title>
+<rect width="1100" height="610" fill="white"/>
+<style>.axis{stroke:#444}.bar{fill:#4e79a7;fill-opacity:.78}.panel-title,.tick,.count,.empty,.predicate{font-family:monospace;font-size:16px;fill:#111}.predicate{font-size:12px}.empty{fill:#777}.panel-title{font-weight:bold}</style>
+<g class="panel" id="gpu_accepted">
+<text class="panel-title" x="53" y="48">GPU-accepted final sides</text>
+<text class="predicate" x="53" y="70">GPU_FEASIBLE</text>
+<line class="axis" x1="103" y1="492" x2="533" y2="492"/>
+<line class="axis" x1="103" y1="92" x2="103" y2="492"/>
+<text class="tick" text-anchor="end" x="95" y="100">1306</text>
+<text class="tick" text-anchor="end" x="95" y="492">0</text>
+<rect class="bar" x="103" y="92" width="33.0769" height="400" data-count="1306"/>
+<rect class="bar" x="136.077" y="357.544" width="33.0769" height="134.456" data-count="439"/>
+<rect class="bar" x="169.154" y="166.732" width="33.0769" height="325.268" data-count="1062"/>
+<rect class="bar" x="202.231" y="431.663" width="33.0769" height="60.3369" data-count="197"/>
+<rect class="bar" x="235.308" y="463.822" width="33.0769" height="28.1776" data-count="92"/>
+<rect class="bar" x="268.385" y="458.309" width="33.0769" height="33.6907" data-count="110"/>
+<rect class="bar" x="301.462" y="360.913" width="33.0769" height="131.087" data-count="428"/>
+<rect class="bar" x="334.538" y="469.948" width="33.0769" height="22.0521" data-count="72"/>
+<rect class="bar" x="367.615" y="478.217" width="33.0769" height="13.7825" data-count="45"/>
+<rect class="bar" x="400.692" y="466.579" width="33.0769" height="25.4211" data-count="83"/>
+<rect class="bar" x="433.769" y="491.387" width="33.0769" height="0.612557" data-count="2"/>
+<rect class="bar" x="466.846" y="491.081" width="33.0769" height="0.918836" data-count="3"/>
+<rect class="bar" x="499.923" y="491.694" width="33.0769" height="0.306279" data-count="1"/>
+<text class="tick" x="103" y="516">4.00019073486</text>
+<text class="tick" text-anchor="end" x="533" y="516">6.0117225647</text>
+<text class="count" x="53" y="550">n=3840</text>
+</g>
+<g class="panel" id="numerically_validated">
+<text class="panel-title" x="588" y="48">Independently validated selected subset</text>
+<text class="predicate" x="588" y="70">GPU_FEASIBLE + NUMERICALLY_VALIDATED</text>
+<line class="axis" x1="638" y1="492" x2="1068" y2="492"/>
+<line class="axis" x1="638" y1="92" x2="638" y2="492"/>
+<text class="tick" text-anchor="end" x="630" y="100">142</text>
+<text class="tick" text-anchor="end" x="630" y="492">0</text>
+<rect class="bar" x="638" y="92" width="47.7778" height="400" data-count="142"/>
+<rect class="bar" x="685.778" y="475.099" width="47.7778" height="16.9014" data-count="6"/>
+<rect class="bar" x="733.556" y="444.113" width="47.7778" height="47.8873" data-count="17"/>
+<rect class="bar" x="781.333" y="489.183" width="47.7778" height="2.8169" data-count="1"/>
+<rect class="bar" x="829.111" y="489.183" width="47.7778" height="2.8169" data-count="1"/>
+<rect class="bar" x="876.889" y="489.183" width="47.7778" height="2.8169" data-count="1"/>
+<rect class="bar" x="924.667" y="477.915" width="47.7778" height="14.0845" data-count="5"/>
+<rect class="bar" x="972.444" y="486.366" width="47.7778" height="5.6338" data-count="2"/>
+<rect class="bar" x="1020.22" y="483.549" width="47.7778" height="8.4507" data-count="3"/>
+<text class="tick" x="638" y="516">4.00019073486</text>
+<text class="tick" text-anchor="end" x="1068" y="516">5.43398141861</text>
+<text class="count" x="588" y="550">n=178</text>
+</g>
+</svg>
