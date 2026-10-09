@@ -1,0 +1,1022 @@
+{
+ "schema": "asquerix-best-known-upper-bounds-v1",
+ "quantity": "s(n): side of the smallest square containing n non-overlapping unit squares",
+ "source": {
+  "title": "Packing Unit Squares in Squares: A Survey and New Results",
+  "author": "Erich Friedman",
+  "publication": "The Electronic Journal of Combinatorics, Dynamic Survey DS#7",
+  "revision_year": 2009,
+  "table": "Table 1. Best known upper bounds for s(n)",
+  "citation": "The Electronic Journal of Combinatorics (2009), DS#7",
+  "journal_url": "http://www.combinatorics.org/",
+  "imported_file": "ds7-2009.html",
+  "imported_sha256": "f14c7cf36c8bfc47b52be6b5fc4257b77acc154444ed2190b7c9a9eeedf43510"
+ },
+ "caveats": [
+  "Values and optimality marks are as stated in the 2009 revision; later results may improve or settle them.",
+  "printed-decimal values are the source's 4-digit approximations, which this table rounds up (checked against every exact expression), so they remain upper bounds.",
+  "Reference values are for display only and are never given to the search or the evaluator."
+ ],
+ "entries": [
+  {
+   "n": 1,
+   "upper_bound": 1.0,
+   "value_kind": "exact-integer",
+   "expression": "1",
+   "printed": "1",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 2,
+   "upper_bound": 2.0,
+   "value_kind": "exact-integer",
+   "expression": "2",
+   "printed": "2",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 3,
+   "upper_bound": 2.0,
+   "value_kind": "exact-integer",
+   "expression": "2",
+   "printed": "2",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 4,
+   "upper_bound": 2.0,
+   "value_kind": "exact-integer",
+   "expression": "2",
+   "printed": "2",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 5,
+   "upper_bound": 2.7071067811865475,
+   "value_kind": "exact-expression",
+   "expression": "2+1/√2",
+   "printed": "2.7072",
+   "optimal_in_source": true,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 6,
+   "upper_bound": 3.0,
+   "value_kind": "exact-integer",
+   "expression": "3",
+   "printed": "3",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 7,
+   "upper_bound": 3.0,
+   "value_kind": "exact-integer",
+   "expression": "3",
+   "printed": "3",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 8,
+   "upper_bound": 3.0,
+   "value_kind": "exact-integer",
+   "expression": "3",
+   "printed": "3",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 9,
+   "upper_bound": 3.0,
+   "value_kind": "exact-integer",
+   "expression": "3",
+   "printed": "3",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 10,
+   "upper_bound": 3.7071067811865475,
+   "value_kind": "exact-expression",
+   "expression": "3+1/√2",
+   "printed": "3.7072",
+   "optimal_in_source": true,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 11,
+   "upper_bound": 3.8771,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "3.8771",
+   "optimal_in_source": false,
+   "author": "Trump",
+   "figure": "Figure 6"
+  },
+  {
+   "n": 12,
+   "upper_bound": 4.0,
+   "value_kind": "exact-integer",
+   "expression": "4",
+   "printed": "4",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 13,
+   "upper_bound": 4.0,
+   "value_kind": "exact-integer",
+   "expression": "4",
+   "printed": "4",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 14,
+   "upper_bound": 4.0,
+   "value_kind": "exact-integer",
+   "expression": "4",
+   "printed": "4",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 15,
+   "upper_bound": 4.0,
+   "value_kind": "exact-integer",
+   "expression": "4",
+   "printed": "4",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 16,
+   "upper_bound": 4.0,
+   "value_kind": "exact-integer",
+   "expression": "4",
+   "printed": "4",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 17,
+   "upper_bound": 4.6756,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "4.6756",
+   "optimal_in_source": false,
+   "author": "Bidwell",
+   "figure": "Figure 12"
+  },
+  {
+   "n": 18,
+   "upper_bound": 4.822875655532295,
+   "value_kind": "exact-expression",
+   "expression": "7/2+1/2√7",
+   "printed": "4.8229",
+   "optimal_in_source": false,
+   "author": "Hämäläinen",
+   "figure": "Figure 7"
+  },
+  {
+   "n": 19,
+   "upper_bound": 4.885618083164127,
+   "value_kind": "exact-expression",
+   "expression": "3+4/3√2",
+   "printed": "4.8857",
+   "optimal_in_source": false,
+   "author": "Wainwright",
+   "figure": "Figure 4"
+  },
+  {
+   "n": 20,
+   "upper_bound": 5.0,
+   "value_kind": "exact-integer",
+   "expression": "5",
+   "printed": "5",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 21,
+   "upper_bound": 5.0,
+   "value_kind": "exact-integer",
+   "expression": "5",
+   "printed": "5",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 22,
+   "upper_bound": 5.0,
+   "value_kind": "exact-integer",
+   "expression": "5",
+   "printed": "5",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 23,
+   "upper_bound": 5.0,
+   "value_kind": "exact-integer",
+   "expression": "5",
+   "printed": "5",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 24,
+   "upper_bound": 5.0,
+   "value_kind": "exact-integer",
+   "expression": "5",
+   "printed": "5",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 25,
+   "upper_bound": 5.0,
+   "value_kind": "exact-integer",
+   "expression": "5",
+   "printed": "5",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 26,
+   "upper_bound": 5.621320343559643,
+   "value_kind": "exact-expression",
+   "expression": "7/2+3/2√2",
+   "printed": "5.6214",
+   "optimal_in_source": false,
+   "author": "Friedman",
+   "figure": "Figure 9"
+  },
+  {
+   "n": 27,
+   "upper_bound": 5.707106781186548,
+   "value_kind": "exact-expression",
+   "expression": "5+1/√2",
+   "printed": "5.7072",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 28,
+   "upper_bound": 5.82842712474619,
+   "value_kind": "exact-expression",
+   "expression": "3+2√2",
+   "printed": "5.8285",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 3"
+  },
+  {
+   "n": 29,
+   "upper_bound": 5.9344,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "5.9344",
+   "optimal_in_source": false,
+   "author": "Gensane/Ryckelynck",
+   "figure": "Figure 12"
+  },
+  {
+   "n": 30,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 31,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 32,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 33,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 34,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 35,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 36,
+   "upper_bound": 6.0,
+   "value_kind": "exact-integer",
+   "expression": "6",
+   "printed": "6",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 37,
+   "upper_bound": 6.5987,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "6.5987",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 16"
+  },
+  {
+   "n": 38,
+   "upper_bound": 6.707106781186548,
+   "value_kind": "exact-expression",
+   "expression": "6+1/√2",
+   "printed": "6.7072",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 39,
+   "upper_bound": 6.8189,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "6.8189",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 15"
+  },
+  {
+   "n": 40,
+   "upper_bound": 6.82842712474619,
+   "value_kind": "exact-expression",
+   "expression": "4+2√2",
+   "printed": "6.8285",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 3"
+  },
+  {
+   "n": 41,
+   "upper_bound": 6.9473,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "6.9473",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 16"
+  },
+  {
+   "n": 42,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 43,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 44,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 45,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 46,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 47,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 48,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 49,
+   "upper_bound": 7.0,
+   "value_kind": "exact-integer",
+   "expression": "7",
+   "printed": "7",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 50,
+   "upper_bound": 7.5987,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "7.5987",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 51,
+   "upper_bound": 7.7044,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "7.7044",
+   "optimal_in_source": false,
+   "author": "Hajba",
+   "figure": "Figure 16"
+  },
+  {
+   "n": 52,
+   "upper_bound": 7.707106781186548,
+   "value_kind": "exact-expression",
+   "expression": "7+1/√2",
+   "printed": "7.7072",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 53,
+   "upper_bound": 7.8231,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "7.8231",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 11"
+  },
+  {
+   "n": 54,
+   "upper_bound": 7.8488,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "7.8488",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 14"
+  },
+  {
+   "n": 55,
+   "upper_bound": 7.9871,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "7.9871",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 16"
+  },
+  {
+   "n": 56,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 57,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 58,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 59,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 60,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 61,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 62,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 63,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 64,
+   "upper_bound": 8.0,
+   "value_kind": "exact-integer",
+   "expression": "8",
+   "printed": "8",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 65,
+   "upper_bound": 8.535533905932738,
+   "value_kind": "exact-expression",
+   "expression": "5+5/√2",
+   "printed": "8.5356",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 3"
+  },
+  {
+   "n": 66,
+   "upper_bound": 8.65685424949238,
+   "value_kind": "exact-expression",
+   "expression": "3+4√2",
+   "printed": "8.6569",
+   "optimal_in_source": false,
+   "author": "Stenlund",
+   "figure": "Figure 5"
+  },
+  {
+   "n": 67,
+   "upper_bound": 8.707106781186548,
+   "value_kind": "exact-expression",
+   "expression": "8+1/√2",
+   "printed": "8.7072",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 68,
+   "upper_bound": 8.822875655532295,
+   "value_kind": "exact-expression",
+   "expression": "15/2+√7/2",
+   "printed": "8.8229",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 11"
+  },
+  {
+   "n": 69,
+   "upper_bound": 8.8562,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "8.8562",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 14"
+  },
+  {
+   "n": 70,
+   "upper_bound": 8.9121,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "8.9121",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 13"
+  },
+  {
+   "n": 71,
+   "upper_bound": 8.9633,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "8.9633",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 16"
+  },
+  {
+   "n": 72,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 73,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 74,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 75,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 76,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 77,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 78,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 79,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 80,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 81,
+   "upper_bound": 9.0,
+   "value_kind": "exact-integer",
+   "expression": "9",
+   "printed": "9",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 82,
+   "upper_bound": 9.535533905932738,
+   "value_kind": "exact-expression",
+   "expression": "6+5/√2",
+   "printed": "9.5356",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 83,
+   "upper_bound": 9.65685424949238,
+   "value_kind": "exact-expression",
+   "expression": "4+4√2",
+   "printed": "9.6569",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 84,
+   "upper_bound": 9.707106781186548,
+   "value_kind": "exact-expression",
+   "expression": "9+1/√2",
+   "printed": "9.7072",
+   "optimal_in_source": false,
+   "author": "Göbel",
+   "figure": "Figure 1"
+  },
+  {
+   "n": 85,
+   "upper_bound": 9.742640687119286,
+   "value_kind": "exact-expression",
+   "expression": "11/2+3√2",
+   "printed": "9.7427",
+   "optimal_in_source": false,
+   "author": "Friedman",
+   "figure": "Figure 9"
+  },
+  {
+   "n": 86,
+   "upper_bound": 9.822875655532295,
+   "value_kind": "exact-expression",
+   "expression": "17/2+√7/2",
+   "printed": "9.8229",
+   "optimal_in_source": false,
+   "author": "Friedman",
+   "figure": "Figure 15"
+  },
+  {
+   "n": 87,
+   "upper_bound": 9.852,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "9.8520",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 10"
+  },
+  {
+   "n": 88,
+   "upper_bound": 9.9018,
+   "value_kind": "printed-decimal",
+   "expression": null,
+   "printed": "9.9018",
+   "optimal_in_source": false,
+   "author": "Cantrell",
+   "figure": "Figure 13"
+  },
+  {
+   "n": 89,
+   "upper_bound": 9.949747468305834,
+   "value_kind": "exact-expression",
+   "expression": "5+7/√2",
+   "printed": "9.9498",
+   "optimal_in_source": false,
+   "author": "Stenlund",
+   "figure": "Figure 3"
+  },
+  {
+   "n": 90,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 91,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 92,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 93,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 94,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 95,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 96,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 97,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": false,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 98,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 99,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  },
+  {
+   "n": 100,
+   "upper_bound": 10.0,
+   "value_kind": "exact-integer",
+   "expression": "10",
+   "printed": "10",
+   "optimal_in_source": true,
+   "author": null,
+   "figure": null
+  }
+ ]
+}

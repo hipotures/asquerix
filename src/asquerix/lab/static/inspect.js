@@ -77,7 +77,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   // Early poor incumbents would flatten the interesting region: the scale tops out at the controls or at the
   // best first value of any method, and higher values are clipped to the top edge with a marker.
   const firsts = arms.map(arm => points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])[0][yKey]);
-  const focus = Math.max(...references.map(item => item.value), Math.min(...firsts));
+  const focus = Math.max(...references.filter(item => item.kind !== "best-known").map(item => item.value), Math.min(...firsts));
   if (yMax > focus + (focus - yMin) * 1.5) yMax = focus + (focus - yMin) * 0.25;
   const pad = Math.max((yMax - yMin) * 0.08, 0.002); yMin -= pad; yMax += pad;
   const top = yMax;
@@ -99,8 +99,9 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   }
   const labels = [];
   for (const item of references) {
-    svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: "reference"}));
-    labels.push({y: y(item.value), text: `${item.label} ${item.value.toFixed(4)}`, kind: "reference"});
+    const best = item.kind === "best-known";
+    svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: best ? "best-known" : "reference"}));
+    labels.push({y: y(item.value), text: `${item.label} ${item.value.toFixed(4)}`, kind: best ? "best-known" : "reference"});
   }
   const groups = arms.map((arm, index) => ({arm, color: color(arm, index), points: points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])}));
   for (const group of groups) {
@@ -126,8 +127,8 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   labels.forEach((label, i) => { if (i && label.y - labels[i - 1].y < 15) label.y = labels[i - 1].y + 15; });
   for (const label of labels) {
     if (label.color) { const key = svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5}); key.style.fill = label.color; svg.append(key); }
-    else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: "reference"}));
-    svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color ? "end-label" : "tick"}, label.text));
+    else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: label.kind}));
+    svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color || label.kind === "best-known" ? "end-label" : "tick"}, label.text));
   }
   // Crosshair and tooltip: values of every method at the hovered x.
   const cross = svgNode("line", {y1: margin.top, y2: margin.top + plotH, class: "crosshair", visibility: "hidden"});
@@ -156,7 +157,8 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
     const item = element("span", armLabel(group.arm)), swatch = element("i");
     swatch.style.background = group.color; item.prepend(swatch); legend.append(item);
   }
-  if (references.length) { const item = element("span", "fixed controls"), swatch = element("i", undefined, "dashed"); item.prepend(swatch); legend.append(item); }
+  if (references.some(item => item.kind !== "best-known")) { const item = element("span", "fixed controls"), swatch = element("i", undefined, "dashed"); item.prepend(swatch); legend.append(item); }
+  if (references.some(item => item.kind === "best-known")) { const item = element("span", "best known upper bound"), swatch = element("i", undefined, "best-known"); item.prepend(swatch); legend.append(item); }
   if (points.some(point => clipped(point[yKey]))) legend.append(element("span", `▲ above ${top.toFixed(3)}: off scale, hover for the value`, "muted"));
   target.append(legend, svg, tooltip);
 }

@@ -138,3 +138,8 @@ table.episodes td button{padding:4px 10px}
 .provenance{margin:22px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
 .pager button{min-width:38px}
 #program-page{min-width:120px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* Best known upper bound from the literature: a solid line distinct from the dashed controls. */
+.progress-chart .best-known{stroke:var(--ink);stroke-width:2}
+.legend i.best-known{background:var(--ink)}
+.chart-source{margin:6px 0 0;color:var(--muted);font-size:12px}

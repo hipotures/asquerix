@@ -74,3 +74,23 @@ def test_lan_requires_configured_authentication(tmp_path, monkeypatch):
         assert "LAN binding" in str(error)
     else:
         raise AssertionError("Unauthenticated LAN binding was accepted")
+
+
+def test_best_known_upper_bounds_load_at_start_and_are_served(tmp_path):
+    import json
+    import pytest
+    from asquerix.lab.api import BEST_KNOWN, load_best_known
+    document = load_best_known()
+    entries = {entry["n"]: entry for entry in document["entries"]}
+    assert sorted(entries) == list(range(1, 101))
+    assert entries[11]["printed"] == "3.8771" and entries[11]["author"] == "Trump" and not entries[11]["optimal_in_source"]
+    assert abs(entries[10]["upper_bound"] - (3 + 2 ** -0.5)) < 1e-15 and entries[10]["optimal_in_source"]
+    assert document["source"]["imported_sha256"] and document["source"]["revision_year"] == 2009
+    broken = tmp_path / "broken.json"
+    broken.write_text(json.dumps({**json.loads(BEST_KNOWN.read_text()), "schema": "other"}))
+    with pytest.raises(ValueError, match="unsupported best-known schema"):
+        load_best_known(broken)
+    app = create_app(tmp_path / "lab", worker_enabled=False)
+    with TestClient(app, base_url="http://127.0.0.1:8765") as client:
+        assert client.get("/api/v1/references/best-known").json()["entries"][10]["n"] == 11
+    app.state.service.catalog.close()

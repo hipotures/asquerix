@@ -30,6 +30,19 @@ from .storage import sha256
 from .strategy import ProgramError, compile_program
 
 STATIC = Path(__file__).parent / "static"
+BEST_KNOWN = Path(__file__).parent / "data" / "best-known-upper-bounds.json"
+
+
+def load_best_known(path: Path = BEST_KNOWN) -> dict:
+    """Published best known upper bounds on s(n), for display beside results; never used by a search."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if document.get("schema") != "asquerix-best-known-upper-bounds-v1":
+        raise ValueError(f"{path.name}: unsupported best-known schema")
+    numbers = [entry["n"] for entry in document["entries"]]
+    if len(numbers) != len(set(numbers)) or not all(isinstance(entry["upper_bound"], float) and entry["upper_bound"] >= 1.0
+                                                    for entry in document["entries"]):
+        raise ValueError(f"{path.name}: entries must have unique n and an upper bound of at least 1")
+    return document
 Key = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128)]
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0, le=1000000)]
@@ -81,6 +94,7 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
     token = token or os.environ.get("ASQUERIX_LAB_TOKEN")
     if remote and (not token or len(token) < 16):
         raise ValueError("LAN binding requires ASQUERIX_LAB_TOKEN with at least 16 characters and explicit Host configuration")
+    best_known = load_best_known()  # loaded and checked once when the web server starts
     service = Service(root, worker_enabled=worker_enabled)
     sessions = {}
 
@@ -166,6 +180,10 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
     @app.get("/api/v1/devices")
     def inventory():
         return {"items": service.inventory(), "active_campaign": service.active}
+
+    @app.get("/api/v1/references/best-known")
+    def references():
+        return best_known
 
     power = {"checked": 0.0, "status": None}
 
