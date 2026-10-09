@@ -158,3 +158,8 @@ table.episodes td button{padding:4px 10px}
 /* Plain numeric fields are as wide as their numbers; uint64 seeds and IDs need up to 20 digits. */
 label > input[type=number]{align-self:flex-start;width:11ch;text-align:right;font-variant-numeric:tabular-nums}
 label > input[inputmode=numeric]{align-self:flex-start;width:22ch;font-variant-numeric:tabular-nums}
+
+/* Continuation form rows: text fields share a row; numeric steppers sit side by side at their natural width. */
+.form-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px 28px}
+.form-row > .grow{flex:1 1 280px}
+.form-row > .grow input,.form-row > .grow select{width:100%}
