@@ -43,8 +43,9 @@ function programView(target, candidate, candidates = []) {
   } else target.append(element("p", candidate.parent_id ? `Parent: ${candidate.parent_id}` : "Independently generated or fixed; no parent.", "muted"));
 }
 
-const SERIES_COLORS = {random_program_search: "#2764ad", one_plus_lambda: "#c2761f"};  // validated pair; color follows the method
-const FALLBACK_COLORS = ["#147d8b", "#8a5a9e"];
+// Validated pairs for the light and dark surfaces (theme tokens in style.css); color follows the method.
+const SERIES_COLORS = {random_program_search: "var(--series-random)", one_plus_lambda: "var(--series-mutation)"};
+const FALLBACK_COLORS = ["var(--series-3)", "var(--series-4)"];
 const ARM_LABELS = {random_program_search: "random search", one_plus_lambda: "(1 + λ) mutation"};
 const armLabel = arm => ARM_LABELS[arm] || arm.replaceAll("_", " ");
 const svgNode = (tag, attributes = {}, text) => {
@@ -104,13 +105,15 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   const groups = arms.map((arm, index) => ({arm, color: color(arm, index), points: points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])}));
   for (const group of groups) {
     const path = group.points.map((point, i) => i ? `H${x(point[xKey])}V${y(point[yKey])}` : `M${x(point[xKey])},${y(point[yKey])}`).join("");
-    svg.append(svgNode("path", {d: path + `H${margin.left + plotW}`, fill: "none", stroke: group.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"}));
+    const line = svgNode("path", {d: path + `H${margin.left + plotW}`, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"});
+    line.style.stroke = group.color; svg.append(line);
     group.points.forEach((point, i) => {
       if (i && point[yKey] >= group.points[i - 1][yKey]) return;  // markers only where the incumbent improved
       const cx = x(point[xKey]), cy = y(point[yKey]);
       const dot = clipped(point[yKey])
-        ? svgNode("path", {d: `M${cx - 5},${cy + 6}L${cx},${cy - 2}L${cx + 5},${cy + 6}Z`, fill: group.color, class: "chart-point", tabindex: "0", role: "button"})
-        : svgNode("circle", {cx, cy, r: 4.5, fill: group.color, class: "chart-point", tabindex: "0", role: "button"});
+        ? svgNode("path", {d: `M${cx - 5},${cy + 6}L${cx},${cy - 2}L${cx + 5},${cy + 6}Z`, class: "chart-point", tabindex: "0", role: "button"})
+        : svgNode("circle", {cx, cy, r: 4.5, class: "chart-point", tabindex: "0", role: "button"});
+      dot.style.fill = group.color;
       dot.append(svgNode("title", {}, `${armLabel(group.arm)} ${i ? "improved to" : "started at"} ${point[yKey].toFixed(6)}${clipped(point[yKey]) ? " (above the shown range)" : ""} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
       dot.addEventListener("click", () => onSelect(point));
       dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); });
@@ -122,7 +125,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   labels.sort((a, b) => a.y - b.y);  // keep end labels from overlapping
   labels.forEach((label, i) => { if (i && label.y - labels[i - 1].y < 15) label.y = labels[i - 1].y + 15; });
   for (const label of labels) {
-    if (label.color) svg.append(svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5, fill: label.color}));
+    if (label.color) { const key = svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5}); key.style.fill = label.color; svg.append(key); }
     else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: "reference"}));
     svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color ? "end-label" : "tick"}, label.text));
   }

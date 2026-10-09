@@ -54,7 +54,7 @@ function limitPanel(gpu, control) {
 function render(data) {
   const visible = data.session > 0 && data.gpus.length && (data.live || dismissed !== data.started);
   root.hidden = !visible;
-  if (!visible) return;
+  if (!visible) { layout(); return; }
   if (session !== data.session) { session = data.session; openLimit = null; }
   root.classList.toggle('frozen', !data.live);
   root.dataset.count = String(data.gpus.length);
@@ -80,15 +80,28 @@ function render(data) {
     root.append(tile);
     sparkline(spark, history.map(item => item[3]));
   });
+  layout();
   if (!data.live) {
     const close = el('button', 'gpu-close');  // the cross is drawn in CSS so it stays centred close.type = 'button';
     close.title = `Computation finished at ${new Date(data.finished * 1000).toLocaleTimeString()}; values are frozen. Hide until the next computation.`;
     close.setAttribute('aria-label', 'Hide GPU telemetry');
     close.addEventListener('click', () => { dismissed = data.started;  // session numbers restart with the server; start times do not
-      try { sessionStorage.setItem('asquerix-gpu-dismissed', String(dismissed)); } catch {} root.hidden = true; });
+      try { sessionStorage.setItem('asquerix-gpu-dismissed', String(dismissed)); } catch {} root.hidden = true; layout(); });
     root.append(close);
   }
 }
+
+// Keep the tiles centred on the page: in the first header row when they fit there, otherwise on a row of their own.
+function layout() {
+  const header = root.closest('header');
+  header.classList.remove('stacked');
+  if (root.hidden) return;
+  const style = getComputedStyle(header), gap = parseFloat(style.columnGap) || 0;
+  const inner = header.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const side = Math.max(header.querySelector('.brand').offsetWidth, header.querySelector('.header-actions').offsetWidth);
+  if (2 * side + root.offsetWidth + 2 * 28 + 2 * gap > inner) header.classList.add('stacked');
+}
+addEventListener('resize', layout);
 
 async function poll() {
   let live = false;
