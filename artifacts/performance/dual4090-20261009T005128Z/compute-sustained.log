@@ -1,0 +1,38 @@
+Workers ready: GPU-6c849b47-7111-9265-9d42-ff8eddc05a2d, GPU-81ac6e96-0bfe-390d-beb1-241466569d6b
+N=12 baseline A: executing 524288 unique trials
+N=12 baseline A repeat=0: COMPLETE, 524288 unique trials, 43.951635s
+N=12 baseline B: executing 524288 unique trials
+N=12 baseline B repeat=0: COMPLETE, 524288 unique trials, 43.607141s
+N=12 baseline dual: executing 524288 unique trials
+N=12 baseline dual repeat=0: COMPLETE, 524288 unique trials, 21.923249s
+N=12 baseline B: executing 524288 unique trials
+N=12 baseline B repeat=1: COMPLETE, 524288 unique trials, 43.707109s
+N=12 baseline dual: executing 524288 unique trials
+N=12 baseline dual repeat=1: COMPLETE, 524288 unique trials, 21.952881s
+N=12 baseline A: executing 524288 unique trials
+N=12 baseline A repeat=1: COMPLETE, 524288 unique trials, 43.995368s
+N=12 baseline dual: executing 524288 unique trials
+N=12 baseline dual repeat=2: COMPLETE, 524288 unique trials, 21.980315s
+N=12 baseline A: executing 524288 unique trials
+N=12 baseline A repeat=2: COMPLETE, 524288 unique trials, 43.997201s
+N=12 baseline B: executing 524288 unique trials
+N=12 baseline B repeat=2: COMPLETE, 524288 unique trials, 43.557048s
+N=16 baseline A: executing 524288 unique trials
+N=16 baseline A repeat=0: COMPLETE, 524288 unique trials, 77.696235s
+N=16 baseline B: executing 524288 unique trials
+N=16 baseline B repeat=0: COMPLETE, 524288 unique trials, 77.050728s
+N=16 baseline dual: executing 524288 unique trials
+N=16 baseline dual repeat=0: COMPLETE, 524288 unique trials, 38.745411s
+N=16 baseline B: executing 524288 unique trials
+N=16 baseline B repeat=1: COMPLETE, 524288 unique trials, 77.341424s
+N=16 baseline dual: executing 524288 unique trials
+N=16 baseline dual repeat=1: COMPLETE, 524288 unique trials, 38.731448s
+N=16 baseline A: executing 524288 unique trials
+N=16 baseline A repeat=1: COMPLETE, 524288 unique trials, 77.729035s
+N=16 baseline dual: executing 524288 unique trials
+N=16 baseline dual repeat=2: COMPLETE, 524288 unique trials, 38.885210s
+N=16 baseline A: executing 524288 unique trials
+N=16 baseline A repeat=2: COMPLETE, 524288 unique trials, 77.855101s
+N=16 baseline B: executing 524288 unique trials
+N=16 baseline B repeat=2: COMPLETE, 524288 unique trials, 77.120678s
+Saved COMPLETE: artifacts/performance/dual4090-20261009T005128Z/compute-sustained/measurements.json.gz; arrays: runs/dual4090-compute-sustained

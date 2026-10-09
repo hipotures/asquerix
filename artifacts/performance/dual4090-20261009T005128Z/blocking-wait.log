@@ -1,0 +1,15 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-dual4090-wait-A/1.18.0
+Module asquerix_blocking_wait_reference 9137a4d load on device 'cuda:0' took 1123.48 ms  (compiled)
+Module asquerix_blocking_wait_reference 612901a load on device 'cuda:0' took 1091.39 ms  (compiled)
+production repeat=0: 10.966148s wall, 10.963533s thread CPU, exact
+blocking_event repeat=0: 10.958689s wall, 0.002449s thread CPU, exact
+blocking_event repeat=1: 10.959093s wall, 0.001785s thread CPU, exact
+production repeat=1: 10.969667s wall, 10.969318s thread CPU, exact
+production repeat=2: 10.974816s wall, 10.972669s thread CPU, exact
+blocking_event repeat=2: 10.974354s wall, 0.001705s thread CPU, exact

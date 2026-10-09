@@ -1,0 +1,14 @@
+Workers ready: GPU-6c849b47-7111-9265-9d42-ff8eddc05a2d, GPU-81ac6e96-0bfe-390d-beb1-241466569d6b
+N=4 baseline A: executing 11 unique trials
+N=4 baseline A repeat=0: COMPLETE, 11 unique trials, 0.849548s
+N=4 host A: executing 11 unique trials
+N=4 host A repeat=0: COMPLETE, 11 unique trials, 0.831675s
+N=4 baseline B: executing 11 unique trials
+N=4 baseline B repeat=0: COMPLETE, 11 unique trials, 0.854737s
+N=4 host B: executing 11 unique trials
+N=4 host B repeat=0: COMPLETE, 11 unique trials, 0.826499s
+N=4 baseline dual: executing 11 unique trials
+N=4 baseline dual repeat=0: COMPLETE, 11 unique trials, 0.706695s
+N=4 host dual: executing 11 unique trials
+N=4 host dual repeat=0: COMPLETE, 11 unique trials, 0.690364s
+Saved COMPLETE: artifacts/performance/dual4090-20261009T005128Z/pipeline-smoke/measurements.json.gz; arrays: runs/dual4090-pipeline-smoke

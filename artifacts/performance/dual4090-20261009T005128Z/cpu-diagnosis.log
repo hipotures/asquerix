@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/home/user/DEV/asquerix/tools/dual_gpu_benchmark.py", line 587, in run
+    ready = receive(pipes, processes, "ready", args.timeout, stop, deadline=deadline, thread_samples=thread_samples)
+                                                                                                     ^^^^^^^^^^^^^^
+NameError: name 'thread_samples' is not defined
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/DEV/asquerix/tools/dual_gpu_benchmark.py", line 776, in <module>
+    main()
+    ~~~~^^
+  File "/home/user/DEV/asquerix/tools/dual_gpu_benchmark.py", line 770, in main
+    result = run(args)
+  File "/home/user/DEV/asquerix/tools/dual_gpu_benchmark.py", line 726, in run
+    if thread_samples is not None:
+       ^^^^^^^^^^^^^^
+NameError: name 'thread_samples' is not defined
+Collecting data...
+Generating '/tmp/nsys-user/nsys-report-b515.qdstrm'
+Press Ctrl-C to stop symbol files downloading
+[2/37] Downloaded symbol information for /usr/lib/x86_64-linux-gnu/libz.so.1.3.1
+[1/1] [0%                          ] cpu-pipeline.nsys-rep[1/1] [0%                          ] cpu-pipeline.nsys-rep[1/1] [1%                          ] cpu-pipeline.nsys-rep[1/1] [2%                          ] cpu-pipeline.nsys-rep[1/1] [5%                          ] cpu-pipeline.nsys-rep[1/1] [10%                         ] cpu-pipeline.nsys-rep[1/1] [==19%                       ] cpu-pipeline.nsys-rep[1/1] [==20%                       ] cpu-pipeline.nsys-rep[1/1] [==21%                       ] cpu-pipeline.nsys-rep[1/1] [===========52%              ] cpu-pipeline.nsys-rep[1/1] [=====================88%    ] cpu-pipeline.nsys-rep[1/1] [======================91%   ] cpu-pipeline.nsys-rep[1/1] [=======================96%  ] cpu-pipeline.nsys-rep[1/1] [========================98% ] cpu-pipeline.nsys-rep[1/1] [========================100%] cpu-pipeline.nsys-rep[1/1] [========================100%] cpu-pipeline.nsys-rep
+Generated:
+	/home/user/DEV/asquerix/artifacts/performance/dual4090-20261009T005128Z/profiling/cpu-pipeline.nsys-rep

@@ -1,0 +1,26 @@
+Device NVIDIA GeForce RTX 4090 (AD102)
+--------------------------------------------------------------------------- --------------- --------------- ----------------------------------------------------------------------
+Metric Name                                                                 Metric Type     Metric Unit     Metric Description                                                    
+--------------------------------------------------------------------------- --------------- --------------- ----------------------------------------------------------------------
+smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.max_rate Ratio           inst            average # of warps resident per issue cycle, waiting for a scoreboard 
+                                                                                                            dependency on L1TEX (local, global, surface, tex) operation (This     
+                                                                                                            ratio metric represents the ratio's maximum value across all unit     
+                                                                                                            instances)                                                            
+smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.pct      Ratio           %               average # of warps resident per issue cycle, waiting for a scoreboard 
+                                                                                                            dependency on L1TEX (local, global, surface, tex) operation (This     
+                                                                                                            ratio metric represents the value expressed as a percentage across    
+                                                                                                            all unit instances)                                                   
+smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio    Ratio           inst            average # of warps resident per issue cycle, waiting for a scoreboard 
+                                                                                                            dependency on L1TEX (local, global, surface, tex) operation (This     
+                                                                                                            ratio metric represents the value expressed as a ratio across all     
+                                                                                                            unit instances)                                                       
+smsp__average_warps_issue_stalled_wait_per_issue_active.max_rate            Ratio           inst            average # of warps resident per issue cycle, waiting on a fixed       
+                                                                                                            latency execution dependency (This ratio metric represents the        
+                                                                                                            ratio's maximum value across all unit instances)                      
+smsp__average_warps_issue_stalled_wait_per_issue_active.pct                 Ratio           %               average # of warps resident per issue cycle, waiting on a fixed       
+                                                                                                            latency execution dependency (This ratio metric represents the value  
+                                                                                                            expressed as a percentage across all unit instances)                  
+smsp__average_warps_issue_stalled_wait_per_issue_active.ratio               Ratio           inst            average # of warps resident per issue cycle, waiting on a fixed       
+                                                                                                            latency execution dependency (This ratio metric represents the value  
+                                                                                                            expressed as a ratio across all unit instances)                       
+

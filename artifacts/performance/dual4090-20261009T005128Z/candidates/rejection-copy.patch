@@ -1,0 +1,11 @@
+--- a/src/asquerix/gpu.py
++++ b/src/asquerix/gpu.py
+@@ -408,8 +408,6 @@
+                     accepted_pose[i, world] = work[i, world]
+             else:
+                 result.rejected += 1
+-                for i in range(cfg.n):
+-                    work[i, world] = accepted_pose[i, world]
+                 result.final_step = wp.max(cfg.step_floor, result.final_step * cfg.step_reduction)
+             if debug == 1:
+                 trace[attempt, world] = result.side

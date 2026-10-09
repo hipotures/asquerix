@@ -1,0 +1,9 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-warp-cache/1.18.0
+Module asquerix_initial_reference 9137a4d load on device 'cuda:0' took 1123.18 ms  (compiled)
+Module asquerix_initial_reference 612901a load on device 'cuda:0' took 1119.91 ms  (compiled)

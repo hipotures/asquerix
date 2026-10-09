@@ -1,0 +1,23 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-dual4090-medium-A/1.18.0
+Module asquerix_perf_reference 9137a4d load on device 'cuda:0' took 322.88 ms  (compiled)
+Module asquerix_perf_candidate b7debf7 load on device 'cuda:0' took 913.33 ms  (compiled)
+Module asquerix_perf_reference 612901a load on device 'cuda:0' took 317.33 ms  (compiled)
+Module asquerix_perf_candidate f5a3de5 load on device 'cuda:0' took 908.75 ms  (compiled)
+n=12 baseline repeat=0: 1289.949 trials/s, 3.175319s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=12 optimized repeat=0: 1289.196 trials/s, 3.177173s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=12 optimized repeat=1: 1289.197 trials/s, 3.177172s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=12 baseline repeat=1: 1290.093 trials/s, 3.174965s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=12 baseline repeat=2: 1290.098 trials/s, 3.174952s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=12 optimized repeat=2: 1289.204 trials/s, 3.177154s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=16 baseline repeat=0: 741.464 trials/s, 5.524207s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=16 optimized repeat=0: 740.911 trials/s, 5.528326s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=16 optimized repeat=1: 740.889 trials/s, 5.528491s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=16 baseline repeat=1: 738.732 trials/s, 5.544633s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=16 baseline repeat=2: 737.607 trials/s, 5.553096s, exact, {'register_count': 128, 'local_memory_size': 32}
+n=16 optimized repeat=2: 737.112 trials/s, 5.556823s, exact, {'register_count': 128, 'local_memory_size': 32}

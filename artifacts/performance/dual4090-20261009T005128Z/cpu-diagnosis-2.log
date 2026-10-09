@@ -1,0 +1,12 @@
+Workers ready: GPU-6c849b47-7111-9265-9d42-ff8eddc05a2d, GPU-81ac6e96-0bfe-390d-beb1-241466569d6b
+N=12 baseline A: executing 524288 unique trials
+N=12 baseline A repeat=0: COMPLETE, 524288 unique trials, 65.999357s
+N=12 baseline dual: executing 524288 unique trials
+N=12 baseline dual repeat=0: COMPLETE, 524288 unique trials, 33.875063s
+Saved COMPLETE: artifacts/performance/dual4090-20261009T005128Z/cpu-diagnosis-2/measurements.json.gz; arrays: runs/dual4090-cpu-diagnosis-2
+Collecting data...
+Generating '/tmp/nsys-user/nsys-report-1e74.qdstrm'
+Press Ctrl-C to stop symbol files downloading
+[1/1] [0%                          ] cpu-pipeline-2.nsys-rep[1/1] [0%                          ] cpu-pipeline-2.nsys-rep[1/1] [1%                          ] cpu-pipeline-2.nsys-rep[1/1] [2%                          ] cpu-pipeline-2.nsys-rep[1/1] [5%                          ] cpu-pipeline-2.nsys-rep[1/1] [7%                          ] cpu-pipeline-2.nsys-rep[1/1] [8%                          ] cpu-pipeline-2.nsys-rep[1/1] [10%                         ] cpu-pipeline-2.nsys-rep[1/1] [12%                         ] cpu-pipeline-2.nsys-rep[1/1] [13%                         ] cpu-pipeline-2.nsys-rep[1/1] [14%                         ] cpu-pipeline-2.nsys-rep[1/1] [=16%                        ] cpu-pipeline-2.nsys-rep[1/1] [=17%                        ] cpu-pipeline-2.nsys-rep[1/1] [==18%                       ] cpu-pipeline-2.nsys-rep[1/1] [==19%                       ] cpu-pipeline-2.nsys-rep[1/1] [==20%                       ] cpu-pipeline-2.nsys-rep[1/1] [================69%         ] cpu-pipeline-2.nsys-rep[1/1] [=====================86%    ] cpu-pipeline-2.nsys-rep[1/1] [=======================93%  ] cpu-pipeline-2.nsys-rep[1/1] [=======================96%  ] cpu-pipeline-2.nsys-rep[1/1] [========================98% ] cpu-pipeline-2.nsys-rep[1/1] [========================100%] cpu-pipeline-2.nsys-rep[1/1] [========================100%] cpu-pipeline-2.nsys-rep
+Generated:
+	/home/user/DEV/asquerix/artifacts/performance/dual4090-20261009T005128Z/profiling/cpu-pipeline-2.nsys-rep

@@ -1,0 +1,14 @@
+==PROF== Connected to process 12244 (/home/user/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/bin/python3.14)
+==PROF== Profiling "simulate_0a446899_cuda_kernel_forward": 0%.
+==WARNING== Launching the workload is taking more time than expected. If this continues to hang, terminate the profile and re-try by profiling the range of all related launches using '--replay-mode range'. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#replay for more details.
+...50%....100% - 20 passes
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-dual4090-profile-B/1.18.0
+Module asquerix_profile_reference 9137a4d load on device 'cuda:0' took 1168.85 ms  (compiled)
+==PROF== Disconnected from process 12244
+==PROF== Report: /home/user/DEV/asquerix/artifacts/performance/dual4090-20261009T005128Z/profiling/early-n12.ncu-repz

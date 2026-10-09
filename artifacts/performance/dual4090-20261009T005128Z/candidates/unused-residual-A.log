@@ -1,0 +1,23 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-dual4090-candidate-A/1.18.0
+Module asquerix_perf_reference 5dc81a2 load on device 'cuda:0' took 1139.26 ms  (compiled)
+Module asquerix_perf_reference 2acc2cf load on device 'cuda:0' took 1085.10 ms  (compiled)
+exact n1-seed20261008-id0
+exact n1-seed987654321-id4096
+Traceback (most recent call last):
+  File "/home/user/DEV/asquerix/tools/kernel_benchmark.py", line 374, in <module>
+    main()
+    ~~~~^^
+  File "/home/user/DEV/asquerix/tools/kernel_benchmark.py", line 349, in main
+    report = compare(module, args.reference, args.device)
+  File "/home/user/DEV/asquerix/tools/kernel_benchmark.py", line 176, in compare
+    exact(actual, frozen[name], f"{entry['name']} {name}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/DEV/asquerix/tools/kernel_benchmark.py", line 50, in exact
+    raise AssertionError(f"{label}: bitwise mismatch")
+AssertionError: n4-seed20261008-id0 results: bitwise mismatch

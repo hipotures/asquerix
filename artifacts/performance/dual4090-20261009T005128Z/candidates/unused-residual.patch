@@ -1,0 +1,10 @@
+--- a/src/asquerix/gpu.py
++++ b/src/asquerix/gpu.py
+@@ -349,7 +349,6 @@
+     if stage == 0 and cfg.max_attempts == 0 and result.termination == 0:
+         initialized = 1
+     if initialized == 1:
+-        gap, wall, finite = residuals(accepted_pose, world, cfg.n, result.side)
+         result.feasible = 1
+         for local_attempt in range(chunk_attempts):
+             if result.attempts >= cfg.max_attempts:

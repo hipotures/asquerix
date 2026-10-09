@@ -1,0 +1,25 @@
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/tmp/asquerix-dual4090-corpus-B'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-dual4090-corpus-B/1.18.0
+Module asquerix.gpu 9137a4d load on device 'cuda:0' took 332.86 ms  (compiled)
+Module asquerix.gpu 612901a load on device 'cuda:0' took 325.48 ms  (compiled)
+exact n1-seed20261008-id0
+exact n1-seed987654321-id4096
+exact n4-seed20261008-id0
+exact n4-seed987654321-id4096
+exact n11-seed20261008-id0
+exact n11-seed987654321-id4096
+exact n12-seed20261008-id0
+exact n12-seed987654321-id4096
+exact n16-seed20261008-id0
+exact n16-seed987654321-id4096
+exact n32-seed20261008-id0
+exact n32-seed987654321-id4096
+exact n11-seed20261008-id4124
+exact n11-seed20261008-id4372
+exact n4-seed18446744073709551493-id18446744073709551608

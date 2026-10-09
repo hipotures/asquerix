@@ -1,0 +1,45 @@
+Launch Settings
+--------------------- ------------------------------------------------------------------------------------------------------------------------
+Launch Attribute      Value                                                                                                                   
+--------------------- ------------------------------------------------------------------------------------------------------------------------
+Profiler Command Line /opt/nvidia/nsight-compute/2026.3.1/target/linux-desktop-glibc_2_11_3-x64/ncu --target-processes all --kernel-name regex
+                      :simulate --launch-skip 3 --launch-count 1 --section LaunchStats --section Occupancy --section SchedulerStats --section 
+                      WarpStateStats --section MemoryWorkloadAnalysis --section SourceCounters --section SpeedOfLight --export artifacts/perfo
+                      rmance/dual4090-20261009T005128Z/profiling/dense-n12 python tools/kernel_profile.py --source artifacts/performance/dual4
+                      090-20261009T005128Z/baseline/gpu.py --device cuda:0 --n 12 --count 8192 --output artifacts/performance/dual4090-2026100
+                      9T005128Z/profiling/dense-n12.json                                                                                      
+
+Session Info
+--------------------- ----------------------------------------------------------------------------------------
+Session Attribute     Value                                                                                   
+--------------------- ----------------------------------------------------------------------------------------
+Created               2026-Oct-09 00:59:15                                                                    
+Host Name             gpu                                                                                     
+Host OS               Linux (Ubuntu 26.04.1 LTS) - #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026
+Host Architecture     x64                                                                                     
+Host Processor        AMD Ryzen 9 7950X3D 16-Core Processor                                                   
+Target Name           gpu                                                                                     
+Target IP Addresses   192.168.100.207, 172.17.0.1, fe80::be24:11ff:fe34:8bee%eth0                             
+Target OS             Linux (Ubuntu 26.04.1 LTS) - #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026
+Target Architecture   x64                                                                                     
+Target Processor      AMD Ryzen 9 7950X3D 16-Core Processor                                                   
+CUDA Version          13.4                                                                                    
+PerfWorks             0.1.0                                                                                   
+Nsight Compute Target 2026.3.1.0 (build 38829034) (public-release)                                            
+
+Processes
+---------- --------------------------------------------------------------------------------
+Process Id Process Name                                                                    
+---------- --------------------------------------------------------------------------------
+13355      /home/user/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/bin/python3.14
+
+Device Attributes
+--------------------------- -----------------------
+Device Attribute            Device 0               
+--------------------------- -----------------------
+confidential_computing_mode No-CC                  
+multiprocessor_count        128                    
+display_name                NVIDIA GeForce RTX 4090
+compute_capability_major    8                      
+compute_capability_minor    9                      
+total_memory                25336807424            

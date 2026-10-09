@@ -1,0 +1,15 @@
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+........................................................................ [ 78%]
+..........................................................               [100%]
+=============================== warnings summary ===============================
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+  /home/user/DEV/asquerix/.venv/lib/python3.14/site-packages/warp/_src/apic/types.py:49: DeprecationWarning: Due to '_pack_', the 'APICLaunchParamRecord' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slated to become an error in Python 3.19.
+    class APICLaunchParamRecord(ctypes.Structure):
+
+tests/test_audit_gpu.py::test_production_finalizer_reports_wall_penetration
+  /home/user/DEV/asquerix/.venv/lib/python3.14/site-packages/warp/_src/apic/types.py:69: DeprecationWarning: Due to '_pack_', the 'APICLaunchPtrLocation' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slated to become an error in Python 3.19.
+    class APICLaunchPtrLocation(ctypes.Structure):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+274 passed, 2 warnings in 90.45s (0:01:30)

@@ -1,0 +1,68 @@
+         19864485 function calls (19863895 primitive calls) in 33.812 seconds
+
+   Ordered by: internal time
+   List reduced from 713 to 60 due to restriction <60>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        8   24.033    3.004   24.033    3.004 context.py:12340(synchronize_device)
+      306    1.986    0.006    1.986    0.006 {method 'compress' of 'zlib.Compress' objects}
+        2    1.179    0.590    1.225    0.612 runner.py:85(scalar_records)
+   262215    0.801    0.000    0.801    0.000 encoder.py:207(iterencode)
+        1    0.712    0.712    2.097    2.097 output.py:431(summarize)
+   554160    0.541    0.000    0.541    0.000 {built-in method time.process_time_ns}
+   554160    0.431    0.000    0.431    0.000 {built-in method time.thread_time_ns}
+        8    0.395    0.049    0.395    0.049 {method 'poll' of 'select.poll' objects}
+277080/276861    0.382    0.000   32.866    0.000 pipeline_observer.py:28(measured)
+  1835108    0.324    0.000    0.416    0.000 output.py:57(_as_finite_float)
+  3408310    0.276    0.000    0.276    0.000 {method 'get' of 'dict' objects}
+  1048576    0.236    0.000    0.561    0.000 output.py:346(_record_counter)
+   262215    0.161    0.000    1.197    0.000 __init__.py:185(dumps)
+   262215    0.154    0.000    1.015    0.000 encoder.py:185(encode)
+     4224    0.151    0.000    0.503    0.000 geometry.py:151(_pair_separation)
+        1    0.136    0.136   33.812   33.812 runner.py:154(run)
+  1048580    0.134    0.000    0.134    0.000 runner.py:418(<genexpr>)
+       79    0.128    0.002    0.249    0.003 {built-in method builtins.sorted}
+  1835265    0.092    0.000    0.092    0.000 {built-in method math.isfinite}
+   819194    0.092    0.000    0.159    0.000 {built-in method builtins.isinstance}
+   241400    0.088    0.000    0.088    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+   262144    0.079    0.000    0.122    0.000 output.py:331(_record_validation_status)
+  1055359    0.071    0.000    0.071    0.000 {method 'append' of 'list' objects}
+   786432    0.069    0.000    0.069    0.000 {method 'upper' of 'str' objects}
+   262146    0.066    0.000    2.175    0.000 {method 'write' of '_io.TextIOWrapper' objects}
+   262144    0.064    0.000    0.192    0.000 output.py:341(_record_side)
+       11    0.055    0.005    0.189    0.017 {built-in method builtins.sum}
+     8448    0.050    0.000    0.175    0.000 geometry.py:134(_edge_normals)
+       71    0.047    0.001    0.047    0.001 {built-in method posix.fsync}
+        2    0.046    0.023    0.079    0.040 runner.py:229(update_validation_progress)
+   554170    0.046    0.000    0.046    0.000 {built-in method time.perf_counter_ns}
+        2    0.044    0.022    0.293    0.146 runner.py:110(select_indices)
+   262144    0.044    0.000    0.084    0.000 runner.py:122(<lambda>)
+   262208    0.042    0.000    0.102    0.000 output.py:91(_positive_side)
+   262208    0.041    0.000    0.041    0.000 runner.py:106(rank)
+   262146    0.037    0.000    0.037    0.000 runner.py:121(<genexpr>)
+   267320    0.035    0.000    0.067    0.000 <frozen abc>:117(__instancecheck__)
+     8512    0.034    0.000    0.049    0.000 numeric.py:1226(roll)
+   262145    0.032    0.000    0.032    0.000 runner.py:416(<genexpr>)
+   267320    0.031    0.000    0.032    0.000 {built-in method _abc._abc_instancecheck}
+   262367    0.030    0.000    0.030    0.000 {method 'update' of 'dict' objects}
+     8985    0.027    0.000    0.027    0.000 {built-in method numpy.asarray}
+   270909    0.022    0.000    0.022    0.000 {method 'items' of 'dict' objects}
+   262215    0.021    0.000    0.021    0.000 encoder.py:105(__init__)
+      377    0.021    0.000    0.021    0.000 {built-in method zlib.crc32}
+   262799    0.020    0.000    0.020    0.000 {method 'join' of 'str' objects}
+   277006    0.020    0.000    0.020    0.000 gzip.py:379(closed)
+    88960    0.018    0.000    0.061    0.000 {method 'all' of 'numpy.ndarray' objects}
+      129    0.016    0.000    0.048    0.000 {method 'intersection' of 'set' objects}
+     8576    0.016    0.000    0.019    0.000 shape_base.py:378(stack)
+     8512    0.015    0.000    0.026    0.000 _linalg.py:2598(norm)
+    42433    0.015    0.000    0.025    0.000 _ufunc_config.py:472(__enter__)
+    89088    0.014    0.000    0.043    0.000 _methods.py:64(_all)
+    67658    0.013    0.000    0.047    0.000 {method 'min' of 'numpy.ndarray' objects}
+    67594    0.013    0.000    0.045    0.000 {method 'max' of 'numpy.ndarray' objects}
+        4    0.010    0.002    0.010    0.002 {method 'partition' of 'numpy.ndarray' objects}
+    67658    0.009    0.000    0.034    0.000 _methods.py:43(_amin)
+    67594    0.009    0.000    0.032    0.000 _methods.py:39(_amax)
+    42433    0.008    0.000    0.014    0.000 _ufunc_config.py:488(__exit__)
+     8512    0.007    0.000    0.011    0.000 numeric.py:1427(normalize_axis_tuple)
+
+

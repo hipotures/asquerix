@@ -1,0 +1,24 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 4090" (24 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /tmp/asquerix-dual4090-corpus-A/1.18.0
+Module asquerix_perf_reference 9137a4d load on device 'cuda:0' took 320.78 ms  (compiled)
+Module asquerix_perf_reference 612901a load on device 'cuda:0' took 320.63 ms  (compiled)
+captured n1-seed20261008-id0: 8 trials
+captured n1-seed987654321-id4096: 8 trials
+captured n4-seed20261008-id0: 8 trials
+captured n4-seed987654321-id4096: 8 trials
+captured n11-seed20261008-id0: 8 trials
+captured n11-seed987654321-id4096: 8 trials
+captured n12-seed20261008-id0: 8 trials
+captured n12-seed987654321-id4096: 8 trials
+captured n16-seed20261008-id0: 8 trials
+captured n16-seed987654321-id4096: 8 trials
+captured n32-seed20261008-id0: 8 trials
+captured n32-seed987654321-id4096: 8 trials
+captured n11-seed20261008-id4124: 1 trials
+captured n11-seed20261008-id4372: 1 trials
+captured n4-seed18446744073709551493-id18446744073709551608: 8 trials

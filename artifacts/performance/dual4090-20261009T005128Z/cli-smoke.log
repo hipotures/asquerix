@@ -1,0 +1,11 @@
+Experiment: dual4090-cli-smoke | N=12 | GPU=cuda:0
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/tmp/asquerix-warp-cache'. These will be ignored. You can safely delete them.
+Completed: 4/8 | validated=4 | best validated L=4.00010061
+Completed: 8/8 | validated=8 | best validated L=4.00010061
+Experiment: dual4090-cli-smoke
+Completed: 8/8
+Results: runs/dual4090-cli-smoke/summary.json.gz
+Trials: runs/dual4090-cli-smoke/trials.jsonl.gz
+Report: runs/dual4090-cli-smoke/report.md
+Status: COMPLETED + LOCAL_ONLY
+Publication: runs/dual4090-cli-smoke/publication.json.gz

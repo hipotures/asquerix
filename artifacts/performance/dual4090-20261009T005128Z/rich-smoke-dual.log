@@ -1,0 +1,13 @@
+Workers ready: GPU-6c849b47-7111-9265-9d42-ff8eddc05a2d, GPU-81ac6e96-0bfe-390d-beb1-241466569d6b
+N=4 baseline dual: executing 11 unique trials
+N=4 baseline dual repeat=0: COMPLETE, 11 unique trials, 0.575069s
+  A GPU-6c849b47-7111-9265-9d42-ff8eddc05a2d: archiving 5/6   0:00:02
+  B GPU-81ac6e96-0bfe-390d-beb1-241466569d6b: archiving 6/5   0:00:01
+  Combined: archiving                                   11/11 0:00:02
+              Measured common execution throughput               
+┏━━━┳━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ N ┃ Variant  ┃ Mode ┃ Trials/s median ┃ Range       ┃ Repeats ┃
+┡━━━╇━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ 4 │ baseline │ dual │ 19.13           │ 19.13–19.13 │ 1       │
+└───┴──────────┴──────┴─────────────────┴─────────────┴─────────┘
+Saved COMPLETE: artifacts/performance/dual4090-20261009T005128Z/rich-smoke-dual/measurements.json.gz; arrays: runs/dual4090-rich-smoke-dual
