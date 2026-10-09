@@ -81,7 +81,7 @@ function render(data) {
     sparkline(spark, history.map(item => item[3]));
   });
   if (!data.live) {
-    const close = el('button', 'gpu-close', '×'); close.type = 'button';
+    const close = el('button', 'gpu-close');  // the cross is drawn in CSS so it stays centred close.type = 'button';
     close.title = `Computation finished at ${new Date(data.finished * 1000).toLocaleTimeString()}; values are frozen. Hide until the next computation.`;
     close.setAttribute('aria-label', 'Hide GPU telemetry');
     close.addEventListener('click', () => { dismissed = data.started;  // session numbers restart with the server; start times do not

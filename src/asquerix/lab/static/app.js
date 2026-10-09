@@ -171,6 +171,20 @@ for(const [id,change] of [['catalog-previous',-30],['catalog-next',30]])document
 for(const [id,change] of [['program-previous',-50],['program-next',50]])document.getElementById(id).addEventListener('click',()=>{programOffset=Math.max(0,programOffset+change);programs();});
 document.getElementById('live-curve-axis').addEventListener('change',()=>programs());
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',async()=>{for(const tab of ['programs','history','replays'])document.getElementById('tab-'+tab).hidden=tab!==button.dataset.tab;for(const other of document.querySelectorAll('[data-tab]'))other.setAttribute('aria-selected',String(other===button));if(button.dataset.tab==='history')await history();if(button.dataset.tab==='replays')replays();});
+// Arrow keys, the spinner and the wheel step size fields by powers of two and time budgets by minutes;
+// typed values are kept as entered (typing raises an InputEvent, stepping a plain input event).
+document.addEventListener('focusin',event=>{const input=event.target;if(input.dataset?.step)input.dataset.previous=input.value;});
+document.addEventListener('input',event=>{
+  const input=event.target,mode=input.dataset?.step;if(!mode)return;
+  const previous=Number(input.dataset.previous),current=Number(input.value);
+  if(!(event instanceof InputEvent)&&Number.isFinite(previous)&&current!==previous){
+    const up=current>previous,min=Number(input.min||1),max=Number(input.max||Infinity);let next;
+    if(mode==='pow2')next=up?2**Math.floor(Math.log2(previous)+1):2**Math.ceil(Math.log2(previous)-1);
+    else{const unit=Number(mode);next=up?(Math.floor(previous/unit)+1)*unit:(Math.ceil(previous/unit)-1)*unit;}
+    input.value=String(Math.min(max,Math.max(min,next)));
+  }
+  input.dataset.previous=input.value;
+});
 const continueForm=document.getElementById('continue-form');
 document.getElementById('continue-campaign').addEventListener('click',()=>{
   const {spec}=selectedCampaign,f=continueForm.elements;
