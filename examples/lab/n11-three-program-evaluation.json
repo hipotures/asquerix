@@ -43,7 +43,7 @@
     "max_artifact_mib": 256
   },
   "publication": {
-    "enabled": false
+    "enabled": true
   },
   "description": "Legacy control, handwritten pulse/rotate control and one generated program on 64 shared training starts.",
   "fixed_programs": [

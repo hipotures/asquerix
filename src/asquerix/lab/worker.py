@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import signal as os_signal
 import time
 import traceback
 
@@ -409,6 +410,9 @@ class CampaignWorker:
 
 
 def worker_main(tasks, replies, signal, signal_since, token: str, parent_pid: int, parent_start: str):
+    # Ctrl+C in the terminal reaches the whole process group. The owning service
+    # stops this worker through `signal` and the task queue, never mid-launch.
+    os_signal.signal(os_signal.SIGINT, os_signal.SIG_IGN)
     launch_identity = digest(executable_identity())
     def emit(message):
         while True:

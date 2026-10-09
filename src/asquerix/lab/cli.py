@@ -82,8 +82,11 @@ def main(argv=None):
             import uvicorn
             from .api import create_app
             print(f"Laboratory: http://{args.host}:{args.port} | catalog: {args.root.resolve()}", flush=True)
+            print("Press Ctrl+C to stop the server. A running campaign is stopped and finalized as PARTIAL; "
+                  "use Pause in the browser first to resume it later.", flush=True)
+            # Open browser progress streams would otherwise hold shutdown until they disconnect.
             uvicorn.run(create_app(args.root, host=args.host, port=args.port), host=args.host, port=args.port,
-                        access_log=False, log_level="info")
+                        access_log=False, log_level="info", timeout_graceful_shutdown=3)
             return 0
         if args.command == "submit":
             spec = Campaign.model_validate(read_json(args.config))

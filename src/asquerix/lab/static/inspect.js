@@ -65,10 +65,15 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
       dot.addEventListener("click", () => onSelect(point)); dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); }); svg.append(dot);
     }
   }
-  for (const [text, tx, ty] of [[`Mean side L ${number(yMin)}–${number(yMax)}`,50,16],[`${xLabel} (0–${number(xMax)})`,50,207]]) {
+  for (const [text, tx, ty] of [[`Best mean side L so far (lower is better): ${number(yMin)}–${number(yMax)}`,50,16],[`${xLabel} (0–${number(xMax)})`,50,207]]) {
     const label = document.createElementNS(ns, "text"); label.setAttribute("x",tx); label.setAttribute("y",ty); label.setAttribute("fill","#496174"); label.setAttribute("font-size","11"); label.textContent = text; svg.append(label);
   }
-  target.append(svg, element("p", arms.join(" · "), "muted"));
+  const legend = element("div", undefined, "legend");
+  for (const [index, arm] of arms.entries()) {
+    const item = element("span", arm.replaceAll("_", " ")), swatch = element("i");
+    swatch.style.background = colors[index % colors.length]; item.prepend(swatch); legend.append(item);
+  }
+  target.append(legend, svg);
 }
 
 function historyView(target, events, candidates, onSelect) {

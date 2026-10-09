@@ -43,7 +43,7 @@
     "max_artifact_mib": 256
   },
   "publication": {
-    "enabled": false
+    "enabled": true
   },
   "description": "Configurability check: both fixed controls on 16 training and 16 holdout starts at n=12."
 }

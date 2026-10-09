@@ -46,6 +46,6 @@
     "max_artifact_mib": 256.0
   },
   "publication": {
-    "enabled": false
+    "enabled": true
   }
 }

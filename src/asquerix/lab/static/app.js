@@ -1,6 +1,12 @@
 import './inspect.js';
 const {element,number,programView,curve,replayComparison}=LabInspect;
 let capabilities, inventory, defaults, selectedId=null, selectedCampaign=null, selectedProgram=null, fixedDraft=null;
+const ACTIVE=['QUEUED','PREPARING','RUNNING','PAUSE_REQUESTED','FINALIZING'];
+const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common initial worlds',CONTROLS:'Evaluating fixed controls',SEARCH:'Searching programs',TRAINING:'Evaluating programs on the training bank',HOLDOUT:'Evaluating frozen winners on the holdout bank',REPLAYS:'Recording selected replays',FINALIZING:'Writing report and publishing',PAUSE_REQUESTED:'Pausing after the current group'};
+let lastUpdate=0;
+function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length;return ((candidates+fixed)*spec.datasets.training.valid_count+(spec.search.methods.length+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
+function freshness(){const target=document.getElementById('campaign-freshness');if(!target||!lastUpdate)return;const seconds=Math.round((Date.now()-lastUpdate)/1000);target.textContent=ACTIVE.includes(selectedCampaign?.state)?`updated ${seconds<2?'just now':seconds+' s ago'}`:'';}
+setInterval(freshness,1000);
 let catalogOffset=0, programOffset=0, currentCandidates=[], stream=null, refreshTimer=null, csrf=sessionStorage.getItem('asquerix-csrf')||'';
 const form=document.getElementById('campaign-form');
 const error=document.getElementById('error');
@@ -102,8 +108,24 @@ async function refresh(){
   document.getElementById('campaign-name').textContent=spec.name;document.getElementById('campaign-scope').textContent=`n=${spec.n} · ${spec.device} / ${selectedCampaign.device_uuid||'resolving physical identity'} · ${summary.profile_hash||spec.evaluation_profile} · training ${spec.datasets.training.valid_count}, holdout ${spec.datasets.holdout.valid_count}`;const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
   for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Training incumbent mean L',number(summary.training_incumbent?.mean_best_L)],['Execution seconds',number(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
-  document.getElementById('campaign-phase').textContent=`Phase ${summary.phase||state} · ${summary.arm||'preparation / fixed controls'} · generation ${summary.generation??'—'} · ${summary.active_episodes||0} active episode slots. Completed counts advance after finalized chunks. Browser disconnection does not stop the worker.`;
-  document.getElementById('publication-state').textContent=`Publication: ${publication.status||'PENDING'}${publication.commit_sha?' · '+publication.commit_sha:''}${summary.error?' · '+summary.error:''}`;
+  const active=ACTIVE.includes(state),plan=plannedEpisodes(spec),done=summary.completed_episode_executions||0;
+  const activity=document.getElementById('campaign-activity');activity.dataset.active=String(active);
+  const searching=spec.search.methods.includes(summary.arm);
+  activity.textContent=active?`${PHASES[summary.phase]||PHASES[state]||'Working'}${summary.arm?' · '+summary.arm.replaceAll('_',' '):''}${searching?' · generation '+(summary.generation??0):''}`
+    :state==='COMPLETED'?`Finished: ${done} scientific episodes in ${number(summary.elapsed_execution_seconds)} s of GPU execution`
+    :state==='PARTIAL'?`Stopped before completion (${{USER_STOP:'stopped by user',EXECUTION_DEADLINE:'execution time limit reached'}[summary.stop_reason]||'stopped'}); completed results are kept`
+    :state==='PAUSED'?'Paused; Resume continues from the last finished group'
+    :`${state==='FAILED'?'Failed':'Interrupted'}${summary.error?': '+summary.error:''}`;
+  const fraction=state==='COMPLETED'?1:Math.min(1,done/Math.max(1,plan));
+  document.getElementById('campaign-progress-bar').style.width=`${(fraction*100).toFixed(1)}%`;
+  document.querySelector('.activity .progress').setAttribute('aria-valuenow',String(Math.round(fraction*100)));
+  document.getElementById('campaign-progress-label').textContent=`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
+  lastUpdate=Date.now();freshness();
+  document.getElementById('campaign-phase').textContent='Counts advance after each finalized batch of episodes. Closing the browser does not stop the GPU worker.';
+  const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
+  const line=document.getElementById('publication-state');line.replaceChildren(element('strong','GitHub publication: '));
+  if(published){const link=element('a',`published, commit ${publication.commit_sha.slice(0,7)}`);link.href=publication.url;link.target='_blank';link.rel='noopener';line.append(link);}
+  else line.append(element('span',{PENDING:'waits until the campaign finishes',LOCAL_ONLY:'disabled for this campaign (local results only)',FAILED:`failed (${publication.error||'see server log'}); local results are preserved`,NONE:'not performed'}[status]||status));
   // Show only the lifecycle actions that apply to the current state.
   document.getElementById('pause-campaign').hidden=!['QUEUED','PREPARING','RUNNING'].includes(state);document.getElementById('resume-campaign').hidden=!['PAUSED','INTERRUPTED'].includes(state);document.getElementById('stop-campaign').hidden=!['QUEUED','PREPARING','RUNNING','PAUSE_REQUESTED','PAUSED'].includes(state);
   document.querySelector('.campaign-bar .divider').hidden=['pause','resume','stop'].every(name=>document.getElementById(name+'-campaign').hidden);
