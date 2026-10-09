@@ -136,26 +136,9 @@ def sign_symmetric(x: float):
     return s
 
 
-@wp.func_native("""
-#if defined(__CUDA_ARCH__)
-    float result;
-    asm volatile("mov.b32 %0, %1;" : "=f"(result) : "f"(value));
-    return result;
-#else
-    return value;
-#endif
-""")
-def separate_axis_value(value: float) -> float:
-    # Preserve independent operands for the original SAT multiply/FMA order.
-    # Sharing SSA values directly changes orthogonal-axis dot-product rounding.
-    ...
-
-
 @wp.func
 def axes(theta: float):
-    cosine = wp.cos(theta)
-    sine = wp.sin(theta)
-    return wp.vec2(cosine, sine), wp.vec2(-separate_axis_value(sine), separate_axis_value(cosine))
+    return wp.vec2(wp.cos(theta), wp.sin(theta)), wp.vec2(-wp.sin(theta), wp.cos(theta))
 
 
 @wp.func

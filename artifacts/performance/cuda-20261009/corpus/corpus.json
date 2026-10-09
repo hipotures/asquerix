@@ -1,0 +1,603 @@
+{
+  "environment": {
+    "python": "3.14.7",
+    "platform": "Linux-7.2.9-1-cachyos-x86_64-with-glibc2.44",
+    "source_root": "/home/user/DEV/asquerix",
+    "dependencies": {
+      "numpy": "2.5.3",
+      "warp-lang": "1.18.0",
+      "asquerix": "0.1.0",
+      "rich": "14.3.4"
+    },
+    "wheel_variant": "warp-lang 1.18.0 default PyPI CUDA 13.4 wheel",
+    "gpu_query": {
+      "command": [
+        "nvidia-smi",
+        "--query-gpu=name,uuid,driver_version,memory.total,memory.used,display_active,compute_mode",
+        "--format=csv"
+      ],
+      "exit_code": 0,
+      "stdout": "name, uuid, driver_version, memory.total [MiB], memory.used [MiB], display_active, compute_mode\nNVIDIA GeForce RTX 4070 Ti, GPU-64d50ac7-f623-65a8-8784-b9ec14d16527, 615.71.09, 12282 MiB, 2976 MiB, Enabled, Default\n",
+      "stderr": ""
+    },
+    "git_revision": {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "stdout": "d4ec2384c4ad2c5fa303772214c0793633e95f3b\n",
+      "stderr": ""
+    },
+    "git_status": {
+      "command": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "exit_code": 0,
+      "stdout": "?? artifacts/performance/\n?? tests/test_kernel_exact_gpu.py\n?? tools/kernel_benchmark.py\n",
+      "stderr": ""
+    },
+    "source_revision": "d4ec2384c4ad2c5fa303772214c0793633e95f3b",
+    "source_dirty": true,
+    "source_sha256": {
+      "src/asquerix/__init__.py": "c19be6368e542bec9deb8f78940873187775172e6d6b2a619ee121b30af82be1",
+      "src/asquerix/cli.py": "94a48428aefdc1303bee5fd41a700482e0829e68ba1db47992ecfa439efc83ce",
+      "src/asquerix/geometry.py": "530785a72ebe845df50890ed557787936dc9aa6c43548eb88e6318c0eb6ab825",
+      "src/asquerix/gpu.py": "e21c939b07edab77b50f32d5b74e1f9b9ad4c510ed7ad323e417714dacbe9571",
+      "src/asquerix/output.py": "c90d87da750002d7523c693bf1a34eb0b38e54779cdba3c3f2c84872be541013",
+      "src/asquerix/persistence.py": "b3cc1bf03be55642de80f0838378401e86d7c1eb93f871a40b85d98b1edcfa69",
+      "src/asquerix/pilot.py": "f7391d898e64fe54dbdd0113698a46ce759a74c57802552f15b3383878b7c3cd",
+      "src/asquerix/presentation.py": "b0f872858fb1d2b8dc312f99574db6ded94521001710cbcb5dc81fbc64364aa4",
+      "src/asquerix/publication.py": "68119746f99a280c87657e4b1099301df83dd4bf6a5c4e02305bdee9b107f2d2",
+      "src/asquerix/runner.py": "c9ac69b5b6522f2f7654b85d536a6d5ac0c454eb842bfeb3c2b07ae3ac56697d"
+    }
+  },
+  "experiments": [
+    {
+      "name": "n1-seed20261008-id0",
+      "config": {
+        "n": 1,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 0,
+      "file": "n1-seed20261008-id0.npz",
+      "sha256": "30a0ca6622f4bf36bc9ce2ae47ec60fec1514bbc44cc80866536ebbe27e4bd78",
+      "timing": {
+        "simulation_seconds": 0.012751022004522383,
+        "device_seconds": 0.012695551872253418,
+        "transfer_seconds": 0.00045602000318467617,
+        "max_stage_seconds": 0.007753791809082031
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n1-seed987654321-id4096",
+      "config": {
+        "n": 1,
+        "initial_side": 10.0,
+        "seed": 987654321,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 4096,
+      "file": "n1-seed987654321-id4096.npz",
+      "sha256": "a6a9bfc1b14df81b175a2363e3c10bfd61995c3d6825bd469d9ef3643eceb6dd",
+      "timing": {
+        "simulation_seconds": 0.011343897989718243,
+        "device_seconds": 0.011295743942260742,
+        "transfer_seconds": 0.0004178489907644689,
+        "max_stage_seconds": 0.007012351989746094
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n4-seed20261008-id0",
+      "config": {
+        "n": 4,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 0,
+      "file": "n4-seed20261008-id0.npz",
+      "sha256": "3c703701821e58a85716f04ece4815fea5b8a140a665df116284c71c2adf3e2e",
+      "timing": {
+        "simulation_seconds": 0.173099853011081,
+        "device_seconds": 0.17304473876953125,
+        "transfer_seconds": 0.0003623529919423163,
+        "max_stage_seconds": 0.0885741729736328
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n4-seed987654321-id4096",
+      "config": {
+        "n": 4,
+        "initial_side": 10.0,
+        "seed": 987654321,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 4096,
+      "file": "n4-seed987654321-id4096.npz",
+      "sha256": "3b377994ed5aebfe77623a74beeb9dca027db5c5a39ca9b5020b4ce8ffb11d3d",
+      "timing": {
+        "simulation_seconds": 0.4421804829908069,
+        "device_seconds": 0.4421311645507813,
+        "transfer_seconds": 0.00037749201874248683,
+        "max_stage_seconds": 0.09818828582763672
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n11-seed20261008-id0",
+      "config": {
+        "n": 11,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 0,
+      "file": "n11-seed20261008-id0.npz",
+      "sha256": "97f9c4773a3600f6638f739b2c17cfdf22376d622e74bac3801ccb0b34d04ca8",
+      "timing": {
+        "simulation_seconds": 2.9618355839920696,
+        "device_seconds": 2.961774169921875,
+        "transfer_seconds": 0.0003343909920658916,
+        "max_stage_seconds": 0.5427427978515625
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n11-seed987654321-id4096",
+      "config": {
+        "n": 11,
+        "initial_side": 10.0,
+        "seed": 987654321,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 4096,
+      "file": "n11-seed987654321-id4096.npz",
+      "sha256": "15be47b54266475ea98cf5aa67bc465f35ef547379ee7dfcfa550f51b166fc64",
+      "timing": {
+        "simulation_seconds": 3.2016206569969654,
+        "device_seconds": 3.201513427734375,
+        "transfer_seconds": 0.00033846800215542316,
+        "max_stage_seconds": 0.5204951171875
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n12-seed20261008-id0",
+      "config": {
+        "n": 12,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 0,
+      "file": "n12-seed20261008-id0.npz",
+      "sha256": "b87fb1743f80c0a2e8fd65db7ab70d71a5ae59185e09f5eb7be2afe667a3abc8",
+      "timing": {
+        "simulation_seconds": 3.817367442010436,
+        "device_seconds": 3.81731640625,
+        "transfer_seconds": 0.0002660719910636544,
+        "max_stage_seconds": 0.627061767578125
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n12-seed987654321-id4096",
+      "config": {
+        "n": 12,
+        "initial_side": 10.0,
+        "seed": 987654321,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 4096,
+      "file": "n12-seed987654321-id4096.npz",
+      "sha256": "5d5582547c8699e83a8c2c42c09db1288283797114b5a257616a612815add991",
+      "timing": {
+        "simulation_seconds": 3.9076182389981113,
+        "device_seconds": 3.907556884765625,
+        "transfer_seconds": 0.0002960879937745631,
+        "max_stage_seconds": 0.6204447021484375
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n16-seed20261008-id0",
+      "config": {
+        "n": 16,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 0,
+      "file": "n16-seed20261008-id0.npz",
+      "sha256": "546a762b78a55af67aac5b008aaa38c82cbebad48b3f3bfffecda18d32c74b8f",
+      "timing": {
+        "simulation_seconds": 6.394594612007495,
+        "device_seconds": 6.39453369140625,
+        "transfer_seconds": 0.00027375700301490724,
+        "max_stage_seconds": 0.9876171875
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n16-seed987654321-id4096",
+      "config": {
+        "n": 16,
+        "initial_side": 10.0,
+        "seed": 987654321,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 4096,
+      "file": "n16-seed987654321-id4096.npz",
+      "sha256": "3ca338be7e56d1b14cf99004ff15072d87d9ea20c0861601ea3c32157a5024ab",
+      "timing": {
+        "simulation_seconds": 6.359686390002025,
+        "device_seconds": 6.35961669921875,
+        "transfer_seconds": 0.00025240599643439054,
+        "max_stage_seconds": 1.010281494140625
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n32-seed20261008-id0",
+      "config": {
+        "n": 32,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 0,
+      "file": "n32-seed20261008-id0.npz",
+      "sha256": "4086e27b2ef9d67b40b9450fb5f0d0724ed4d7990373ff786fe16c704a287cc1",
+      "timing": {
+        "simulation_seconds": 24.311240851006005,
+        "device_seconds": 24.310974609375,
+        "transfer_seconds": 0.0007769959920551628,
+        "max_stage_seconds": 3.439708251953125
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n32-seed987654321-id4096",
+      "config": {
+        "n": 32,
+        "initial_side": 10.0,
+        "seed": 987654321,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 4096,
+      "file": "n32-seed987654321-id4096.npz",
+      "sha256": "9edfb3547411ed88943db37b1d80039ceff37e242e68c2dc7392cfa0cbb032c9",
+      "timing": {
+        "simulation_seconds": 23.926081098004943,
+        "device_seconds": 23.925921875,
+        "transfer_seconds": 0.0003910870000254363,
+        "max_stage_seconds": 3.346735107421875
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n11-seed20261008-id4124",
+      "config": {
+        "n": 11,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 1,
+      "offset": 4124,
+      "file": "n11-seed20261008-id4124.npz",
+      "sha256": "ce4c795fc241aa6ae407100c58dd5089b63241707a8337dfeacc619e17a8ff0b",
+      "timing": {
+        "simulation_seconds": 0.48452643599011935,
+        "device_seconds": 0.4844898681640625,
+        "transfer_seconds": 0.0003426169860176742,
+        "max_stage_seconds": 0.31079525756835935
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n11-seed20261008-id4372",
+      "config": {
+        "n": 11,
+        "initial_side": 10.0,
+        "seed": 20261008,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 1,
+      "offset": 4372,
+      "file": "n11-seed20261008-id4372.npz",
+      "sha256": "52b3de80f9c2ac98c43dca9a3b9f43a0db7a43235558e7d86103eed074df60ca",
+      "timing": {
+        "simulation_seconds": 2.4067564709985163,
+        "device_seconds": 2.406636474609375,
+        "transfer_seconds": 0.0002678849850781262,
+        "max_stage_seconds": 0.41563479614257814
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    },
+    {
+      "name": "n4-seed18446744073709551493-id18446744073709551608",
+      "config": {
+        "n": 4,
+        "initial_side": 10.0,
+        "seed": 18446744073709551493,
+        "step": 0.2,
+        "step_floor": 0.0001,
+        "step_reduction": 0.5,
+        "guard": 2e-05,
+        "acceptance_tolerance": 2e-06,
+        "motion_tolerance": 1e-07,
+        "rotation_mobility": 0.3,
+        "relaxation": 0.8,
+        "max_translation": 0.1,
+        "max_rotation": 0.08,
+        "max_attempts": 128,
+        "max_sweeps": 480,
+        "stagnation_sweeps": 4,
+        "proposals_per_square": 2000
+      },
+      "count": 8,
+      "offset": 18446744073709551608,
+      "file": "n4-seed18446744073709551493-id18446744073709551608.npz",
+      "sha256": "6aa6f32e0d02653b3a55fa0863a58f45f8ad38a20bacd92329837f0b75d8cdc8",
+      "timing": {
+        "simulation_seconds": 0.17986831199959852,
+        "device_seconds": 0.179832763671875,
+        "transfer_seconds": 0.0002863100089598447,
+        "max_stage_seconds": 0.09360797119140625
+      },
+      "kernel_properties": {
+        "register_count": 139,
+        "local_memory_size": 32
+      }
+    }
+  ],
+  "contact_count": 8204,
+  "contacts_sha256": "9e1789e2863099908665855b3f2ca0689c99e6c22bb81e13363dd1b69308c909",
+  "unwritten_pose_slots": "Harness initializes pose/work storage to zero before trials; INIT_FAILED has no complete geometry."
+}
