@@ -190,9 +190,9 @@ def run(url, output, screenshots, old_trajectory, old_npz):
                 mutated = next((item for item in programs if item.get("mutation")), None)
                 if mutated is None:
                     raise AssertionError("The (1 + lambda) arm produced no mutated candidate")
-                label = f"{mutated['arm']} / {mutated['position']}"
+                label = mutated["id"]
                 clicked = cdp.evaluate(f"""(()=>{{const row=[...document.querySelectorAll('#program-table tr')]
-                    .find(row=>row.cells[0]?.textContent==={json.dumps(label)}); if(!row) return false;
+                    .find(row=>row.dataset.candidateId==={json.dumps(label)}); if(!row) return false;
                     row.querySelector('button').click(); return true;}})()""")
                 if not clicked:
                     raise AssertionError(f"Program table has no row {label}")

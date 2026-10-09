@@ -14,6 +14,7 @@ from threading import Event, Thread
 import time
 from uuid import uuid4
 
+from .gpumon import GpuMonitor
 from ..persistence import read_json, read_jsonl, write_json
 from .catalog import Catalog, Conflict
 from .config import Campaign, digest
@@ -71,6 +72,7 @@ class Service:
         self.signal_since = self.ctx.Value("d", 0.0)
         self.launch_identity = None
         self.lock_stream = None
+        self.gpu_monitor = GpuMonitor(lambda: self.active)
 
     def directory(self, identifier: str) -> Path:
         if len(identifier) != 32 or any(char not in "0123456789abcdef" for char in identifier):
@@ -89,9 +91,11 @@ class Service:
                 self.reconcile(campaign["id"])
         self.thread = Thread(target=self._coordinate, name="asquerix-lab-coordinator", daemon=True)
         self.thread.start()
+        self.gpu_monitor.start()
 
     def stop(self):
         self.shutdown.set()
+        self.gpu_monitor.stop()
         if self.active:
             self.signal_since.value = time.time()
             self.signal.value = 2

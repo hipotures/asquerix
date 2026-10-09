@@ -43,37 +43,104 @@ function programView(target, candidate, candidates = []) {
   } else target.append(element("p", candidate.parent_id ? `Parent: ${candidate.parent_id}` : "Independently generated or fixed; no parent.", "muted"));
 }
 
-function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}} = {}) {
+const SERIES_COLORS = {random_program_search: "#2764ad", one_plus_lambda: "#c2761f"};  // validated pair; color follows the method
+const FALLBACK_COLORS = ["#147d8b", "#8a5a9e"];
+const ARM_LABELS = {random_program_search: "random search", one_plus_lambda: "(1 + λ) mutation"};
+const armLabel = arm => ARM_LABELS[arm] || arm.replaceAll("_", " ");
+const svgNode = (tag, attributes = {}, text) => {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+const compact = value => Math.abs(value) >= 1e6 ? `${+(value / 1e6).toFixed(1)}M` : Math.abs(value) >= 1e3 ? `${+(value / 1e3).toFixed(1)}K` : `${+value.toFixed(2)}`;
+function niceTicks(low, high, count) {
+  const span = Math.max(high - low, 1e-9), raw = span / count, power = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(f => f * power).find(f => f >= raw);
+  const ticks = [];
+  for (let value = Math.ceil(low / step) * step; value <= high + step * 1e-9; value += step) ticks.push(+value.toFixed(10));
+  return ticks;
+}
+
+// Best-so-far training mean L per search method as step lines, with fixed controls as reference lines.
+function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = []} = {}) {
   target.replaceChildren();
-  if (!points.length) { target.append(element("p", "No completed independently valid observations yet.", "muted")); return; }
-  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 680 220"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `Best training mean side against ${xLabel}`);
-  const xMax = Math.max(1, ...points.map(point => point[xKey]));
-  const yMin = Math.min(...points.map(point => point[yKey])), yMax = Math.max(...points.map(point => point[yKey]));
-  const x = value => 50 + value / xMax * 600, y = value => 175 - (value - yMin) / Math.max(0.001, yMax - yMin) * 145;
-  const colors = ["#2764ad", "#7464ab", "#147d8b", "#b05c37"];
+  target.classList.add("progress-chart");
+  if (!points.length) { target.append(element("p", "No completed, independently validated candidates yet. The curve appears after the first finished group.", "muted empty-chart")); return; }
   const arms = [...new Set(points.map(point => point.arm))];
-  for (const [index, arm] of arms.entries()) {
-    const group = points.filter(point => point.arm === arm).sort((a,b) => a[xKey] - b[xKey]);
-    const path = document.createElementNS(ns, "path");
-    path.setAttribute("d", group.map((point,i) => `${i ? "L" : "M"}${x(point[xKey])},${y(point[yKey])}`).join(" "));
-    path.setAttribute("fill", "none"); path.setAttribute("stroke", colors[index % colors.length]); path.setAttribute("stroke-width", "2"); svg.append(path);
-    for (const point of group) {
-      const dot = document.createElementNS(ns, "circle"); dot.setAttribute("cx", x(point[xKey])); dot.setAttribute("cy", y(point[yKey])); dot.setAttribute("r", "4"); dot.setAttribute("fill", colors[index % colors.length]);
-      dot.setAttribute("tabindex", "0"); dot.setAttribute("role", "button");
-      const title = document.createElementNS(ns, "title"); title.textContent = `${arm}: ${xLabel} ${point[xKey]}, mean L ${point[yKey]}; program ${point.candidate_id}`; dot.append(title);
-      dot.addEventListener("click", () => onSelect(point)); dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); }); svg.append(dot);
+  const color = (arm, index) => SERIES_COLORS[arm] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+  const width = Math.max(560, target.clientWidth || 900), height = 340, margin = {left: 62, right: 190, top: 18, bottom: 44};
+  const plotW = width - margin.left - margin.right, plotH = height - margin.top - margin.bottom;
+  const ys = [...points.map(point => point[yKey]), ...references.map(item => item.value)];
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const pad = Math.max((yMax - yMin) * 0.08, 0.002); yMin -= pad; yMax += pad;
+  const xMax = Math.max(1, ...points.map(point => point[xKey]));
+  const x = value => margin.left + value / xMax * plotW, y = value => margin.top + (yMax - value) / (yMax - yMin) * plotH;
+  const svg = svgNode("svg", {viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Best training mean side L so far for ${arms.join(" and ")} against ${xLabel}; lower is better`});
+  for (const tick of niceTicks(yMin, yMax, 5)) {
+    svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(tick), y2: y(tick), class: "grid"}));
+    svg.append(svgNode("text", {x: margin.left - 8, y: y(tick) + 4, "text-anchor": "end", class: "tick"}, tick.toFixed(3)));
+  }
+  for (const tick of niceTicks(0, xMax, 8)) svg.append(svgNode("text", {x: x(tick), y: margin.top + plotH + 18, "text-anchor": "middle", class: "tick"}, compact(tick)));
+  svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: margin.top + plotH, y2: margin.top + plotH, class: "axis"}));
+  svg.append(svgNode("text", {x: margin.left + plotW / 2, y: height - 6, "text-anchor": "middle", class: "axis-label"}, xLabel));
+  svg.append(svgNode("text", {x: 14, y: margin.top + plotH / 2, transform: `rotate(-90 14 ${margin.top + plotH / 2})`, "text-anchor": "middle", class: "axis-label"}, "Best mean L (lower is better)"));
+  const labels = [];
+  for (const item of references) {
+    svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: "reference"}));
+    labels.push({y: y(item.value), text: `${item.label} ${item.value.toFixed(4)}`, kind: "reference"});
+  }
+  const groups = arms.map((arm, index) => ({arm, color: color(arm, index), points: points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])}));
+  for (const group of groups) {
+    const path = group.points.map((point, i) => i ? `H${x(point[xKey])}V${y(point[yKey])}` : `M${x(point[xKey])},${y(point[yKey])}`).join("");
+    svg.append(svgNode("path", {d: path + `H${margin.left + plotW}`, fill: "none", stroke: group.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"}));
+    group.points.forEach((point, i) => {
+      if (i && point[yKey] >= group.points[i - 1][yKey]) return;  // markers only where the incumbent improved
+      const dot = svgNode("circle", {cx: x(point[xKey]), cy: y(point[yKey]), r: 4.5, fill: group.color, class: "chart-point", tabindex: "0", role: "button"});
+      dot.append(svgNode("title", {}, `${armLabel(group.arm)} improved to ${point[yKey].toFixed(6)} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
+      dot.addEventListener("click", () => onSelect(point));
+      dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); });
+      svg.append(dot);
+    });
+    const last = group.points.at(-1);
+    labels.push({y: y(last[yKey]), text: `${armLabel(group.arm)} ${last[yKey].toFixed(4)}`, color: group.color});
+  }
+  labels.sort((a, b) => a.y - b.y);  // keep end labels from overlapping
+  labels.forEach((label, i) => { if (i && label.y - labels[i - 1].y < 15) label.y = labels[i - 1].y + 15; });
+  for (const label of labels) {
+    if (label.color) svg.append(svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5, fill: label.color}));
+    else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: "reference"}));
+    svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color ? "end-label" : "tick"}, label.text));
+  }
+  // Crosshair and tooltip: values of every method at the hovered x.
+  const cross = svgNode("line", {y1: margin.top, y2: margin.top + plotH, class: "crosshair", visibility: "hidden"});
+  const hit = svgNode("rect", {x: margin.left, y: margin.top, width: plotW, height: plotH, fill: "transparent"});
+  svg.append(cross); svg.insertBefore(hit, svg.querySelector(".chart-point"));
+  const tooltip = element("div", undefined, "chart-tooltip"); tooltip.hidden = true;
+  hit.addEventListener("mousemove", event => {
+    const box = svg.getBoundingClientRect(), scale = width / box.width, px = (event.clientX - box.left) * scale;
+    const at = Math.max(0, Math.min(xMax, (px - margin.left) / plotW * xMax));
+    cross.setAttribute("x1", x(at)); cross.setAttribute("x2", x(at)); cross.setAttribute("visibility", "visible");
+    tooltip.replaceChildren(element("strong", `${xLabel}: ${compact(at)}`));
+    for (const group of groups) {
+      const current = group.points.filter(point => point[xKey] <= at).at(-1);
+      const row = element("div"), key = element("i"); key.style.background = group.color;
+      row.append(key, element("span", `${armLabel(group.arm)}: ${current ? current[yKey].toFixed(6) : "—"}`));
+      tooltip.append(row);
     }
-  }
-  for (const [text, tx, ty] of [[`Best mean side L so far (lower is better): ${number(yMin)}–${number(yMax)}`,50,16],[`${xLabel} (0–${number(xMax)})`,50,207]]) {
-    const label = document.createElementNS(ns, "text"); label.setAttribute("x",tx); label.setAttribute("y",ty); label.setAttribute("fill","#496174"); label.setAttribute("font-size","11"); label.textContent = text; svg.append(label);
-  }
+    for (const item of references) tooltip.append(element("div", `${item.label}: ${item.value.toFixed(6)}`, "muted"));
+    tooltip.hidden = false;
+    tooltip.style.left = `${Math.min(event.clientX - target.getBoundingClientRect().left + 14, target.clientWidth - 240)}px`;
+    tooltip.style.top = `${event.clientY - target.getBoundingClientRect().top + 14}px`;
+  });
+  hit.addEventListener("mouseleave", () => { tooltip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   const legend = element("div", undefined, "legend");
-  for (const [index, arm] of arms.entries()) {
-    const item = element("span", arm.replaceAll("_", " ")), swatch = element("i");
-    swatch.style.background = colors[index % colors.length]; item.prepend(swatch); legend.append(item);
+  for (const group of groups) {
+    const item = element("span", armLabel(group.arm)), swatch = element("i");
+    swatch.style.background = group.color; item.prepend(swatch); legend.append(item);
   }
-  target.append(legend, svg);
+  if (references.length) { const item = element("span", "fixed controls"), swatch = element("i", undefined, "dashed"); item.prepend(swatch); legend.append(item); }
+  target.append(legend, svg, tooltip);
 }
 
 function historyView(target, events, candidates, onSelect) {

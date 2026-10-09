@@ -1,9 +1,12 @@
 import './inspect.js';
+import './gpu.js';
 const {element,number,programView,curve,replayComparison}=LabInspect;
 let capabilities, inventory, defaults, selectedId=null, selectedCampaign=null, selectedProgram=null, fixedDraft=null;
 const ACTIVE=['QUEUED','PREPARING','RUNNING','PAUSE_REQUESTED','FINALIZING'];
 const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common initial worlds',CONTROLS:'Evaluating fixed controls',SEARCH:'Searching programs',TRAINING:'Evaluating programs on the training bank',HOLDOUT:'Evaluating frozen winners on the holdout bank',REPLAYS:'Recording selected replays',FINALIZING:'Writing report and publishing',PAUSE_REQUESTED:'Pausing after the current group'};
-let lastUpdate=0;
+let lastUpdate=0,chartArgs=null,resizeTimer=null;
+addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(chartArgs&&!document.getElementById('detail').hidden)curve(document.getElementById('live-curve'),...chartArgs);},150);});
+function duration(seconds){if(typeof seconds!=='number')return '—';const s=Math.round(seconds);if(s<60)return `${s} s`;if(s<3600)return `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s`;return `${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;}
 function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length;return ((candidates+fixed)*spec.datasets.training.valid_count+(spec.search.methods.length+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
 function freshness(){const target=document.getElementById('campaign-freshness');if(!target||!lastUpdate)return;const seconds=Math.round((Date.now()-lastUpdate)/1000);target.textContent=ACTIVE.includes(selectedCampaign?.state)?`updated ${seconds<2?'just now':seconds+' s ago'}`:'';}
 setInterval(freshness,1000);
@@ -74,7 +77,8 @@ async function catalog(){
   document.getElementById('catalog-previous').disabled=catalogOffset===0;document.getElementById('catalog-next').disabled=catalogOffset+30>=page.total;
 }
 async function inspect(candidate){
-  selectedProgram=candidate;
+  selectedProgram=candidate;document.getElementById('episodes-heading').hidden=false;
+  for(const row of document.querySelectorAll('#program-table tr'))row.classList.toggle('selected',row.dataset.candidateId===candidate.id);
   const related=[...currentCandidates];
   if(candidate.parent_id&&!related.some(item=>item.id===candidate.parent_id))try{related.push(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(candidate.parent_id)}`));}catch{}
   programView(document.getElementById('program-inspector'),candidate,related);document.getElementById('clone-program').hidden=false;
@@ -84,12 +88,22 @@ async function inspect(candidate){
 async function programs(){
   const page=await api(`/campaigns/${selectedId}/programs?limit=50&offset=${programOffset}`);currentCandidates=page.items;
   const target=document.getElementById('program-table');target.replaceChildren();
-  for(const candidate of page.items){const row=element('tr'),score=candidate.score||{};for(const text of [`${candidate.arm} / ${candidate.position}`,number(score.mean_best_L),number(score.best_L),`${score.validation_counts?.NUMERICALLY_VALIDATED||0}/${score.expected_episodes||0}${score.eligible?' eligible':''}`])row.append(element('td',text));const cell=element('td'),button=element('button','Inspect');button.addEventListener('click',()=>inspect(candidate).catch(e=>fail(e.message)));cell.append(button);row.append(cell);target.append(row);}
+  for(const candidate of page.items){
+    const row=element('tr'),score=candidate.score||{},valid=score.validation_counts?.NUMERICALLY_VALIDATED||0;
+    row.dataset.candidateId=candidate.id;row.classList.toggle('selected',selectedProgram?.id===candidate.id);
+    const label=element('td',`${candidate.arm.replaceAll('_',' ')} · #${candidate.position}`);label.title=candidate.id;
+    const validity=element('td',`${valid}/${score.expected_episodes||0}${score.eligible?' ✓':''}`);validity.title=score.eligible?'All episodes independently validated; eligible for ranking':'Incomplete or not all episodes validated';
+    row.append(label,element('td',number(score.mean_best_L),'num'),element('td',number(score.best_L),'num'),validity);
+    const cell=element('td'),button=element('button','Inspect');button.addEventListener('click',()=>inspect(candidate).catch(e=>fail(e.message)));cell.append(button);row.append(cell);target.append(row);}
   document.getElementById('program-page').textContent=`${programOffset+1}–${Math.min(programOffset+50,page.total)} of ${page.total}`;document.getElementById('program-previous').disabled=programOffset===0;document.getElementById('program-next').disabled=programOffset+50>=page.total;
   const comparison=await api(`/campaigns/${selectedId}/comparison`),key=document.getElementById('live-curve-axis').value;
   const points=[],counts={},work={},incumbent={};
-  for(const candidate of comparison.candidates){if(['controls','fixed'].includes(candidate.arm))continue;counts[candidate.arm]=(counts[candidate.arm]||0)+(candidate.score.complete?1:0);work[candidate.arm]=(work[candidate.arm]||0)+(candidate.score.total_charged_work||0);if(candidate.score.eligible){incumbent[candidate.arm]=Math.min(incumbent[candidate.arm]??Infinity,candidate.score.mean_best_L);points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?counts[candidate.arm]:key==='work'?work[candidate.arm]:candidate.arm_execution_elapsed_seconds,y:incumbent[candidate.arm]});}}
-  curve(document.getElementById('live-curve'),points,{xLabel:key==='evaluations'?'Completed candidates':key==='work'?'Charged work':'Arm execution seconds',onSelect:async point=>inspect(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(point.candidate_id)}`))});
+  const ordered=[...comparison.candidates].sort((a,b)=>(a.completed_at??Infinity)-(b.completed_at??Infinity));
+  for(const candidate of ordered){if(['controls','fixed'].includes(candidate.arm))continue;counts[candidate.arm]=(counts[candidate.arm]||0)+(candidate.score.complete?1:0);work[candidate.arm]=(work[candidate.arm]||0)+(candidate.score.total_charged_work||0);if(candidate.score.eligible){incumbent[candidate.arm]=Math.min(incumbent[candidate.arm]??Infinity,candidate.score.mean_best_L);points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?counts[candidate.arm]:key==='work'?work[candidate.arm]:candidate.arm_execution_elapsed_seconds,y:incumbent[candidate.arm]});}}
+  const names=Object.fromEntries(currentCandidates.map(item=>[item.id,item.program?.authored?.name]));
+  const references=comparison.candidates.filter(item=>['controls','fixed'].includes(item.arm)&&item.score?.eligible).map(item=>({label:(names[item.id]||`${item.arm} #${item.position}`).replaceAll('_',' '),value:item.score.mean_best_L}));
+  chartArgs=[points,{xLabel:key==='evaluations'?'Completed candidates per method':key==='work'?'Charged work per method':'Method execution time (s)',references,onSelect:async point=>inspect(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(point.candidate_id)}`))}];
+  curve(document.getElementById('live-curve'),...chartArgs);
 }
 async function history(){
   const page=await api(`/campaigns/${selectedId}/history?limit=1`),target=document.getElementById('live-history');target.replaceChildren();
@@ -107,12 +121,12 @@ async function refresh(){
   selectedCampaign=await api(`/campaigns/${selectedId}`);const {spec,summary,state,publication}=selectedCampaign;
   document.getElementById('campaign-name').textContent=spec.name;document.getElementById('campaign-scope').textContent=`n=${spec.n} · ${spec.device} / ${selectedCampaign.device_uuid||'resolving physical identity'} · ${summary.profile_hash||spec.evaluation_profile} · training ${spec.datasets.training.valid_count}, holdout ${spec.datasets.holdout.valid_count}`;const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
-  for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Training incumbent mean L',number(summary.training_incumbent?.mean_best_L)],['Execution seconds',number(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
+  for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Training incumbent mean L',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
   const active=ACTIVE.includes(state),plan=plannedEpisodes(spec),done=summary.completed_episode_executions||0;
   const activity=document.getElementById('campaign-activity');activity.dataset.active=String(active);
   const searching=spec.search.methods.includes(summary.arm);
   activity.textContent=active?`${PHASES[summary.phase]||PHASES[state]||'Working'}${summary.arm?' · '+summary.arm.replaceAll('_',' '):''}${searching?' · generation '+(summary.generation??0):''}`
-    :state==='COMPLETED'?`Finished: ${done} scientific episodes in ${number(summary.elapsed_execution_seconds)} s of GPU execution`
+    :state==='COMPLETED'?`Finished: ${done} scientific episodes in ${duration(summary.elapsed_execution_seconds)} of GPU execution`
     :state==='PARTIAL'?`Stopped before completion (${{USER_STOP:'stopped by user',EXECUTION_DEADLINE:'execution time limit reached'}[summary.stop_reason]||'stopped'}); completed results are kept`
     :state==='PAUSED'?'Paused; Resume continues from the last finished group'
     :`${state==='FAILED'?'Failed':'Interrupted'}${summary.error?': '+summary.error:''}`;

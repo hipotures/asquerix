@@ -39,6 +39,15 @@ def request(url, path, *, method="GET", body=None, binary=False):
         raise ValueError(payload.get("detail", f"HTTP {error.code}")) from None
 
 
+def duration(seconds) -> str:
+    seconds = round(seconds or 0)
+    if seconds < 60:
+        return f"{seconds} s"
+    if seconds < 3600:
+        return f"{seconds // 60} min {seconds % 60:02d} s"
+    return f"{seconds // 3600} h {seconds % 3600 // 60:02d} min"
+
+
 def display(result, *, plain=False):
     if plain:
         print(f"Campaign {result['id']}: {result.get('state', 'QUEUED')}")
@@ -52,7 +61,7 @@ def display(result, *, plain=False):
                          ("Completed candidates", summary.get("completed_candidates", 0)),
                          ("Scientific episode executions", summary.get("completed_episode_executions", 0)),
                          ("Training incumbent mean L", summary.get("training_incumbent", {}).get("mean_best_L", "—")),
-                         ("Execution seconds", summary.get("elapsed_execution_seconds", 0)),
+                         ("GPU execution time", duration(summary.get("elapsed_execution_seconds", 0))),
                          ("Diagnostic replays", summary.get("replay_executions", 0)),
                          ("Publication", result.get("publication", {}).get("status", "PENDING"))):
         table.add_row(label, str(value))
@@ -84,9 +93,21 @@ def main(argv=None):
             print(f"Laboratory: http://{args.host}:{args.port} | catalog: {args.root.resolve()}", flush=True)
             print("Press Ctrl+C to stop the server. A running campaign is stopped and finalized as PARTIAL; "
                   "use Pause in the browser first to resume it later.", flush=True)
-            # Open browser progress streams would otherwise hold shutdown until they disconnect.
-            uvicorn.run(create_app(args.root, host=args.host, port=args.port), host=args.host, port=args.port,
-                        access_log=False, log_level="info", timeout_graceful_shutdown=3)
+            app = create_app(args.root, host=args.host, port=args.port)
+
+            class Server(uvicorn.Server):
+                first_signal = None
+
+                def handle_exit(self, sig, frame):
+                    # `uv run` forwards the terminal's Ctrl+C a second time; only a later repeat forces exit.
+                    now = time.monotonic()
+                    if self.first_signal is not None and now - self.first_signal < 1.0:
+                        return
+                    self.first_signal = self.first_signal or now
+                    app.state.closing.set()  # end open browser progress streams before waiting for connections
+                    super().handle_exit(sig, frame)
+
+            Server(uvicorn.Config(app, host=args.host, port=args.port, access_log=False, log_level="info")).run()
             return 0
         if args.command == "submit":
             spec = Campaign.model_validate(read_json(args.config))
@@ -130,6 +151,9 @@ def main(argv=None):
             print(f"Report: {args.url}/api/v1/artifacts/{artifact}")
         return 0
     except KeyboardInterrupt:
+        if args.command == "serve":
+            print("Laboratory server stopped.")
+            return 0
         print("Client closed; the service continues its owned computation.")
         return 130
     except (OSError, ValueError, urllib.error.URLError) as error:

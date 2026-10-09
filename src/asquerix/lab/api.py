@@ -10,6 +10,8 @@ import json
 import os
 from pathlib import Path
 import secrets
+import threading
+import time
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 import zipfile
@@ -22,6 +24,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .catalog import Conflict
 from .config import Campaign, Model, capabilities
+from .gpumon import power_control, query as gpu_query, set_power_limit
 from .service import Service
 from .storage import sha256
 from .strategy import ProgramError, compile_program
@@ -50,6 +53,10 @@ class ReplayRequest(Model):
     max_mib: Annotated[float, Field(gt=0, le=10)] = 10.0
 
 
+class PowerLimit(Model):
+    watts: Annotated[float, Field(gt=0, le=2000)]
+
+
 class Login(Model):
     token: Annotated[str, Field(min_length=16, max_length=512)]
 
@@ -72,6 +79,7 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
     app = FastAPI(title="Asquerix Experiment Laboratory", version="1.0", lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url="/api/v1/openapi.json")
     app.state.service = service
+    app.state.closing = threading.Event()
     hosts = ["127.0.0.1", "localhost", "[::1]"]
     if remote:
         hosts += [host] + [value.strip() for value in os.environ.get("ASQUERIX_LAB_HOSTS", "").split(",") if value.strip()]
@@ -143,6 +151,27 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
     def inventory():
         return {"items": service.inventory(), "active_campaign": service.active}
 
+    power = {"checked": 0.0, "status": None}
+
+    @app.get("/api/v1/gpu-monitor")
+    def gpu_monitor():
+        if time.monotonic() - power["checked"] > 30:
+            power.update(checked=time.monotonic(), status=power_control())
+        snapshot = service.gpu_monitor.snapshot()
+        active = service.catalog.get(snapshot["campaign_id"]) if snapshot["campaign_id"] else None
+        return {**snapshot, "campaign_device_uuid": active and active.get("device_uuid"), "power_control": power["status"]}
+
+    @app.post("/api/v1/gpus/{index}/power-limit")
+    def power_limit(index: int, request: PowerLimit):
+        try:
+            change = set_power_limit(index, request.watts, gpu_query())
+        except PermissionError as error:
+            raise HTTPException(403, f"Power limit not changed: {error}") from None
+        if service.active:  # timing evidence of a running campaign must explain the change
+            service.catalog.event(service.active, "GPU_POWER_LIMIT", change)
+        power["checked"] = 0.0
+        return change
+
     @app.post("/api/v1/programs/validate")
     def validate(program: ProgramRequest):
         return compile_program(program.program).document()
@@ -205,7 +234,8 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
 
         async def stream():
             nonlocal cursor
-            while not await request.is_disconnected():
+            # Server shutdown ends open progress streams so Ctrl+C does not wait on browser tabs.
+            while not app.state.closing.is_set() and not await request.is_disconnected():
                 page = service.catalog.history(identifier, after=cursor, limit=100)
                 if page["cursor_reset"]:
                     cursor = 0
@@ -215,7 +245,10 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
                     yield f"id: {event['id']}\nevent: progress\ndata: {json.dumps(event, separators=(',', ':'))}\n\n"
                 if not page["items"]:
                     yield ": heartbeat\n\n"
-                    await asyncio.sleep(1)
+                    for _ in range(10):
+                        if app.state.closing.is_set():
+                            break
+                        await asyncio.sleep(0.1)
 
         return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
