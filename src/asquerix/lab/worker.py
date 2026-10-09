@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -36,6 +37,17 @@ def alive(pid: int, start: str) -> bool:
     return process_start(pid) == start
 
 
+# Validation dominates group time on the CPU while the GPU waits; leave two cores for the service and display.
+VALIDATION_PROCESSES = max(1, min(16, (os.cpu_count() or 2) - 2))
+PARALLEL_VALIDATION_MINIMUM = 128
+
+
+def _result_row(campaign: Campaign, item: tuple) -> dict:
+    state, best, current, program_hash, bank_hash, initial_id, replicate = item
+    return result_row(campaign, state, best, current, program_hash=program_hash, bank_hash=bank_hash,
+                      initial_id=initial_id, replicate=replicate)
+
+
 class CampaignWorker:
     def __init__(self, job: dict, *, emit, signal, signal_since):
         self.identifier = job["id"]
@@ -67,6 +79,7 @@ class CampaignWorker:
         self.elapsed_before = self.state["elapsed_execution_seconds"]
         self.last_activity = 0.0
         self.deadline_reached = False
+        self.pool = None
 
     def elapsed(self):
         return self.elapsed_before + time.monotonic() - self.execution_start
@@ -167,11 +180,11 @@ class CampaignWorker:
                 states, best, current = batch.collect()
                 validation_start = time.monotonic()
                 rows = []
-                for index in range(count):
+                validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
+                                               bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
+                                              for index in range(count)])
+                for index, row in enumerate(validated):
                     candidate = candidates[int(pids[index])]
-                    row = result_row(self.campaign, states[index], best[index], current[index],
-                                     program_hash=candidate["program"]["hash"], bank_hash=bank["hash"],
-                                     initial_id=str(int(bank["ids"][initial_slots[index]])), replicate=str(int(replicates[index])))
                     row.update({"candidate_id": candidate["id"], "bank": bank_name, "arm": candidate["arm"],
                                 "task_id": digest({"campaign": self.identifier, "candidate": candidate["id"], "episode": row["episode_key"]}),
                                 "execution_attempt": attempt, "numeric_path": numeric_relative, "numeric_index": index,
@@ -224,6 +237,24 @@ class CampaignWorker:
                        {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name, "score": summary,
                         "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()})
         return evaluated
+
+    def result_rows(self, items: list[tuple]) -> list[dict]:
+        """Independent CPU validation of every returned pose, spread over a process pool.
+
+        Each row is the same pure `result_row` computation as a serial loop; only where it runs differs.
+        """
+        if len(items) < PARALLEL_VALIDATION_MINIMUM or VALIDATION_PROCESSES < 2:
+            return [_result_row(self.campaign, item) for item in items]
+        if self.pool is None:
+            import multiprocessing
+            self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"))
+        chunk = max(1, len(items) // (VALIDATION_PROCESSES * 4))
+        return list(self.pool.map(_result_row, [self.campaign] * len(items), items, chunksize=chunk))
+
+    def close(self):
+        if self.pool is not None:
+            self.pool.shutdown()
+            self.pool = None
 
     def all_rows(self) -> list[dict]:
         rows = []
@@ -286,6 +317,12 @@ class CampaignWorker:
         self.state["replay_omissions"] = omissions
 
     def run(self) -> dict:
+        try:
+            return self._run()
+        finally:
+            self.close()
+
+    def _run(self) -> dict:
         if self.stopped():
             if (self.directory / "datasets.json.gz").exists():
                 self.metadata, self.banks = load_banks(self.directory)
@@ -376,7 +413,10 @@ class CampaignWorker:
                 return self.finish("PARTIAL")
             selected = [candidate for candidate in self.state["candidates"] if candidate["arm"] in ("controls", "fixed")]
             selected += self.state["frozen_winners"]
-            selected = [candidate for candidate in selected if not candidate.get("holdout_score")]  # inherited holdout results stay
+            # Frozen winners are copies taken before holdout; an inherited winner's holdout result is in its latest record.
+            latest = {candidate["id"]: candidate for candidate in self.state["candidates"]}
+            selected = [latest.get(candidate["id"], candidate) for candidate in selected]
+            selected = [candidate for candidate in selected if not candidate.get("holdout_score")]
             evaluated = self.evaluate(selected, "holdout") if selected else []
             by_id = {candidate["id"]: candidate for candidate in self.state["candidates"]}
             by_id.update({candidate["id"]: candidate for candidate in evaluated})

@@ -299,15 +299,21 @@ class Service:
 
     def _coordinate(self):
         while not self.shutdown.is_set() or self.active:
+            message = {}
             try:
                 message = self.replies.get(timeout=0.2)
                 self._message(message)
             except queue.Empty:
                 pass
             except BaseException as error:
-                if self.active:
+                # Failing to finalize ends the campaign; a bookkeeping error on a progress message must not
+                # detach the service from a worker that is still computing (pause, stop and GPU telemetry).
+                if self.active and message.get("type") in ("finished", "failed", "replay_finished"):
                     self.catalog.set_state(self.active, "FAILED", summary={"error": str(error), "report_status": "FAILED"})
                     self.active = None
+                elif self.active:
+                    self.catalog.set_state(self.active, self.catalog.get(self.active)["state"],
+                                           summary={"warning": f"Catalog update failed for a {message.get('type')} message: {error}"})
             if self.active and self.process and not self.process.is_alive():
                 self.catalog.set_state(self.active, "INTERRUPTED", summary={"error": "Owned worker exited; resume reconciles finalized chunks and retries missing work."})
                 self.active = None

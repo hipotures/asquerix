@@ -294,3 +294,32 @@ def test_continuation_reproduces_a_single_campaign_with_the_larger_budget(cuda_d
     assert holdout_runs <= 1  # the inherited control result is only re-announced
     assert any(message["type"] == "chunk" and message.get("inherited") for message in messages)
     assert all(item["status"] == "REPLAY_MATCHED" for item in summary["replays"])
+
+
+def test_parallel_validation_returns_the_serial_rows_and_holdout_is_not_repeated(cuda_device, tmp_path, monkeypatch):
+    from asquerix.lab import worker as module
+    from asquerix.lab.continuation import continuation_spec
+    initial, poses = starts(Config(n=6), 160, 300, cuda_device)
+    ids = np.arange(300, 460, dtype=np.uint64)
+    _, (states, best, current) = execute(control_program("legacy_compress"), poses, initial, ids)
+    campaign = Campaign(name="Rows", n=6, batch_capacity=160, publication={"enabled": False})
+    items = [(states[i], best[i], current[i], "p", "b", str(int(ids[i])), "0") for i in range(len(ids))]
+    worker = module.CampaignWorker.__new__(module.CampaignWorker)
+    worker.campaign, worker.pool = campaign, None
+    try:
+        assert worker.result_rows(items) == [module._result_row(campaign, item) for item in items]
+        assert worker.pool is not None
+    finally:
+        worker.close()
+
+    monkeypatch.setattr(module, "PARALLEL_VALIDATION_MINIMUM", 1)  # exercise the pool inside real campaigns
+    base = Campaign(name="Holdout once", n=4, batch_capacity=16, controls=["legacy_compress"],
+                    search={"candidate_budget_per_method": 2, "initial_pool": 1, "lambda": 1},
+                    datasets={"training": {"first_id": "100", "valid_count": 2}, "holdout": {"first_id": "200", "valid_count": 2}},
+                    generation={"min_nodes": 2, "max_nodes": 4}, recording={"automatic": False}, publication={"enabled": False})
+    _run_worker(tmp_path, "d" * 32, base)
+    child = continuation_spec({"id": "d" * 32, "spec": base.document()}, 1, {})
+    _, state, _ = _run_worker(tmp_path, "e" * 32, child)
+    keys = [(row["candidate_id"], row["episode_key"]) for chunk in state["chunks"]
+            for row in __import__("asquerix.persistence", fromlist=["read_jsonl"]).read_jsonl(tmp_path / "campaigns" / ("e" * 32) / chunk["records_path"])]
+    assert len(keys) == len(set(keys)), "an episode was evaluated twice"

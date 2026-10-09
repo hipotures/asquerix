@@ -300,7 +300,9 @@ class Catalog:
     def admit_episodes(self, campaign_id: str, rows: list[dict]):
         with self.transaction() as db:
             for row in rows:
-                db.execute("INSERT INTO episodes VALUES(?,?,?,?,?,?,?) ON CONFLICT(task_id) DO NOTHING",
+                # Task ids and (campaign, candidate, episode) are both unique; a re-announced or inherited
+                # episode that is already admitted is the same deterministic result and is skipped.
+                db.execute("INSERT INTO episodes VALUES(?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
                            (row["task_id"], campaign_id, row["candidate_id"], row["episode_key"], row["bank"], row["initial_id"], dumps(row)))
 
     def episodes(self, campaign_id: str, *, limit=50, offset=0, candidate_id=None, bank=None) -> dict:

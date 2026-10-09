@@ -95,3 +95,15 @@ def test_candidates_sort_by_mean_rank_best_start_or_generation_order(tmp_path):
     assert ids("best") == ["a0", "b0", "a1", "b1"]
     assert ids("order") == ["a0", "a1", "b0", "b1"]
     catalog.close()
+
+
+def test_admitting_an_already_known_episode_is_idempotent(tmp_path):
+    from asquerix.lab.catalog import Catalog
+    catalog = Catalog(tmp_path)
+    catalog.db.execute("INSERT INTO campaigns(id,state,spec,created,updated) VALUES('c','RUNNING','{}',0,0)")
+    catalog.db.commit()
+    row = {"task_id": "t1", "candidate_id": "p:arm:0", "episode_key": "e", "bank": "holdout", "initial_id": "1"}
+    catalog.admit_episodes("c", [row])
+    catalog.admit_episodes("c", [{**row, "task_id": "t2"}, {**row, "task_id": "t3", "episode_key": "f"}])
+    assert catalog.db.execute("SELECT count(*) FROM episodes").fetchone()[0] == 2
+    catalog.close()
