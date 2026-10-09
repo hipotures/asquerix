@@ -57,6 +57,20 @@ class PowerLimit(Model):
     watts: Annotated[float, Field(gt=0, le=2000)]
 
 
+class ContinueRequest(Model):
+    additional_candidates_per_method: Annotated[int, Field(ge=1, le=1024)]
+    name: Annotated[str, Field(min_length=1, max_length=160)] | None = None
+    description: Annotated[str, Field(max_length=2000)] | None = None
+    device: Annotated[str, Field(pattern=r"^cuda:[0-9]{1,2}$")] | None = None
+    batch_capacity: Annotated[int, Field(ge=1, le=65536)] | None = None
+    slice_sweeps: Annotated[int, Field(ge=1, le=128)] | None = None
+    slice_dispatches: Annotated[int, Field(ge=1, le=256)] | None = None
+    max_seconds: Annotated[float, Field(gt=0, le=86400)] | None = None
+    max_artifact_mib: Annotated[float, Field(gt=0, le=256)] | None = None
+    automatic_replays: bool | None = None
+    publication: bool | None = None
+
+
 class Login(Model):
     token: Annotated[str, Field(min_length=16, max_length=512)]
 
@@ -194,6 +208,22 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
     @app.post("/api/v1/campaigns/{identifier}/replays", status_code=202)
     def queue_replay(identifier: str, replay: ReplayRequest, idempotency_key: Key):
         return service.queue_replay(identifier, replay.model_dump(), idempotency_key)
+
+    @app.post("/api/v1/campaigns/{identifier}/continue", status_code=202, response_model=Created)
+    def continue_campaign(identifier: str, request: ContinueRequest, idempotency_key: Key):
+        values = request.model_dump(exclude_none=True)
+        additional = values.pop("additional_candidates_per_method")
+        overrides = {key: values.pop(key) for key in ("name", "description", "device", "batch_capacity",
+                                                      "slice_sweeps", "slice_dispatches") if key in values}
+        limits = {key: values.pop(key) for key in ("max_seconds", "max_artifact_mib") if key in values}
+        if limits:
+            overrides["limits"] = limits
+        if "automatic_replays" in values:
+            overrides["recording"] = {"automatic": values.pop("automatic_replays")}
+        if "publication" in values:
+            overrides["publication"] = {"enabled": values.pop("publication")}
+        service.directory(identifier)
+        return service.continue_campaign(identifier, additional, overrides, idempotency_key)
 
     @app.post("/api/v1/campaigns/{identifier}/{command}")
     def command(identifier: str, command: str, idempotency_key: Key):

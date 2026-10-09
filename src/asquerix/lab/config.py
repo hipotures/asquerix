@@ -194,6 +194,8 @@ class Campaign(Model):
     publication: Publication = Publication()
     fixed_programs: Annotated[list[dict], Field(max_length=8)] = []
     thresholds: Annotated[list[float], Field(max_length=16)] = []
+    # Parent campaign whose datasets, results and search state this campaign continues.
+    continuation_of: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")] | None = None
     _seed = field_validator("operator_seed")(uint64)
 
     @model_validator(mode="after")
@@ -211,7 +213,10 @@ class Campaign(Model):
         return self
 
     def document(self) -> dict:
-        return self.model_dump(by_alias=True)
+        document = self.model_dump(by_alias=True)
+        if document["continuation_of"] is None:  # keeps manifests of ordinary campaigns unchanged
+            del document["continuation_of"]
+        return document
 
     def profile(self) -> dict:
         return {"name": self.evaluation_profile, "n": self.n, "initial_side": self.initial_side,

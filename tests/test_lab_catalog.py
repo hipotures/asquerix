@@ -55,3 +55,27 @@ def test_unsupported_schema_rejected_on_temporary_snapshot(tmp_path):
         Catalog(snapshot_root)
     assert catalog.campaigns()["total"] == 1
     catalog.close()
+
+
+def test_version_one_catalog_migrates_candidates_to_campaign_scoped_keys(tmp_path):
+    import sqlite3
+    from asquerix.lab import catalog as module
+    old_schema = module.SCHEMA.replace("id TEXT NOT NULL, campaign_id", "id TEXT PRIMARY KEY, campaign_id").replace(
+        "document TEXT NOT NULL, PRIMARY KEY(campaign_id, id), UNIQUE(campaign_id, arm, position)",
+        "document TEXT NOT NULL, UNIQUE(campaign_id, arm, position)").replace("PRAGMA user_version=2", "PRAGMA user_version=1")
+    db = sqlite3.connect(tmp_path / "catalog.sqlite3")
+    db.executescript(old_schema)
+    db.execute("INSERT INTO campaigns(id,state,spec,created,updated) VALUES('p','COMPLETED','{}',0,0)")
+    db.execute("INSERT INTO campaigns(id,state,spec,created,updated) VALUES('c','QUEUED','{}',0,0)")
+    db.execute("INSERT INTO programs VALUES('h','{}')")
+    db.execute("INSERT INTO candidates VALUES('p:arm:0','p','arm','h',0,0,'{\"id\":\"p:arm:0\"}')")
+    db.commit()
+    db.close()
+    catalog = module.Catalog(tmp_path)
+    assert catalog.db.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert catalog.db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    candidate = {"id": "p:arm:0", "arm": "arm", "position": 0, "program": {"hash": "h"}, "score": {"inherited": True}}
+    catalog.candidate("c", candidate)  # a continuation stores its own copy; the parent's record is untouched
+    assert catalog.get_candidate("p", "p:arm:0") == {"id": "p:arm:0"}
+    assert catalog.get_candidate("c", "p:arm:0")["score"] == {"inherited": True}
+    catalog.close()

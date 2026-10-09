@@ -120,6 +120,17 @@ class Service:
             raise Conflict("Declared batch and recording buffers exceed currently available device memory")
         return self.catalog.submit(campaign, key)
 
+    def continue_campaign(self, identifier: str, additional: int, overrides: dict, key: str) -> dict:
+        from .continuation import compatibility, continuation_spec
+        parent = self.catalog.get(identifier)
+        if parent["state"] not in ("COMPLETED", "PARTIAL"):
+            raise Conflict("Only a completed or partial campaign can be continued")
+        if not (self.root / "checkpoints" / (identifier + ".json.gz")).is_file():
+            raise Conflict("The parent campaign has no search checkpoint to continue from")
+        campaign = continuation_spec(parent, additional, overrides)
+        compatibility(self.directory(identifier), campaign)
+        return self.submit(campaign, key)
+
     def command(self, identifier: str, command: str, key: str):
         result = self.catalog.command(identifier, command, key)
         if identifier == self.active and command in ("pause", "stop"):
@@ -240,7 +251,10 @@ class Service:
             self.catalog.candidate(identifier, message["candidate"])
         elif kind == "chunk":
             path = self.directory(identifier) / message["records"]
-            self.catalog.admit_episodes(identifier, list(read_jsonl(path)))
+            rows = list(read_jsonl(path))
+            if message.get("inherited"):  # task identities include the parent campaign; give the child its own
+                rows = [{**row, "task_id": digest({"campaign": identifier, "inherited_task": row["task_id"]})} for row in rows]
+            self.catalog.admit_episodes(identifier, rows)
         elif kind == "replay":
             result = dict(message["replay"])
             for artifact in result["artifacts"]:

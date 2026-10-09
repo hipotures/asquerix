@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS campaigns (
  worker_token TEXT, device_uuid TEXT, publication TEXT NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS programs (hash TEXT PRIMARY KEY, document TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS candidates (
- id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL REFERENCES campaigns(id), arm TEXT NOT NULL,
+ id TEXT NOT NULL, campaign_id TEXT NOT NULL REFERENCES campaigns(id), arm TEXT NOT NULL,
  program_hash TEXT NOT NULL REFERENCES programs(hash), position INTEGER NOT NULL, generation INTEGER NOT NULL,
- document TEXT NOT NULL, UNIQUE(campaign_id, arm, position));
+ document TEXT NOT NULL, PRIMARY KEY(campaign_id, id), UNIQUE(campaign_id, arm, position));
 CREATE TABLE IF NOT EXISTS episodes (
  task_id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL REFERENCES campaigns(id), candidate_id TEXT NOT NULL,
  episode_key TEXT NOT NULL, bank TEXT NOT NULL, initial_id TEXT NOT NULL, document TEXT NOT NULL,
@@ -44,7 +44,23 @@ CREATE TABLE IF NOT EXISTS requests (
  key TEXT PRIMARY KEY, route TEXT NOT NULL, body_hash TEXT NOT NULL, response TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS checkpoints (
  campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id), document TEXT NOT NULL);
-PRAGMA user_version=1;
+PRAGMA user_version=2;
+"""
+
+# Version 2 keys candidates by campaign: a continuation lists the candidates it inherited
+# under their original identities without touching the parent campaign's records.
+MIGRATE_1_TO_2 = """
+BEGIN;
+CREATE TABLE candidates_v2 (
+ id TEXT NOT NULL, campaign_id TEXT NOT NULL REFERENCES campaigns(id), arm TEXT NOT NULL,
+ program_hash TEXT NOT NULL REFERENCES programs(hash), position INTEGER NOT NULL, generation INTEGER NOT NULL,
+ document TEXT NOT NULL, PRIMARY KEY(campaign_id, id), UNIQUE(campaign_id, arm, position));
+INSERT INTO candidates_v2 (id, campaign_id, arm, program_hash, position, generation, document)
+ SELECT id, campaign_id, arm, program_hash, position, generation, document FROM candidates;
+DROP TABLE candidates;
+ALTER TABLE candidates_v2 RENAME TO candidates;
+PRAGMA user_version=2;
+COMMIT;
 """
 
 
@@ -67,11 +83,13 @@ class Catalog:
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.execute("PRAGMA busy_timeout=5000")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
-        if version not in (0, 1):
+        if version not in (0, 1, 2):
             self.db.close()
             raise ValueError("Unsupported catalog schema; no implicit migrations are performed")
         self.db.execute("PRAGMA journal_mode=WAL")
         with self.lock:
+            if version == 1:
+                self.db.executescript(MIGRATE_1_TO_2)
             self.db.executescript(SCHEMA)
 
     def close(self):
@@ -202,7 +220,7 @@ class Catalog:
         program = candidate["program"]
         with self.transaction() as db:
             db.execute("INSERT INTO programs VALUES(?,?) ON CONFLICT(hash) DO NOTHING", (program["hash"], dumps(program)))
-            db.execute("INSERT INTO candidates VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET document=excluded.document",
+            db.execute("INSERT INTO candidates VALUES(?,?,?,?,?,?,?) ON CONFLICT(campaign_id, id) DO UPDATE SET document=excluded.document",
                        (candidate["id"], campaign_id, candidate["arm"], program["hash"], candidate["position"], candidate.get("generation", 0), dumps(candidate)))
 
     def program(self, program_hash: str) -> dict:

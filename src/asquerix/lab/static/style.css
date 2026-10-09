@@ -34,12 +34,13 @@
 
 /* GPU telemetry in the header: one compact tile per GPU, nvtop-like. */
 header .brand{flex:none}
-.gpu-monitor{position:relative;flex:1 1 auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;min-width:0;padding-right:26px}
-.gpu-tile{position:relative;flex:0 1 300px;min-width:240px;padding:7px 10px 6px;border:1px solid rgba(160,205,225,.32);border-radius:6px;background:rgba(255,255,255,.04);font:12px/1.35 ui-monospace,"JetBrains Mono",monospace;color:#d9e6ee}
+.gpu-monitor{position:relative;flex:1 1 0;display:grid;grid-template-columns:repeat(auto-fit,400px);justify-content:end;gap:8px 10px;min-width:0;padding-right:26px}
+header > button{flex:none;white-space:nowrap}
+.gpu-tile{position:relative;min-width:0;padding:7px 10px 6px;border:1px solid rgba(160,205,225,.32);border-radius:6px;background:rgba(255,255,255,.04);font:12px/1.35 ui-monospace,"JetBrains Mono",monospace;color:#d9e6ee}
 .gpu-head{display:flex;justify-content:space-between;gap:8px;color:#9fb7c7}
 .gpu-name{color:#e8f0f5;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gpu-tag{white-space:nowrap}
-.gpu-stats{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;margin:3px 0 4px;color:#7fd9b0}
+.gpu-stats{display:flex;flex-wrap:nowrap;white-space:nowrap;align-items:center;gap:2px 12px;margin:3px 0 4px;color:#7fd9b0}
 .gpu-temp{padding:0 4px;border-radius:3px;color:#0d2230;font-weight:700;background:#7fd9b0}
 .gpu-temp.warm{background:#e9c46a}
 .gpu-temp.hot{background:#ef7f6a}
@@ -56,7 +57,7 @@ header .brand{flex:none}
 .gpu-apply{justify-self:start;background:var(--blue);color:#fff;border-color:var(--blue)}
 .gpu-limit-message{margin:0;font-size:12px;color:var(--muted)}
 .gpu-limit-message code{display:block;margin-top:6px;padding:6px;background:#f0f5fa;border-radius:4px;font:11px/1.4 ui-monospace,monospace;overflow-wrap:anywhere;color:var(--ink)}
-@media (max-width:900px){.gpu-monitor{order:3;flex-basis:100%;justify-content:flex-start}header{flex-wrap:wrap}}
+@media (max-width:1500px){header{flex-wrap:wrap}.gpu-monitor{order:3;flex-basis:100%;justify-content:stretch;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}.gpu-monitor[data-count="4"]{grid-template-columns:repeat(auto-fit,minmax(max(340px,calc(50% - 10px)),1fr))}}
 
 /* Candidate table: one line per candidate; the explorer stays in view while scrolling. */
 #program-table td,#tab-programs th{white-space:nowrap}
@@ -87,3 +88,8 @@ header .brand{flex:none}
 .chart-tooltip div{display:flex;align-items:center;gap:6px}
 .chart-tooltip i{width:12px;height:3px;border-radius:2px}
 .empty-chart{padding:40px 0;text-align:center}
+
+/* Continuation form inside the campaign card. */
+.continue-panel{margin:16px 0 4px;padding:16px;border:1px solid var(--line);border-radius:8px;background:#f5f8fb;display:grid;gap:12px}
+.continue-panel h3{margin:0}
+.continue-panel p{margin:0}

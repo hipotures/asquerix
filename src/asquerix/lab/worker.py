@@ -57,6 +57,11 @@ class CampaignWorker:
                 raise ValueError("Checkpoint immutable manifest mismatch")
             if self.state["executable_hash"] != digest(executable_identity()):
                 raise ValueError("Numerical source/dependency identity changed; this campaign cannot mix executables")
+        elif self.campaign.continuation_of:
+            from .continuation import inherit
+            parent = self.campaign.continuation_of
+            self.state = inherit(self.campaign, self.directory, self.directory.parent / parent,
+                                 self.checkpoint_path.parent / (parent + ".json.gz"))
         self.state["manifest_hash"] = digest(self.campaign.document())
         self.state["executable_hash"] = digest(executable_identity())
         self.elapsed_before = self.state["elapsed_execution_seconds"]
@@ -310,6 +315,15 @@ class CampaignWorker:
         self.metadata, self.banks = load_banks(self.directory)
         for candidate in self.state["candidates"]:
             self.emit({"type": "candidate", "campaign_id": self.identifier, "candidate": candidate})
+        continuation = self.state.get("continuation")
+        if continuation and not continuation["catalog_synced"]:  # make inherited episodes and replays browsable
+            for chunk in self.state["chunks"]:
+                self.emit({"type": "chunk", "campaign_id": self.identifier, "records": chunk["records_path"], "inherited": True})
+            for replay in self.state["replays"]:
+                self.emit({"type": "replay", "campaign_id": self.identifier, "replay": replay})
+            self.event("CONTINUATION_STARTED", continuation)
+            continuation["catalog_synced"] = True
+            self.checkpoint()
         if self.state["phase"] in ("PREPARING", "CONTROLS"):
             self.state["phase"] = "CONTROLS"
             controls = self.fixed_candidates()
@@ -326,7 +340,8 @@ class CampaignWorker:
                 self.state["shared_pool"] = initial_pool(self.campaign, event=self.event)
                 self.checkpoint()
             for method in self.campaign.search.methods:
-                self.state["arm_start_elapsed"].setdefault(method, self.elapsed())
+                # A continuation resumes each method's clock where the parent left it.
+                self.state["arm_start_elapsed"].setdefault(method, self.elapsed() - self.state.get("arm_prior_elapsed", {}).get(method, 0.0))
                 controller = Controller(self.campaign, method, self.state["shared_pool"], self.identifier,
                                         state=self.state["controllers"].get(method), event=self.event)
                 while True:
@@ -361,6 +376,7 @@ class CampaignWorker:
                 return self.finish("PARTIAL")
             selected = [candidate for candidate in self.state["candidates"] if candidate["arm"] in ("controls", "fixed")]
             selected += self.state["frozen_winners"]
+            selected = [candidate for candidate in selected if not candidate.get("holdout_score")]  # inherited holdout results stay
             evaluated = self.evaluate(selected, "holdout") if selected else []
             by_id = {candidate["id"]: candidate for candidate in self.state["candidates"]}
             by_id.update({candidate["id"]: candidate for candidate in evaluated})
@@ -402,6 +418,7 @@ class CampaignWorker:
                    "replays": self.state["replays"], "replay_omissions": self.state.get("replay_omissions", []),
                    "chunks": self.state["chunks"], "timings": self.state["timings"], "pause_drains": self.state["pause_drains"],
                    "stop_drain_seconds": max(0, time.time() - self.signal_since.value) if self.signal.value >= 2 else None,
+                   "continuation": self.state.get("continuation"),
                    "scientific_caveat": "Functional pilot; no claim of optimality or statistically established method superiority."}
         write_json(self.directory / "summaries.json.gz", summary)
         self.event("COMPUTATION_FINALIZED", {"state": status, "completed_candidates": summary["completed_candidates"],

@@ -57,6 +57,7 @@ function render(data) {
   if (!visible) return;
   if (session !== data.session) { session = data.session; openLimit = null; }
   root.classList.toggle('frozen', !data.live);
+  root.dataset.count = String(data.gpus.length);
   root.replaceChildren();
   data.gpus.forEach((gpu, position) => {
     const history = data.samples.map(sample => sample.gpus[position] || [null, null, null, null, null]);

@@ -273,7 +273,20 @@ uv run asquerix lab status <campaign-id>
 uv run asquerix lab report <campaign-id>
 uv run asquerix lab export <campaign-id> --output runs/lab-export/<campaign-id>
 uv run asquerix lab pause|resume|stop <campaign-id>
+uv run asquerix lab continue <campaign-id> --additional 32 [--batch-capacity N] [--max-seconds S] [--no-publish]
 ```
+
+Ctrl+C stops the server within about a second. A running campaign is then finalized as PARTIAL with its completed results; use Pause first if you want to Resume it after a restart.
+
+**Continuing a finished search.** `Continue search` in the browser (or `lab continue`) creates a new campaign that takes over a completed or partial search: the same starting worlds, results, programs, incumbents and random-generator state, plus more candidates per method. The original campaign is not changed. Only the name, description, GPU, batch capacity, slice sizes, time and storage budgets, replays and publication may differ; n, banks, seeds, the evaluation profile, the generation law, λ, methods and controls are kept. The numerical sources (kernel, geometry, program language, scoring, generation) and NumPy/Warp/Python must be unchanged since the parent ran; differing orchestration files are recorded. A continuation reproduces the programs, scores and RNG state of a single campaign with the larger budget (tested on CUDA). Holdout is evaluated only for new winners. Catalogs from earlier versions are migrated to schema version 2 when the server starts.
+
+**GPU telemetry.** While the laboratory computes, the header shows one tile per GPU (temperature, fan, power draw/limit, utilization, memory and a utilization history), sampled once a second with `nvidia-smi --query-gpu`. The tiles freeze when the computation ends and can be dismissed; the next computation starts a new session. Click the power value to change a GPU power limit. This needs root; the server uses non-interactive `sudo`, so it works only after allowing exactly that command, e.g. with `sudo visudo -f /etc/sudoers.d/asquerix-power`:
+
+```text
+<user> ALL=(root) NOPASSWD: /usr/bin/nvidia-smi ^-i [0-9] -pl [0-9]{2,4}$
+```
+
+The anchored regular expression (sudo 1.9.10 or newer) permits only `-i <gpu> -pl <watts>`; a `*` wildcard would also match further arguments. Power-limit changes during a campaign are recorded in its history, because they affect measured speed but not numerical results.
 
 Example campaigns are in `examples/lab`: `n11-compare.json` (the reference two-method comparison: 32 candidates per method, 4,224 training and up to 256 holdout episodes), `n11-three-program-evaluation.json`, `n12-controls.json`, `n16-controls.json` and `n11-fixed-smoke.json`. `--json` saves structured client output under `runs/lab-cli` and prints only paths. Campaigns publish their finalized directory to remote `main` by default (`"publication": {"enabled": false}` keeps them local). A publication failure is recorded on the campaign and never discards its results.
 

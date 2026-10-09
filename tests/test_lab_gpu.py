@@ -252,3 +252,45 @@ def test_campaign_worker_report_and_publication_end_to_end(cuda_device, tmp_path
     published = git(remote, "ls-tree", "-r", "--name-only", "main").splitlines()
     assert result["artifact_path"] + "/report.html" in published
     assert any(path.endswith(".npz") and "/trajectories/episode-" in path for path in published)
+
+
+def _run_worker(root, identifier, spec):
+    from types import SimpleNamespace
+    from asquerix.lab.worker import CampaignWorker
+    messages = []
+    worker = CampaignWorker({"id": identifier, "spec": spec.document(), "directory": str(root / "campaigns" / identifier),
+                             "checkpoint": str(root / "checkpoints" / (identifier + ".json.gz"))},
+                            emit=messages.append, signal=SimpleNamespace(value=0), signal_since=SimpleNamespace(value=0.0))
+    return worker.run(), worker.state, messages
+
+
+def test_continuation_reproduces_a_single_campaign_with_the_larger_budget(cuda_device, tmp_path):
+    from asquerix.lab.continuation import continuation_spec
+    base = Campaign(name="Continuation", n=4, batch_capacity=16, controls=["legacy_compress"],
+                    search={"candidate_budget_per_method": 2, "initial_pool": 1, "lambda": 1},
+                    datasets={"training": {"first_id": "100", "valid_count": 2}, "holdout": {"first_id": "200", "valid_count": 2}},
+                    generation={"min_nodes": 2, "max_nodes": 4}, recording={"max_traces": 2}, publication={"enabled": False})
+    parent_summary, _, _ = _run_worker(tmp_path, "a" * 32, base)
+    child_spec = continuation_spec({"id": "a" * 32, "spec": base.document()}, 2, {"batch_capacity": 7, "name": "Continued"})
+    summary, state, messages = _run_worker(tmp_path, "b" * 32, child_spec)
+    single_spec = Campaign.model_validate({**base.document(), "search": {**base.document()["search"], "candidate_budget_per_method": 4}})
+    _, single, _ = _run_worker(tmp_path, "c" * 32, single_spec)
+
+    assert summary["state"] == "COMPLETED"
+    assert summary["continuation"]["parent_id"] == "a" * 32
+    assert summary["continuation"]["inherited_episode_executions"] == parent_summary["completed_episode_executions"]
+    for method in ("random_program_search", "one_plus_lambda"):
+        continued, reference = state["controllers"][method], single["controllers"][method]
+        assert continued["completed"] == reference["completed"] == 4
+        assert [c["program"]["hash"] for c in continued["candidates"]] == [c["program"]["hash"] for c in reference["candidates"]]
+        assert [c["score"]["ranking_tuple"] for c in continued["candidates"]] == [c["score"]["ranking_tuple"] for c in reference["candidates"]]
+        assert continued["rng_state"] == reference["rng_state"]
+        assert continued["candidates"][0]["id"].startswith("a" * 32) and continued["candidates"][-1]["id"].startswith("b" * 32)
+    # Only new episodes are executed; the inherited control holdout is not repeated.
+    new_episodes = summary["completed_episode_executions"] - summary["continuation"]["inherited_episode_executions"]
+    holdout_runs = sum(1 for message in messages if message["type"] == "candidate" and "holdout_score" in message["candidate"]
+                       and message["candidate"]["arm"] == "controls")
+    assert new_episodes <= 2 * 2 * 2 + 2 * 2  # two new candidates per method on two training starts, plus up to two winners on holdout
+    assert holdout_runs <= 1  # the inherited control result is only re-announced
+    assert any(message["type"] == "chunk" and message.get("inherited") for message in messages)
+    assert all(item["status"] == "REPLAY_MATCHED" for item in summary["replays"])

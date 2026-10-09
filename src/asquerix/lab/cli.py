@@ -85,6 +85,17 @@ def main(argv=None):
             command.add_argument("campaign_id")
         if name == "export":
             command.add_argument("--output", type=Path, required=True)
+    resume_search = commands.add_parser("continue", help="Continue a finished search as a new campaign with more candidates")
+    resume_search.add_argument("campaign_id")
+    resume_search.add_argument("--url", default="http://127.0.0.1:8765")
+    resume_search.add_argument("--json", action="store_true", help="Save structured output to disk and print concise paths")
+    resume_search.add_argument("--additional", type=int, required=True, help="Additional candidates per search method")
+    resume_search.add_argument("--name")
+    resume_search.add_argument("--device", help="CUDA selector, e.g. cuda:1")
+    resume_search.add_argument("--batch-capacity", type=int)
+    resume_search.add_argument("--max-seconds", type=float)
+    resume_search.add_argument("--publish", action=argparse.BooleanOptionalAction, default=None,
+                               help="Publish results to remote main (default: as in the original campaign)")
     args = parser.parse_args(argv)
     try:
         if args.command == "serve":
@@ -112,6 +123,11 @@ def main(argv=None):
         if args.command == "submit":
             spec = Campaign.model_validate(read_json(args.config))
             result = request(args.url, "/campaigns", method="POST", body=spec.document())
+        elif args.command == "continue":
+            body = {"additional_candidates_per_method": args.additional, "name": args.name, "device": args.device,
+                    "batch_capacity": args.batch_capacity, "max_seconds": args.max_seconds, "publication": args.publish}
+            result = request(args.url, f"/campaigns/{args.campaign_id}/continue", method="POST",
+                             body={key: value for key, value in body.items() if value is not None})
         elif args.command in ("pause", "resume", "stop"):
             result = request(args.url, f"/campaigns/{args.campaign_id}/{args.command}", method="POST")
         elif args.command == "export":

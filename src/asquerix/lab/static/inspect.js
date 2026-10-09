@@ -63,7 +63,7 @@ function niceTicks(low, high, count) {
 }
 
 // Best-so-far training mean L per search method as step lines, with fixed controls as reference lines.
-function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = []} = {}) {
+function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = [], marker = null} = {}) {
   target.replaceChildren();
   target.classList.add("progress-chart");
   if (!points.length) { target.append(element("p", "No completed, independently validated candidates yet. The curve appears after the first finished group.", "muted empty-chart")); return; }
@@ -73,9 +73,16 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   const plotW = width - margin.left - margin.right, plotH = height - margin.top - margin.bottom;
   const ys = [...points.map(point => point[yKey]), ...references.map(item => item.value)];
   let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  // Early poor incumbents would flatten the interesting region: the scale tops out at the controls or at the
+  // best first value of any method, and higher values are clipped to the top edge with a marker.
+  const firsts = arms.map(arm => points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])[0][yKey]);
+  const focus = Math.max(...references.map(item => item.value), Math.min(...firsts));
+  if (yMax > focus + (focus - yMin) * 1.5) yMax = focus + (focus - yMin) * 0.25;
   const pad = Math.max((yMax - yMin) * 0.08, 0.002); yMin -= pad; yMax += pad;
+  const top = yMax;
   const xMax = Math.max(1, ...points.map(point => point[xKey]));
-  const x = value => margin.left + value / xMax * plotW, y = value => margin.top + (yMax - value) / (yMax - yMin) * plotH;
+  const x = value => margin.left + value / xMax * plotW, y = value => margin.top + (top - Math.min(value, top)) / (top - yMin) * plotH;
+  const clipped = value => value > top;
   const svg = svgNode("svg", {viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Best training mean side L so far for ${arms.join(" and ")} against ${xLabel}; lower is better`});
   for (const tick of niceTicks(yMin, yMax, 5)) {
     svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(tick), y2: y(tick), class: "grid"}));
@@ -85,6 +92,10 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: margin.top + plotH, y2: margin.top + plotH, class: "axis"}));
   svg.append(svgNode("text", {x: margin.left + plotW / 2, y: height - 6, "text-anchor": "middle", class: "axis-label"}, xLabel));
   svg.append(svgNode("text", {x: 14, y: margin.top + plotH / 2, transform: `rotate(-90 14 ${margin.top + plotH / 2})`, "text-anchor": "middle", class: "axis-label"}, "Best mean L (lower is better)"));
+  if (marker && marker.x > 0 && marker.x < xMax) {
+    svg.append(svgNode("line", {x1: x(marker.x), x2: x(marker.x), y1: margin.top, y2: margin.top + plotH, class: "reference"}));
+    svg.append(svgNode("text", {x: x(marker.x) + 6, y: margin.top + 12, class: "tick"}, marker.label));
+  }
   const labels = [];
   for (const item of references) {
     svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: "reference"}));
@@ -96,8 +107,11 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
     svg.append(svgNode("path", {d: path + `H${margin.left + plotW}`, fill: "none", stroke: group.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"}));
     group.points.forEach((point, i) => {
       if (i && point[yKey] >= group.points[i - 1][yKey]) return;  // markers only where the incumbent improved
-      const dot = svgNode("circle", {cx: x(point[xKey]), cy: y(point[yKey]), r: 4.5, fill: group.color, class: "chart-point", tabindex: "0", role: "button"});
-      dot.append(svgNode("title", {}, `${armLabel(group.arm)} improved to ${point[yKey].toFixed(6)} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
+      const cx = x(point[xKey]), cy = y(point[yKey]);
+      const dot = clipped(point[yKey])
+        ? svgNode("path", {d: `M${cx - 5},${cy + 6}L${cx},${cy - 2}L${cx + 5},${cy + 6}Z`, fill: group.color, class: "chart-point", tabindex: "0", role: "button"})
+        : svgNode("circle", {cx, cy, r: 4.5, fill: group.color, class: "chart-point", tabindex: "0", role: "button"});
+      dot.append(svgNode("title", {}, `${armLabel(group.arm)} ${i ? "improved to" : "started at"} ${point[yKey].toFixed(6)}${clipped(point[yKey]) ? " (above the shown range)" : ""} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
       dot.addEventListener("click", () => onSelect(point));
       dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); });
       svg.append(dot);
@@ -140,6 +154,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
     swatch.style.background = group.color; item.prepend(swatch); legend.append(item);
   }
   if (references.length) { const item = element("span", "fixed controls"), swatch = element("i", undefined, "dashed"); item.prepend(swatch); legend.append(item); }
+  if (points.some(point => clipped(point[yKey]))) legend.append(element("span", `▲ above ${top.toFixed(3)}: off scale, hover for the value`, "muted"));
   target.append(legend, svg, tooltip);
 }
 

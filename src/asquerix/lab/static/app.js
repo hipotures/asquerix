@@ -7,7 +7,7 @@ const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common in
 let lastUpdate=0,chartArgs=null,resizeTimer=null;
 addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(chartArgs&&!document.getElementById('detail').hidden)curve(document.getElementById('live-curve'),...chartArgs);},150);});
 function duration(seconds){if(typeof seconds!=='number')return '—';const s=Math.round(seconds);if(s<60)return `${s} s`;if(s<3600)return `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s`;return `${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;}
-function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length;return ((candidates+fixed)*spec.datasets.training.valid_count+(spec.search.methods.length+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
+function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length,winners=spec.search.methods.length*(spec.continuation_of?2:1);return ((candidates+fixed)*spec.datasets.training.valid_count+(winners+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
 function freshness(){const target=document.getElementById('campaign-freshness');if(!target||!lastUpdate)return;const seconds=Math.round((Date.now()-lastUpdate)/1000);target.textContent=ACTIVE.includes(selectedCampaign?.state)?`updated ${seconds<2?'just now':seconds+' s ago'}`:'';}
 setInterval(freshness,1000);
 let catalogOffset=0, programOffset=0, currentCandidates=[], stream=null, refreshTimer=null, csrf=sessionStorage.getItem('asquerix-csrf')||'';
@@ -102,7 +102,9 @@ async function programs(){
   for(const candidate of ordered){if(['controls','fixed'].includes(candidate.arm))continue;counts[candidate.arm]=(counts[candidate.arm]||0)+(candidate.score.complete?1:0);work[candidate.arm]=(work[candidate.arm]||0)+(candidate.score.total_charged_work||0);if(candidate.score.eligible){incumbent[candidate.arm]=Math.min(incumbent[candidate.arm]??Infinity,candidate.score.mean_best_L);points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?counts[candidate.arm]:key==='work'?work[candidate.arm]:candidate.arm_execution_elapsed_seconds,y:incumbent[candidate.arm]});}}
   const names=Object.fromEntries(currentCandidates.map(item=>[item.id,item.program?.authored?.name]));
   const references=comparison.candidates.filter(item=>['controls','fixed'].includes(item.arm)&&item.score?.eligible).map(item=>({label:(names[item.id]||`${item.arm} #${item.position}`).replaceAll('_',' '),value:item.score.mean_best_L}));
-  chartArgs=[points,{xLabel:key==='evaluations'?'Completed candidates per method':key==='work'?'Charged work per method':'Method execution time (s)',references,onSelect:async point=>inspect(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(point.candidate_id)}`))}];
+  const inherited=summary=>summary?.continuation?.inherited_candidates;
+  const marker=key==='evaluations'&&inherited(selectedCampaign.summary)?{x:inherited(selectedCampaign.summary)/selectedCampaign.spec.search.methods.length,label:'continuation starts'}:null;
+  chartArgs=[points,{marker,xLabel:key==='evaluations'?'Completed candidates per method':key==='work'?'Charged work per method':'Method execution time (s)',references,onSelect:async point=>inspect(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(point.candidate_id)}`))}];
   curve(document.getElementById('live-curve'),...chartArgs);
 }
 async function history(){
@@ -119,7 +121,9 @@ function replays(){
 async function refresh(){
   if(!selectedId)return;
   selectedCampaign=await api(`/campaigns/${selectedId}`);const {spec,summary,state,publication}=selectedCampaign;
-  document.getElementById('campaign-name').textContent=spec.name;document.getElementById('campaign-scope').textContent=`n=${spec.n} · ${spec.device} / ${selectedCampaign.device_uuid||'resolving physical identity'} · ${summary.profile_hash||spec.evaluation_profile} · training ${spec.datasets.training.valid_count}, holdout ${spec.datasets.holdout.valid_count}`;const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
+  document.getElementById('campaign-name').textContent=spec.name;const scope=document.getElementById('campaign-scope');scope.textContent=`n=${spec.n} · ${spec.device} / ${selectedCampaign.device_uuid||'resolving physical identity'} · ${summary.profile_hash||spec.evaluation_profile} · training ${spec.datasets.training.valid_count}, holdout ${spec.datasets.holdout.valid_count}`;
+  if(spec.continuation_of){const link=element('a','the original campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
+  const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
   for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Training incumbent mean L',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
   const active=ACTIVE.includes(state),plan=plannedEpisodes(spec),done=summary.completed_episode_executions||0;
@@ -142,6 +146,7 @@ async function refresh(){
   else line.append(element('span',{PENDING:'waits until the campaign finishes',LOCAL_ONLY:'disabled for this campaign (local results only)',FAILED:`failed (${publication.error||'see server log'}); local results are preserved`,NONE:'not performed'}[status]||status));
   // Show only the lifecycle actions that apply to the current state.
   document.getElementById('pause-campaign').hidden=!['QUEUED','PREPARING','RUNNING'].includes(state);document.getElementById('resume-campaign').hidden=!['PAUSED','INTERRUPTED'].includes(state);document.getElementById('stop-campaign').hidden=!['QUEUED','PREPARING','RUNNING','PAUSE_REQUESTED','PAUSED'].includes(state);
+  document.getElementById('continue-campaign').hidden=!(['COMPLETED','PARTIAL'].includes(state)&&spec.search.methods.length);
   document.querySelector('.campaign-bar .divider').hidden=['pause','resume','stop'].every(name=>document.getElementById(name+'-campaign').hidden);
   const report=document.getElementById('open-report');report.hidden=!summary.report_artifact_id;if(!report.hidden)report.href='/api/v1/artifacts/'+summary.report_artifact_id;
   const download=document.getElementById('download-export');download.hidden=summary.report_status!=='READY';download.href=`/api/v1/campaigns/${selectedId}/export`;
@@ -150,7 +155,7 @@ async function refresh(){
   if(!document.getElementById('tab-replays').hidden)replays();
 }
 async function openCampaign(identifier){
-  selectedId=identifier;selectedProgram=null;programOffset=0;location.hash=identifier;view('detail');if(stream)stream.close();await refresh();
+  document.getElementById('continue-form').hidden=true;selectedId=identifier;selectedProgram=null;programOffset=0;location.hash=identifier;view('detail');if(stream)stream.close();await refresh();
   stream=new EventSource(`/api/v1/campaigns/${identifier}/events`);
   let last=0n;
   stream.addEventListener('progress',event=>{const id=BigInt(event.lastEventId||'0');if(id<=last)return;last=id;if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;refresh().catch(e=>fail(e.message));},700);});
@@ -166,6 +171,19 @@ for(const [id,change] of [['catalog-previous',-30],['catalog-next',30]])document
 for(const [id,change] of [['program-previous',-50],['program-next',50]])document.getElementById(id).addEventListener('click',()=>{programOffset=Math.max(0,programOffset+change);programs();});
 document.getElementById('live-curve-axis').addEventListener('change',()=>programs());
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',async()=>{for(const tab of ['programs','history','replays'])document.getElementById('tab-'+tab).hidden=tab!==button.dataset.tab;for(const other of document.querySelectorAll('[data-tab]'))other.setAttribute('aria-selected',String(other===button));if(button.dataset.tab==='history')await history();if(button.dataset.tab==='replays')replays();});
+const continueForm=document.getElementById('continue-form');
+document.getElementById('continue-campaign').addEventListener('click',()=>{
+  const {spec}=selectedCampaign,f=continueForm.elements;
+  f.namedItem('additional').value=String(spec.search.candidate_budget_per_method);f.namedItem('name').value=`${spec.name.slice(0,140)} · continued`;
+  f.namedItem('device').replaceChildren(...inventory.items.map(item=>{const option=element('option',`${item.name} · ${item.device}`);option.value=item.device;return option;}));f.namedItem('device').value=spec.device;
+  f.namedItem('batch_capacity').value=String(spec.batch_capacity);f.namedItem('max_seconds').value=String(spec.limits.max_seconds);f.namedItem('max_artifact_mib').value=String(spec.limits.max_artifact_mib);
+  f.namedItem('automatic_replays').checked=spec.recording.automatic;f.namedItem('publication').checked=spec.publication.enabled;
+  document.getElementById('continue-locked').textContent=`Kept from the original so results stay comparable: n=${spec.n}, initial side ${spec.initial_side}, ${spec.datasets.training.valid_count} training and ${spec.datasets.holdout.valid_count} holdout starts, all seeds, the evaluation profile and work caps, the generation and mutation law, λ=${spec.search.lambda}, methods (${spec.search.methods.join(', ')}) and controls. Change those with “Clone as draft”, which starts from scratch.`;
+  continueForm.hidden=false;f.namedItem('additional').focus();});
+document.getElementById('cancel-continue').addEventListener('click',()=>{continueForm.hidden=true;});
+continueForm.addEventListener('submit',async event=>{event.preventDefault();const f=continueForm.elements,button=continueForm.querySelector('[type=submit]');button.disabled=true;
+  try{const created=await api(`/campaigns/${selectedId}/continue`,{method:'POST',body:{additional_candidates_per_method:Number(f.namedItem('additional').value),name:f.namedItem('name').value,device:f.namedItem('device').value,batch_capacity:Number(f.namedItem('batch_capacity').value),max_seconds:Number(f.namedItem('max_seconds').value),max_artifact_mib:Number(f.namedItem('max_artifact_mib').value),automatic_replays:f.namedItem('automatic_replays').checked,publication:f.namedItem('publication').checked}});
+    continueForm.hidden=true;await openCampaign(created.id);}catch(e){fail(e.message);}finally{button.disabled=false;}});
 document.getElementById('clone-program').addEventListener('click',()=>{fixedDraft=structuredClone(selectedProgram.program.authored);field('method').value='fixed';field('name').value=(fixedDraft.name||'Inspected strategy')+' evaluation';field('fixed_control').querySelector('[value=cloned]').disabled=false;field('fixed_control').value='cloned';field('legacy_control').checked=false;field('pulse_control').checked=false;create();});
 field('fixed_control').addEventListener('change',()=>{fixedDraft=null;});
 document.getElementById('clone-campaign').addEventListener('click',async()=>{try{const clone=await api(`/campaigns/${selectedId}/clone`,{method:'POST'});const draft=await api(`/campaigns/${clone.id}`);defaults=draft.spec;field('name').value=defaults.name;field('n').value=defaults.n;field('training_count').value=defaults.datasets.training.valid_count;field('holdout_count').value=defaults.datasets.holdout.valid_count;field('candidate_budget').value=defaults.search.candidate_budget_per_method;field('initial_pool').value=defaults.search.initial_pool;field('lambda').value=defaults.search.lambda;buildAdvanced();create();}catch(e){fail(e.message);}});
