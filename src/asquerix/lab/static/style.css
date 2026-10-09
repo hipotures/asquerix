@@ -163,3 +163,7 @@ label > input[inputmode=numeric]{align-self:flex-start;width:22ch;font-variant-n
 .form-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px 28px}
 .form-row > .grow{flex:1 1 280px}
 .form-row > .grow input,.form-row > .grow select{width:100%}
+
+/* Five status tiles; the speed tile's second line is smaller. */
+.statusline{grid-template-columns:repeat(5,1fr)}
+@media (max-width:1050px){.statusline{grid-template-columns:repeat(3,1fr)}}

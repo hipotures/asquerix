@@ -7,7 +7,7 @@ const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common in
 // "Name · continued · continued" (older campaigns) and "Name · continuation 2" both read as base name + depth.
 function lineage(name){const match=/^(.*?)((?: · continued)+| · continuation (\d+))$/.exec(name);if(!match)return {base:name,depth:0};return {base:match[1],depth:match[3]?Number(match[3]):match[2].split(' · continued').length-1};}
 const PAGE=10;
-let bestKnown=null,programTotal=0,lastUpdate=0,chartArgs=null,resizeTimer=null;
+let parentCounts={},bestKnown=null,programTotal=0,lastUpdate=0,chartArgs=null,resizeTimer=null;
 addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(chartArgs&&!document.getElementById('detail').hidden)curve(document.getElementById('live-curve'),...chartArgs);},150);});
 function duration(seconds){if(typeof seconds!=='number')return '—';const s=Math.round(seconds);if(s<60)return `${s} s`;if(s<3600)return `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s`;return `${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;}
 function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length,winners=spec.search.methods.length*(spec.continuation_of?2:1);return ((candidates+fixed)*spec.datasets.training.valid_count+(winners+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
@@ -140,9 +140,19 @@ function replays(){
   const records=(selectedCampaign.replays||[]).filter(record=>record.state==='REPLAY_MATCHED'||record.state==='REPLAY_MISMATCH').map(record=>record.document);
   replayComparison(document.getElementById('live-replays'),records,replay=>'/api/v1/artifacts/'+replay.artifacts.find(item=>item.path.endsWith('.html')).id);
 }
+// Rates count only this campaign's own work: a continuation's inherited episodes and programs are subtracted.
+function speed(spec,summary){
+  const inherited=parentCounts[spec.continuation_of]||{episodes:0,programs:0},seconds=summary.elapsed_execution_seconds||0;
+  if(seconds<1)return '—';
+  const episodes=((summary.completed_episode_executions||0)-inherited.episodes)/seconds,programs=((summary.completed_candidates||0)-inherited.programs)/seconds;
+  const perGeneration=programs>0?spec.search.lambda/programs:null;
+  return `${episodes.toFixed(1)} episodes/s\n${programs.toFixed(2)} programs/s${perGeneration?` · ${duration(perGeneration)} per generation`:''}`;
+}
 async function refresh(){
   if(!selectedId)return;
-  selectedCampaign=await api(`/campaigns/${selectedId}`);const {spec,summary,state,publication}=selectedCampaign;
+  selectedCampaign=await api(`/campaigns/${selectedId}`);
+  const parentId=selectedCampaign.spec.continuation_of;
+  if(parentId&&!parentCounts[parentId]){try{const parent=await api(`/campaigns/${parentId}`);parentCounts[parentId]={episodes:parent.summary.completed_episode_executions||0,programs:parent.summary.completed_candidates||0};}catch{parentCounts[parentId]={episodes:0,programs:0};}}const {spec,summary,state,publication}=selectedCampaign;
   const {base,depth}=lineage(spec.name);
   document.getElementById('campaign-n').textContent=`n = ${spec.n}`;document.getElementById('campaign-name').textContent=base;
   document.getElementById('campaign-lineage').textContent=depth?` · continuation ${depth}`:'';document.title=`n=${spec.n} · ${base} — Asquerix`;
@@ -150,7 +160,7 @@ async function refresh(){
   if(spec.continuation_of){const link=element('a','the previous campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
   const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
-  for(const [label,text] of [['Programs tried / candidate budget',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
+  for(const [label,text] of [['Programs tried / candidate budget',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)],['Speed',speed(spec,summary)]]){const box=element('div',undefined,'metric'),[main,...detail]=text.split('\n');box.append(element('small',label),element('strong',main));if(detail.length)box.append(element('small',detail.join(' ')));metrics.append(box);}
   const active=ACTIVE.includes(state),plan=plannedEpisodes(spec),done=summary.completed_episode_executions||0;
   const activity=document.getElementById('campaign-activity');activity.dataset.active=String(active);
   const searching=spec.search.methods.includes(summary.arm);
