@@ -279,14 +279,21 @@ class Catalog:
         return {"event": event, "candidate": candidate, "candidates": related, "parent_id": parent_id,
                 "completed_candidates": sum(bool(item.get("score", {}).get("complete")) for item in candidates.values())}
 
-    def candidates(self, campaign_id: str, *, limit=50, offset=0, arm=None) -> dict:
+    # Lower side L is better; incomplete or ineligible candidates sort after the ranked ones.
+    CANDIDATE_ORDER = {
+        "rank": "CASE WHEN json_extract(document,'$.score.eligible') THEN 0 ELSE 1 END, json_extract(document,'$.score.mean_best_L'), arm, position",
+        "best": "CASE WHEN json_extract(document,'$.score.eligible') THEN 0 ELSE 1 END, json_extract(document,'$.score.best_L'), arm, position",
+        "order": "arm, position"}
+
+    def candidates(self, campaign_id: str, *, limit=50, offset=0, arm=None, sort="order") -> dict:
         self.get(campaign_id)
+        order = self.CANDIDATE_ORDER[sort]
         condition, values = "campaign_id=?", [campaign_id]
         if arm:
             condition += " AND arm=?"
             values.append(arm)
         with self.lock:
-            rows = self.db.execute("SELECT document FROM candidates WHERE " + condition + " ORDER BY arm,position LIMIT ? OFFSET ?", (*values, limit, offset)).fetchall()
+            rows = self.db.execute("SELECT document FROM candidates WHERE " + condition + " ORDER BY " + order + " LIMIT ? OFFSET ?", (*values, limit, offset)).fetchall()
             total = self.db.execute("SELECT count(*) FROM candidates WHERE " + condition, values).fetchone()[0]
         return {"items": [json.loads(row[0]) for row in rows], "total": total, "offset": offset, "limit": limit}
 

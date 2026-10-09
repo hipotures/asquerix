@@ -95,3 +95,23 @@ header > button{flex:none;white-space:nowrap}
 .continue-panel{margin:16px 0 4px;padding:16px;border:1px solid var(--line);border-radius:8px;background:#f5f8fb;display:grid;gap:12px}
 .continue-panel h3{margin:0}
 .continue-panel p{margin:0}
+
+/* Sortable candidate table headers. */
+#tab-programs th .sort{all:unset;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit}
+#tab-programs th .sort:hover{color:var(--ink)}
+#tab-programs th .sort:focus-visible{outline:2px solid #75a9db;outline-offset:2px}
+#tab-programs th[aria-sort] .sort{color:var(--ink)}
+#tab-programs th[aria-sort] .sort::after{content:" ▲";font-size:9px}
+#program-table td.rank{color:var(--muted)}
+
+/* The candidate table takes its content width; the program explorer gets the rest. */
+#tab-programs .split{grid-template-columns:max-content minmax(380px,1fr)}
+#tab-programs .split > .card:first-child{max-width:720px}
+@media (max-width:1100px){#tab-programs .split{grid-template-columns:1fr}#tab-programs .split > .card:first-child{max-width:none}.explorer{position:static;max-height:none}}
+
+/* Episode references in the program explorer. */
+table.episodes td,table.episodes th{white-space:nowrap;padding:6px 8px}
+table.episodes .num{text-align:right;font-variant-numeric:tabular-nums}
+table.episodes td.ok{color:var(--teal)}
+table.episodes td.bad{color:var(--warning)}
+table.episodes td button{padding:4px 10px}

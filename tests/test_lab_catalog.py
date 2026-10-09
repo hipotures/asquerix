@@ -79,3 +79,19 @@ def test_version_one_catalog_migrates_candidates_to_campaign_scoped_keys(tmp_pat
     assert catalog.get_candidate("p", "p:arm:0") == {"id": "p:arm:0"}
     assert catalog.get_candidate("c", "p:arm:0")["score"] == {"inherited": True}
     catalog.close()
+
+
+def test_candidates_sort_by_mean_rank_best_start_or_generation_order(tmp_path):
+    from asquerix.lab.catalog import Catalog
+    catalog = Catalog(tmp_path)
+    catalog.db.execute("INSERT INTO campaigns(id,state,spec,created,updated) VALUES('c','COMPLETED','{}',0,0)")
+    catalog.db.commit()
+    for arm, position, mean, best, eligible in (("a", 0, 4.3, 4.0, True), ("a", 1, 9.1, 9.1, True),
+                                                 ("b", 0, 4.2, 4.1, True), ("b", 1, 4.0, 4.0, False)):
+        catalog.candidate("c", {"id": f"{arm}{position}", "arm": arm, "position": position, "program": {"hash": f"h{arm}{position}"},
+                                "score": {"mean_best_L": mean, "best_L": best, "eligible": eligible}})
+    ids = lambda sort: [item["id"] for item in catalog.candidates("c", sort=sort)["items"]]
+    assert ids("rank") == ["b0", "a0", "a1", "b1"]
+    assert ids("best") == ["a0", "b0", "a1", "b1"]
+    assert ids("order") == ["a0", "a1", "b0", "b1"]
+    catalog.close()

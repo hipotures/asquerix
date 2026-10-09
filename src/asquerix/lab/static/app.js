@@ -10,7 +10,7 @@ function duration(seconds){if(typeof seconds!=='number')return '—';const s=Mat
 function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length,winners=spec.search.methods.length*(spec.continuation_of?2:1);return ((candidates+fixed)*spec.datasets.training.valid_count+(winners+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
 function freshness(){const target=document.getElementById('campaign-freshness');if(!target||!lastUpdate)return;const seconds=Math.round((Date.now()-lastUpdate)/1000);target.textContent=ACTIVE.includes(selectedCampaign?.state)?`updated ${seconds<2?'just now':seconds+' s ago'}`:'';}
 setInterval(freshness,1000);
-let catalogOffset=0, programOffset=0, currentCandidates=[], stream=null, refreshTimer=null, csrf=sessionStorage.getItem('asquerix-csrf')||'';
+let programSort='rank', catalogOffset=0, programOffset=0, currentCandidates=[], stream=null, refreshTimer=null, csrf=sessionStorage.getItem('asquerix-csrf')||'';
 const form=document.getElementById('campaign-form');
 const error=document.getElementById('error');
 const field=name=>form.elements.namedItem(name);
@@ -83,17 +83,31 @@ async function inspect(candidate){
   if(candidate.parent_id&&!related.some(item=>item.id===candidate.parent_id))try{related.push(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(candidate.parent_id)}`));}catch{}
   programView(document.getElementById('program-inspector'),candidate,related);document.getElementById('clone-program').hidden=false;
   const episodes=await api(`/campaigns/${selectedId}/episodes?candidate_id=${encodeURIComponent(candidate.id)}&limit=10`),target=document.getElementById('episode-list');target.replaceChildren();
-  for(const episode of episodes.items){const box=element('p',`${episode.bank} start ${episode.initial_id} / replicate ${episode.replicate}: best L ${number(episode.best_L)}, current L ${number(episode.current_L)} · ${episode.validation.status}`),button=element('button','Queue geometric replay');button.addEventListener('click',async()=>{try{const queued=await api(`/campaigns/${selectedId}/replays`,{method:'POST',body:{candidate_id:candidate.id,episode_key:episode.episode_key,mode:'accepted',max_frames:256,max_mib:10}});box.append(element('small',` Replay ${queued.state}`));}catch(e){fail(e.message);}});box.append(button);target.append(box);}
+  const table=element('table',undefined,'episodes'),head=element('tr');
+  for(const [text,cls] of [['Start',''],['Best L','num'],['Final L','num'],['Validation',''],['','']])head.append(element('th',text,cls));
+  table.append(element('thead'));table.tHead.append(head);const body=element('tbody');table.append(body);
+  for(const episode of episodes.items){
+    const row=element('tr'),valid=episode.validation.status==='NUMERICALLY_VALIDATED';
+    const start=element('td',`${episode.bank} ${episode.initial_id}`);start.title=`Replicate ${episode.replicate}`;
+    const status=element('td',valid?'✓ validated':episode.validation.status.toLowerCase().replaceAll('_',' '),valid?'ok':'bad');status.title=episode.validation.status;
+    const cell=element('td'),button=element('button','Replay');button.title='Queue a recorded geometric replay of this episode';
+    button.addEventListener('click',async()=>{try{const queued=await api(`/campaigns/${selectedId}/replays`,{method:'POST',body:{candidate_id:candidate.id,episode_key:episode.episode_key,mode:'accepted',max_frames:256,max_mib:10}});button.textContent=queued.state==='QUEUED'?'Queued':queued.state.toLowerCase();button.disabled=true;}catch(e){fail(e.message);}});
+    cell.append(button);row.append(start,element('td',number(episode.best_L),'num'),element('td',number(episode.current_L),'num'),status,cell);body.append(row);}
+  target.append(table);
+  if(episodes.total>episodes.items.length)target.append(element('p',`Showing ${episodes.items.length} of ${episodes.total} episodes.`,'muted'));
 }
 async function programs(){
-  const page=await api(`/campaigns/${selectedId}/programs?limit=50&offset=${programOffset}`);currentCandidates=page.items;
+  const page=await api(`/campaigns/${selectedId}/programs?limit=50&offset=${programOffset}&sort=${programSort}`);currentCandidates=page.items;
+  for(const header of document.querySelectorAll('#tab-programs th'))header.removeAttribute('aria-sort');
+  document.querySelector(`#tab-programs .sort[data-sort=${programSort}]`).closest('th').setAttribute('aria-sort','ascending');
   const target=document.getElementById('program-table');target.replaceChildren();
   for(const candidate of page.items){
     const row=element('tr'),score=candidate.score||{},valid=score.validation_counts?.NUMERICALLY_VALIDATED||0;
     row.dataset.candidateId=candidate.id;row.classList.toggle('selected',selectedProgram?.id===candidate.id);
     const label=element('td',`${candidate.arm.replaceAll('_',' ')} · #${candidate.position}`);label.title=candidate.id;
     const validity=element('td',`${valid}/${score.expected_episodes||0}${score.eligible?' ✓':''}`);validity.title=score.eligible?'All episodes independently validated; eligible for ranking':'Incomplete or not all episodes validated';
-    row.append(label,element('td',number(score.mean_best_L),'num'),element('td',number(score.best_L),'num'),validity);
+    const rank=programSort==='rank'&&score.eligible?String(programOffset+page.items.indexOf(candidate)+1):'';
+    row.append(element('td',rank,'num rank'),label,element('td',number(score.mean_best_L),'num'),element('td',number(score.best_L),'num'),validity);
     const cell=element('td'),button=element('button','Inspect');button.addEventListener('click',()=>inspect(candidate).catch(e=>fail(e.message)));cell.append(button);row.append(cell);target.append(row);}
   document.getElementById('program-page').textContent=`${programOffset+1}–${Math.min(programOffset+50,page.total)} of ${page.total}`;document.getElementById('program-previous').disabled=programOffset===0;document.getElementById('program-next').disabled=programOffset+50>=page.total;
   const comparison=await api(`/campaigns/${selectedId}/comparison`),key=document.getElementById('live-curve-axis').value;
@@ -125,7 +139,7 @@ async function refresh(){
   if(spec.continuation_of){const link=element('a','the original campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
   const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
-  for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Training incumbent mean L',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
+  for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
   const active=ACTIVE.includes(state),plan=plannedEpisodes(spec),done=summary.completed_episode_executions||0;
   const activity=document.getElementById('campaign-activity');activity.dataset.active=String(active);
   const searching=spec.search.methods.includes(summary.arm);
@@ -170,6 +184,7 @@ document.getElementById('filter-catalog').addEventListener('click',()=>{catalogO
 for(const [id,change] of [['catalog-previous',-30],['catalog-next',30]])document.getElementById(id).addEventListener('click',()=>{catalogOffset=Math.max(0,catalogOffset+change);catalog();});
 for(const [id,change] of [['program-previous',-50],['program-next',50]])document.getElementById(id).addEventListener('click',()=>{programOffset=Math.max(0,programOffset+change);programs();});
 document.getElementById('live-curve-axis').addEventListener('change',()=>programs());
+for(const button of document.querySelectorAll('#tab-programs .sort'))button.addEventListener('click',()=>{programSort=button.dataset.sort;programOffset=0;programs().catch(e=>fail(e.message));});
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',async()=>{for(const tab of ['programs','history','replays'])document.getElementById('tab-'+tab).hidden=tab!==button.dataset.tab;for(const other of document.querySelectorAll('[data-tab]'))other.setAttribute('aria-selected',String(other===button));if(button.dataset.tab==='history')await history();if(button.dataset.tab==='replays')replays();});
 // Arrow keys, the spinner and the wheel step size fields by powers of two and time budgets by minutes;
 // typed values are kept as entered (typing raises an InputEvent, stepping a plain input event).

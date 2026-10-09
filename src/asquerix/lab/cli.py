@@ -60,7 +60,7 @@ def display(result, *, plain=False):
                          ("Method / generation", f"{summary.get('arm', 'fixed / preparation')} / {summary.get('generation', '—')}"),
                          ("Completed candidates", summary.get("completed_candidates", 0)),
                          ("Scientific episode executions", summary.get("completed_episode_executions", 0)),
-                         ("Training incumbent mean L", summary.get("training_incumbent", {}).get("mean_best_L", "—")),
+                         ("Best mean L (training)", summary.get("training_incumbent", {}).get("mean_best_L", "—")),
                          ("GPU execution time", duration(summary.get("elapsed_execution_seconds", 0))),
                          ("Diagnostic replays", summary.get("replay_executions", 0)),
                          ("Publication", result.get("publication", {}).get("status", "PENDING"))):

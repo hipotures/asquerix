@@ -283,8 +283,9 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
         return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @app.get("/api/v1/campaigns/{identifier}/programs")
-    def programs(identifier: str, limit: Limit = 50, offset: Offset = 0, arm: str | None = None):
-        return service.catalog.candidates(identifier, limit=limit, offset=offset, arm=arm)
+    def programs(identifier: str, limit: Limit = 50, offset: Offset = 0, arm: str | None = None,
+                 sort: Literal["rank", "best", "order"] = "order"):
+        return service.catalog.candidates(identifier, limit=limit, offset=offset, arm=arm, sort=sort)
 
     @app.get("/api/v1/programs/{program_hash}")
     def program(program_hash: str):
