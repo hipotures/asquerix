@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asquerix trajectory</title>
+<style>
+:root {
+  color-scheme: dark;
+  --ink: #e7e5df;
+  --muted: #a5aaa7;
+  --line: #334147;
+  --panel: #151c20;
+  --panel-2: #1c262b;
+  --accent: #e2b35c;
+  --accent-2: #78d6c3;
+  --danger: #e88475;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-width: 880px;
+  background: #0d1215;
+  color: var(--ink);
+}
+main { max-width: 1500px; margin: 0 auto; padding: 28px 30px 40px; }
+.eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+h1 { margin: 7px 0 5px; font: 700 31px/1.05 Georgia, "Times New Roman", serif; letter-spacing: -.03em; }
+.subhead { margin: 0; color: var(--muted); font-size: 12px; }
+.status-strip {
+  display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 1px;
+  margin: 23px 0 16px; border: 1px solid var(--line); background: var(--line);
+}
+.status-card { min-height: 60px; padding: 10px 13px; background: var(--panel); }
+.status-card .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.status-card .value { margin-top: 6px; color: var(--accent-2); font-size: 13px; overflow-wrap: anywhere; }
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.panel { min-width: 0; border: 1px solid var(--line); background: var(--panel); }
+.panel-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 10px 13px 9px; }
+.panel-head h2 { margin: 0; font: 600 14px/1.2 Georgia, "Times New Roman", serif; }
+.panel-head span { color: var(--muted); font-size: 10px; }
+.panel-view-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 54px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.panel-view-controls button { padding: 4px 7px; }
+.panel-view-controls input { width: 72px; }
+.canvas-wrap { aspect-ratio: 1.45; min-height: 300px; padding: 13px; background: #10171a; }
+canvas { display: block; width: 100%; height: 100%; background: #0b1012; border: 1px solid #2a373c; }
+#current-canvas { touch-action: none; cursor: grab; }
+#current-canvas.dragging { cursor: grabbing; }
+.controls { margin-top: 14px; padding: 13px; border: 1px solid var(--line); background: var(--panel); }
+.button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+button, select { border: 1px solid #526168; background: var(--panel-2); color: var(--ink); padding: 7px 10px; font: inherit; font-size: 11px; cursor: pointer; }
+button:hover, select:hover { border-color: var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { border-color: var(--accent); color: var(--accent); }
+input[type="number"] { border: 1px solid #526168; background: var(--panel-2); color: var(--ink); padding: 4px 5px; font: inherit; }
+input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
+.frame-slider-area { flex: 1 1 230px; min-width: 180px; }
+.marker-track { position: relative; height: 24px; margin: 0 8px 4px; }
+.marker-band { position: absolute; top: 11px; height: 4px; background: var(--accent-2); opacity: .5; }
+.range-marker { position: absolute; top: 0; transform: translateX(-50%); padding: 2px 4px; color: var(--accent-2); border-color: var(--accent-2); font-size: 10px; touch-action: none; cursor: ew-resize; }
+.range-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; color: var(--muted); font-size: 11px; }
+.range-controls input { width: 65px; }
+.range-controls button, .range-controls select { padding: 5px 8px; }
+.frame-line { display: flex; align-items: center; gap: 10px; margin-top: 11px; color: var(--muted); font-size: 11px; }
+.frame-line output { color: var(--ink); white-space: nowrap; }
+.options { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-top: 12px; color: var(--muted); font-size: 11px; }
+.legend-title { margin: 14px 0 7px; color: var(--muted); font-size: 11px; }
+.square-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.legend-key { display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px; }
+.legend-key[aria-pressed="true"] { border-color: var(--square-color); color: var(--square-color); }
+.legend-swatch { display: inline-block; width: 10px; height: 10px; background: var(--square-color); }
+label { cursor: pointer; }
+label input { accent-color: var(--accent-2); vertical-align: -1px; }
+.details { display: grid; grid-template-columns: 1.2fr 1fr; gap: 13px; margin-top: 14px; }
+.detail-box { border: 1px solid var(--line); padding: 12px 13px; background: var(--panel); }
+.detail-box h3 { margin: 0 0 9px; color: var(--accent); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.detail-box p { margin: 5px 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.detail-box strong { color: var(--ink); font-weight: 500; }
+.provisional { color: var(--danger) !important; }
+@media (max-width: 980px) { body { min-width: 0; } main { padding: 20px 15px 30px; } .panels, .details { grid-template-columns: 1fr; } .status-strip { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Asquerix / diagnostic playback</div>
+  <h1>Selected trajectory</h1>
+  <p class="subhead" id="trial-line">A bounded CUDA replay of one accepted compression run.</p>
+
+  <section class="status-strip" aria-label="Replay status">
+    <div class="status-card"><div class="label">Replay comparison</div><div class="value" id="comparison-status">—</div></div>
+    <div class="status-card"><div class="label">Termination</div><div class="value" id="termination-status">—</div></div>
+    <div class="status-card"><div class="label">Current frame</div><div class="value" id="frame-status">—</div></div>
+    <div class="status-card"><div class="label">Current validation</div><div class="value" id="validation-status">—</div></div>
+  </section>
+
+  <section class="panels" aria-label="Trajectory panels">
+    <article class="panel">
+      <div class="panel-head"><h2>Initial arrangement</h2><span id="initial-caption">frame 1 / fixed reference</span></div>
+      <div class="panel-view-controls">Fixed initial scale · current panel zooms independently</div>
+      <div class="canvas-wrap"><canvas id="initial-canvas" aria-label="Initial arrangement"></canvas></div>
+    </article>
+    <article class="panel">
+      <div class="panel-head"><h2>Current recorded frame</h2><span id="current-caption">paused at start</span></div>
+      <div class="panel-view-controls">
+        <button type="button" id="zoom-out" aria-label="Zoom current panel out">−</button>
+        <label>Zoom × <input id="current-zoom" type="number" min="0.25" max="65536" step="any" value="1" aria-label="Current panel zoom"></label>
+        <button type="button" id="zoom-in" aria-label="Zoom current panel in">+</button>
+        <button type="button" id="fit-current">Fit container</button>
+        <button type="button" id="fit-trajectory">Fit full trajectory</button>
+        <button type="button" id="focus-trail">Focus selected ID</button>
+        <button type="button" id="reset-view">Reset view</button>
+        <span>Wheel to zoom · drag to pan</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="current-canvas" aria-label="Current recorded frame" title="Wheel to zoom at the pointer; drag to pan. Enter a zoom up to ×65536 to inspect micromovements."></canvas></div>
+    </article>
+  </section>
+
+  <section class="controls" aria-label="Playback controls">
+    <div class="button-row">
+      <button type="button" id="first-frame" title="First frame">|&lt;</button>
+      <button type="button" id="previous-frame" title="Previous frame">&lt;</button>
+      <button type="button" id="play-pause" class="primary">Play</button>
+      <button type="button" id="next-frame" title="Next frame">&gt;</button>
+      <button type="button" id="last-frame" title="Last frame">&gt;|</button>
+      <select id="speed" aria-label="Playback speed">
+        <option value="1">1 fps</option><option value="2">2 fps</option><option value="4" selected>4 fps</option><option value="8">8 fps</option><option value="16">16 fps</option>
+      </select>
+      <button type="button" id="export-svg">Export current SVG</button>
+    </div>
+    <div class="frame-line"><div class="frame-slider-area"><div class="marker-track" id="marker-track"><div id="marker-band" class="marker-band"></div><button id="start-marker" class="range-marker" type="button" aria-label="Drag start marker A">A</button><button id="end-marker" class="range-marker" type="button" aria-label="Drag end marker B">B</button></div><input id="frame-slider" type="range" min="0" value="0" step="1" aria-label="Recorded frame"></div><output id="frame-output">Frame 1 / 1</output></div>
+    <div class="range-controls">
+      <label>A: <input id="range-start" type="number" min="0" step="1" value="0" aria-label="Start frame index"></label>
+      <button type="button" id="set-range-start">Set A here</button>
+      <label>B: <input id="range-end" type="number" min="0" step="1" value="0" aria-label="End frame index"></label>
+      <button type="button" id="set-range-end">Set B here</button>
+      <select id="playback-mode" aria-label="Playback mode"><option value="once">Play range once</option><option value="loop">Loop range</option></select>
+      <button type="button" id="reset-range">Full range</button>
+      <span>Drag A/B markers or set them here · frame indices start at 0</span>
+    </div>
+    <div class="options">
+      <label><input id="show-squares" type="checkbox" checked> show squares</label>
+      <label><input id="show-container" type="checkbox" checked> show container boundary</label>
+      <label><input id="show-ids" type="checkbox" checked> show square IDs</label>
+      <label><input id="show-orientation" type="checkbox" checked> show orientation marks</label>
+      <label><input id="show-trails" type="checkbox" checked> show center trails</label>
+      <select id="trail-square" aria-label="Center trail square"><option value="all">all square trails</option></select>
+      <label><input id="only-selected-trail" type="checkbox"> only selected trail</label>
+      <label>Trail frames <input id="trail-history" type="number" min="0" max="4096" step="1" value="0" aria-label="Center trail history length" style="width:65px"> (0 = full history)</label>
+      <span>Playback visits saved frames only; no interpolation.</span>
+    </div>
+    <p class="legend-title">Square colors · click an ID to inspect its center trail</p>
+    <div id="square-legend" class="square-legend" aria-label="Square color legend"></div>
+  </section>
+
+  <section class="details">
+    <div class="detail-box"><h3>Recorded state</h3><p id="algorithm-line">—</p><p id="side-line">—</p><p id="trail-detail">Center trails connect recorded centers up to the current frame. Dots mark saved positions; connecting lines do not reconstruct skipped states or intermediate motion.</p><p id="validation-detail">—</p></div>
+    <div class="detail-box"><h3>Evidence and sampling</h3><p id="comparison-detail">—</p><p id="sampling-detail">—</p><p id="provenance-detail">—</p></div>
+  </section>
+</main>
+
+<script id="trajectory-data" type="application/json">{"schema":"asquerix-trajectory-v1","arrays":{"poses":{"dtype":"\u003cf4","shape":[66,16,3],"base64":"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"},"side":{"dtype":"\u003cf4","shape":[66],"base64":"AAAgQc3MHEGamRlBZ2YWQTQzE0EBABBBzswMQZuZCUFoZgZBNTMDQQIAAEGemflAODPzQNLM7EBsZuZABgDgQKCZ2UA6M9NA1MzMQG5mxkAIAMBAopm5QDwzs0DWzKxAcGamQHBmpkBwZqZAcGamQKOZpUCjmaVAPTOlQNfMpEDXzKRApJmkQHFmpEA+M6RACwCkQNjMo0ClmaNAcmajQD8zo0AMAKNA2cyiQKaZokBzZqJAQDOiQA0AokDazKFAp5mhQHRmoUBBM6FADgChQNvMoEComaBAdWagQHVmoEB1ZqBAdWagQA9goEAPYKBA3FygQNxcoEDcXKBA3FygQNxcoEDcXKBA"},"sequence":{"dtype":"\u003ci8","shape":[66],"base64":"AAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAwAAAAAAAAAEAAAAAAAAAAUAAAAAAAAABgAAAAAAAAAHAAAAAAAAAAgAAAAAAAAACQAAAAAAAAAKAAAAAAAAAAsAAAAAAAAADAAAAAAAAAANAAAAAAAAAA4AAAAAAAAADwAAAAAAAAAQAAAAAAAAABEAAAAAAAAAEgAAAAAAAAATAAAAAAAAABQAAAAAAAAAFQAAAAAAAAAWAAAAAAAAABcAAAAAAAAAGAAAAAAAAAAZAAAAAAAAABoAAAAAAAAAGwAAAAAAAAAcAAAAAAAAAB0AAAAAAAAAHgAAAAAAAAAfAAAAAAAAACAAAAAAAAAAIQAAAAAAAAAiAAAAAAAAACMAAAAAAAAAJAAAAAAAAAAlAAAAAAAAACYAAAAAAAAAJwAAAAAAAAAoAAAAAAAAACkAAAAAAAAAKgAAAAAAAAArAAAAAAAAACwAAAAAAAAALQAAAAAAAAAuAAAAAAAAAC8AAAAAAAAAMAAAAAAAAAAxAAAAAAAAADIAAAAAAAAAMwAAAAAAAAA0AAAAAAAAADUAAAAAAAAANgAAAAAAAAA3AAAAAAAAADgAAAAAAAAAOQAAAAAAAAA6AAAAAAAAADsAAAAAAAAAPAAAAAAAAAA9AAAAAAAAAD4AAAAAAAAAPwAAAAAAAABAAAAAAAAAAEEAAAAAAAAA"},"attempt":{"dtype":"\u003ci4","shape":[66],"base64":"/////wEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAAUAAAAFQAAABYAAAAXAAAAGAAAABkAAAAaAAAAGwAAABwAAAAdAAAAHgAAAB8AAAAgAAAAIQAAACIAAAAjAAAAJAAAACUAAAAmAAAAJwAAACgAAAApAAAAKgAAACsAAAAsAAAALQAAAC4AAAAvAAAAMAAAADEAAAAyAAAAMwAAADQAAAA1AAAANgAAADcAAAA4AAAAOQAAADoAAAA7AAAAPAAAAD0AAAA+AAAAPwAAADwAAAAAAAAA"},"sweep":{"dtype":"\u003ci4","shape":[66],"base64":"/////wEAAAAHAAAABwAAAAcAAAAHAAAABwAAAAcAAAAHAAAAFAAAABQAAAAUAAAAEwAAABgAAAAZAAAAGQAAABkAAAAdAAAANgAAADgAAAA3AAAAbgAAAHkAAADMAAAAtwEAAOABAADgAQAA4AEAAF8BAADgAQAA1AEAANwBAADgAQAAtAEAALcBAAC2AQAAuAEAAL4BAADCAQAAwQEAAMIBAADBAQAAwAEAALsBAACsAQAArAEAAKcBAACnAQAAqQEAAKgBAACqAQAAqgEAAKsBAACtAQAAqwEAAOABAADgAQAA4AEAAD4BAADgAQAAkQEAAOABAADgAQAA4AEAAJEBAAAAAAAA"},"sweep_total":{"dtype":"\u003ci4","shape":[66],"base64":"AAAAAAEAAAAIAAAADwAAABYAAAAdAAAAJAAAACsAAAAyAAAARgAAAFoAAABuAAAAgQAAAJkAAACyAAAAywAAAOQAAAABAQAANwEAAG8BAACmAQAAFAIAAI0CAABZAwAAEAUAAPAGAADQCAAAsAoAAA8MAADvDQAAww8AAJ8RAAB/EwAAMxUAAOoWAACgGAAAWBoAABYcAADYHQAAmR8AAFshAAAcIwAA3CQAAJcmAABDKAAA7ykAAJYrAAA9LQAA5i4AAI4wAAA4MgAA4jMAAI01AAA6NwAA5TgAAMU6AAClPAAAhT4AAMM/AACjQQAANEMAABRFAAD0RgAA1EgAANRIAADUSAAA"},"phase":{"dtype":"|u1","shape":[66],"base64":"AAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwUFBQMFAwMFAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwUFBQMFAwUFBQMG"},"roles":{"dtype":"|u1","shape":[66],"base64":"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC"},"square_ids":{"dtype":"\u003ci4","shape":[16],"base64":"AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAAA=="}},"metadata":{"schema":"asquerix-trajectory-v1","n":16,"trial_id":"100000","seed":"20261009","episode_key":"ece32fcc20ab30e3304fb564915675de98085510362a3e08e59f1ea8dfa1778e","frame_count":66,"initial_identity":{"bank_hash":"86a0c3560dccc71e78a43f88832c238a0a8a7b8391e38ba489530732c319a41a","initial_id":"100000","replicate":"0"},"sampling":{"observed":66,"retained":66,"suppressed":0,"effective_stride":1,"max_frames":256,"mode":"accepted"},"comparison":{"status":"REPLAY_MATCHED","scope":"All saved defined VM/result fields, exact best/current FP32 arrays, RNG state and counters; no intermediate-state proof.","compared_fields":["result.side","result.min_gap","result.min_wall","result.max_penetration","result.termination","result.feasible","result.attempts","result.sweeps","result.accepted","result.rejected","result.proposals","result.final_step","pc","phase","termination","finalized","dispatches","op_attempt","op_sweep","stagnant","stalled","last_outcome","last_improved","op_improved","entry_side","target_side","trial_side","effective_floor","best_side","best_pc","best_attempt","best_sweep","best_gap","best_wall","best_feasible","rng","rng_draws","work","checks","proposal_count","mask","sequence","best_poses","current_poses"],"mismatches":[],"missing_fields":[]},"provenance":{"schema":"asquerix-lab-environment-v1","source_revision":"3e69a01d0241e712b6a57ca67435acf343e2c357","executable_identity":{"sources":{"gpu.py":"a73adf65e92336a1c865f698497cdbba03b8efd2eb19670f8b17885b846e9d0d","geometry.py":"530785a72ebe845df50890ed557787936dc9aa6c43548eb88e6318c0eb6ab825","lab/config.py":"71db4ebc1759b854561aea3c2172c4007bd6969634603f9229166a9f598fdfca","lab/strategy.py":"29fc202ae8221c61e5cc7df1c524a3dbc4ac03ec8068bc7083d15655a5a8d862","lab/gpu.py":"a4d672a9a3703ccf069fc41cbe4f29385f7438e5d82e4a824b91800a59b7c690","lab/storage.py":"829b72f592a10ce47963834000ae2b7abc2ec00e1a6ae1a03c05ffa68b5714bb","lab/evaluation.py":"08df66701ae712377a79537a24c9a37a5016f0a1fcfb1555e461aad67c8855fe","lab/search.py":"ea1cb3a7d8a00056e875e785bef84c8fc90cb787d3ff27c89765664eecc65309","lab/worker.py":"173500218b000fae28d4d9a2fa52b92366c3523569083c046ce2c222cb947582"},"dependencies":{"numpy":"2.5.3","warp-lang":"1.18.0"},"python":"3.14.7"},"executable_hash":"84dab6af0bcbb3c15da6b79de5261d5ac8416e631c919266359affbfd98ce196","dependencies":{"numpy":"2.5.3","warp-lang":"1.18.0","rich":"14.3.4","fastapi":"0.143.0","uvicorn":"0.54.0"},"platform":"Linux-7.2.9-1-cachyos-x86_64-with-glibc2.44","python":"3.14.7","device":{"selector":"cuda:0","uuid":"GPU-64d50ac7-f623-65a8-8784-b9ec14d16527","name":"NVIDIA GeForce RTX 4070 Ti"},"reproducibility_scope":"Defined bytes on this GPU architecture, locked Warp/NumPy and source/profile identity; no cross-toolchain guarantee."},"evaluation_profile":{"name":"rigid-square-lab-v1","n":16,"initial_side":10.0,"precision":"FP32","fast_math":false,"operator_version":"rigid-operators-v1","solver":{"step":0.2,"step_floor":0.0001,"step_reduction":0.5,"guard":2e-05,"acceptance_tolerance":2e-06,"motion_tolerance":1e-07,"rotation_mobility":0.3,"relaxation":0.8,"max_translation":0.1,"max_rotation":0.08,"stagnation_sweeps":4,"proposals_per_square":2000},"work_limits":{"dispatches":256,"compression_attempts":128,"contact_sweeps":61440,"constraint_visits":20748672},"maximum_side":20.0,"cpu_validation_tolerance":1e-09,"scoring_version":"eligible-f64-mean-median-work-size-hash-v1","rng_version":"splitmix64-operator-world-v1","work_policy":"Prepaid conservative constraint visits, copies, selectors and dispatches; actual sweeps recorded separately; no refunds."},"profile_hash":"7b7e57931e07d525146c5b3f07e0b46165b3f6551ebf288fde3c3baf8b2b9a58","termination_reason":"STOPPED","replay_termination":1,"timings":{"jit_seconds":0.0004305909969843924,"device_seconds":1.3686863695085094,"simulation_seconds":1.5194423537468538,"transfer_seconds":0.14226138085359707,"slice_count":1166,"max_slice_seconds":0.002245092997327447,"upload_initialize_seconds":0.001969846023712307},"validations":[{"frame":0,"validation":{"status":"NUMERICALLY_VALIDATED","min_pair_separation":0.2879611706004121,"max_penetration":0.0,"min_wall_clearance":0.10442659490120132,"nonfinite":false,"tolerance":1e-09,"validator_version":"cpu-f64-projection-v2"}},{"frame":64,"validation":{"status":"NUMERICALLY_VALIDATED","min_pair_separation":1.791951808405301e-05,"max_penetration":0.0,"min_wall_clearance":1.8976008323345894e-05,"nonfinite":false,"tolerance":1e-09,"validator_version":"cpu-f64-projection-v2"}},{"frame":65,"validation":{"status":"NUMERICALLY_VALIDATED","min_pair_separation":1.791951808405301e-05,"max_penetration":0.0,"min_wall_clearance":1.8976008323345894e-05,"nonfinite":false,"tolerance":1e-09,"validator_version":"cpu-f64-projection-v2"}}],"strategy":{"program":{"schema":"asquerix-strategy-v1","operator_version":"rigid-operators-v1","hash":"b0929a8d0c22e63b93796409c46798e4ba40f28e50c4a3d3d05f59f5dd2ef851","authored":{"body":[{"attempt_limit":128,"op":"COMPRESS","sweep_limit":480,"target_reduction":null},{"op":"STOP"}],"name":"legacy_compress","schema":"asquerix-strategy-v1"},"instruction_count":2,"source_map":["body[0]","body[1]"],"instructions":[{"pc":0,"op":"COMPRESS","words":[1,128,480,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[0]"},{"pc":1,"op":"STOP","words":[7,0,0,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[1]"}]},"frames":[{"best_side":10.0,"pc":0,"flags":0,"mask":0,"work":"0","rng_draws":"0","outcome":0,"vm_sequence":"0","side":10.0,"attempt":-1,"sweep":-1,"sweep_total":0,"outcome_name":"NONE"},{"best_side":9.800000190734863,"pc":0,"flags":36,"mask":0,"work":"386","rng_draws":"0","outcome":2,"vm_sequence":"3","side":9.800000190734863,"attempt":1,"sweep":1,"sweep_total":1,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.600000381469727,"pc":0,"flags":36,"mask":0,"work":"2787","rng_draws":"0","outcome":2,"vm_sequence":"11","side":9.600000381469727,"attempt":2,"sweep":7,"sweep_total":8,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.40000057220459,"pc":0,"flags":36,"mask":0,"work":"5188","rng_draws":"0","outcome":2,"vm_sequence":"19","side":9.40000057220459,"attempt":3,"sweep":7,"sweep_total":15,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.200000762939453,"pc":0,"flags":36,"mask":0,"work":"7589","rng_draws":"0","outcome":2,"vm_sequence":"27","side":9.200000762939453,"attempt":4,"sweep":7,"sweep_total":22,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.000000953674316,"pc":0,"flags":36,"mask":0,"work":"9990","rng_draws":"0","outcome":2,"vm_sequence":"35","side":9.000000953674316,"attempt":5,"sweep":7,"sweep_total":29,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":8.80000114440918,"pc":0,"flags":36,"mask":0,"work":"12391","rng_draws":"0","outcome":2,"vm_sequence":"43","side":8.80000114440918,"attempt":6,"sweep":7,"sweep_total":36,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":8.600001335144043,"pc":0,"flags":36,"mask":0,"work":"14792","rng_draws":"0","outcome":2,"vm_sequence":"51","side":8.600001335144043,"attempt":7,"sweep":7,"sweep_total":43,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":8.400001525878906,"pc":0,"flags":36,"mask":0,"work":"17193","rng_draws":"0","outcome":2,"vm_sequence":"59","side":8.400001525878906,"attempt":8,"sweep":7,"sweep_total":50,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":8.20000171661377,"pc":0,"flags":36,"mask":0,"work":"23962","rng_draws":"0","outcome":2,"vm_sequence":"80","side":8.20000171661377,"attempt":9,"sweep":20,"sweep_total":70,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":8.000001907348633,"pc":0,"flags":36,"mask":0,"work":"30731","rng_draws":"0","outcome":2,"vm_sequence":"101","side":8.000001907348633,"attempt":10,"sweep":20,"sweep_total":90,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":7.800002098083496,"pc":0,"flags":36,"mask":0,"work":"37500","rng_draws":"0","outcome":2,"vm_sequence":"122","side":7.800002098083496,"attempt":11,"sweep":20,"sweep_total":110,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":7.600002288818359,"pc":0,"flags":36,"mask":0,"work":"43933","rng_draws":"0","outcome":2,"vm_sequence":"142","side":7.600002288818359,"attempt":12,"sweep":19,"sweep_total":129,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":7.400002479553223,"pc":0,"flags":36,"mask":0,"work":"52046","rng_draws":"0","outcome":2,"vm_sequence":"167","side":7.400002479553223,"attempt":13,"sweep":24,"sweep_total":153,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":7.200002670288086,"pc":0,"flags":36,"mask":0,"work":"60495","rng_draws":"0","outcome":2,"vm_sequence":"193","side":7.200002670288086,"attempt":14,"sweep":25,"sweep_total":178,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":7.000002861022949,"pc":0,"flags":36,"mask":0,"work":"68944","rng_draws":"0","outcome":2,"vm_sequence":"219","side":7.000002861022949,"attempt":15,"sweep":25,"sweep_total":203,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":6.8000030517578125,"pc":0,"flags":36,"mask":0,"work":"77393","rng_draws":"0","outcome":2,"vm_sequence":"245","side":6.8000030517578125,"attempt":16,"sweep":25,"sweep_total":228,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":6.600003242492676,"pc":0,"flags":36,"mask":0,"work":"87186","rng_draws":"0","outcome":2,"vm_sequence":"275","side":6.600003242492676,"attempt":17,"sweep":29,"sweep_total":257,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":6.400003433227539,"pc":0,"flags":36,"mask":0,"work":"105379","rng_draws":"0","outcome":2,"vm_sequence":"330","side":6.400003433227539,"attempt":18,"sweep":54,"sweep_total":311,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":6.200003623962402,"pc":0,"flags":36,"mask":0,"work":"124244","rng_draws":"0","outcome":2,"vm_sequence":"387","side":6.200003623962402,"attempt":19,"sweep":56,"sweep_total":367,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":6.000003814697266,"pc":0,"flags":36,"mask":0,"work":"142773","rng_draws":"0","outcome":2,"vm_sequence":"443","side":6.000003814697266,"attempt":20,"sweep":55,"sweep_total":422,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.800004005432129,"pc":0,"flags":36,"mask":0,"work":"179782","rng_draws":"0","outcome":2,"vm_sequence":"554","side":5.800004005432129,"attempt":21,"sweep":110,"sweep_total":532,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.600004196166992,"pc":0,"flags":36,"mask":0,"work":"220487","rng_draws":"0","outcome":2,"vm_sequence":"676","side":5.600004196166992,"attempt":22,"sweep":121,"sweep_total":653,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.4000043869018555,"pc":0,"flags":36,"mask":0,"work":"289080","rng_draws":"0","outcome":2,"vm_sequence":"881","side":5.4000043869018555,"attempt":23,"sweep":204,"sweep_total":857,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.200004577636719,"pc":0,"flags":36,"mask":0,"work":"436633","rng_draws":"0","outcome":2,"vm_sequence":"1321","side":5.200004577636719,"attempt":24,"sweep":439,"sweep_total":1296,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.200004577636719,"pc":0,"flags":16,"mask":0,"work":"597962","rng_draws":"0","outcome":4,"vm_sequence":"1802","side":5.200004577636719,"attempt":25,"sweep":480,"sweep_total":1776,"outcome_name":"REJECTED"},{"best_side":5.200004577636719,"pc":0,"flags":16,"mask":0,"work":"759291","rng_draws":"0","outcome":4,"vm_sequence":"2283","side":5.200004577636719,"attempt":26,"sweep":480,"sweep_total":2256,"outcome_name":"REJECTED"},{"best_side":5.200004577636719,"pc":0,"flags":16,"mask":0,"work":"920620","rng_draws":"0","outcome":4,"vm_sequence":"2764","side":5.200004577636719,"attempt":27,"sweep":480,"sweep_total":2736,"outcome_name":"REJECTED"},{"best_side":5.175004482269287,"pc":0,"flags":36,"mask":0,"work":"1038605","rng_draws":"0","outcome":2,"vm_sequence":"3116","side":5.175004482269287,"attempt":28,"sweep":351,"sweep_total":3087,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.175004482269287,"pc":0,"flags":16,"mask":0,"work":"1199934","rng_draws":"0","outcome":4,"vm_sequence":"3597","side":5.175004482269287,"attempt":29,"sweep":480,"sweep_total":3567,"outcome_name":"REJECTED"},{"best_side":5.16250467300415,"pc":0,"flags":36,"mask":0,"work":"1357231","rng_draws":"0","outcome":2,"vm_sequence":"4066","side":5.16250467300415,"attempt":30,"sweep":468,"sweep_total":4035,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.150004863739014,"pc":0,"flags":36,"mask":0,"work":"1517216","rng_draws":"0","outcome":2,"vm_sequence":"4543","side":5.150004863739014,"attempt":31,"sweep":476,"sweep_total":4511,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.150004863739014,"pc":0,"flags":16,"mask":0,"work":"1678545","rng_draws":"0","outcome":4,"vm_sequence":"5024","side":5.150004863739014,"attempt":32,"sweep":480,"sweep_total":4991,"outcome_name":"REJECTED"},{"best_side":5.143754959106445,"pc":0,"flags":36,"mask":0,"work":"1825090","rng_draws":"0","outcome":2,"vm_sequence":"5461","side":5.143754959106445,"attempt":33,"sweep":436,"sweep_total":5427,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.137505054473877,"pc":0,"flags":36,"mask":0,"work":"1972643","rng_draws":"0","outcome":2,"vm_sequence":"5901","side":5.137505054473877,"attempt":34,"sweep":439,"sweep_total":5866,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.131255149841309,"pc":0,"flags":36,"mask":0,"work":"2119860","rng_draws":"0","outcome":2,"vm_sequence":"6340","side":5.131255149841309,"attempt":35,"sweep":438,"sweep_total":6304,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.12500524520874,"pc":0,"flags":36,"mask":0,"work":"2267749","rng_draws":"0","outcome":2,"vm_sequence":"6781","side":5.12500524520874,"attempt":36,"sweep":440,"sweep_total":6744,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.118755340576172,"pc":0,"flags":36,"mask":0,"work":"2417654","rng_draws":"0","outcome":2,"vm_sequence":"7228","side":5.118755340576172,"attempt":37,"sweep":446,"sweep_total":7190,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.1125054359436035,"pc":0,"flags":36,"mask":0,"work":"2568903","rng_draws":"0","outcome":2,"vm_sequence":"7679","side":5.1125054359436035,"attempt":38,"sweep":450,"sweep_total":7640,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.106255531311035,"pc":0,"flags":36,"mask":0,"work":"2719816","rng_draws":"0","outcome":2,"vm_sequence":"8129","side":5.106255531311035,"attempt":39,"sweep":449,"sweep_total":8089,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.100005626678467,"pc":0,"flags":36,"mask":0,"work":"2871065","rng_draws":"0","outcome":2,"vm_sequence":"8580","side":5.100005626678467,"attempt":40,"sweep":450,"sweep_total":8539,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.093755722045898,"pc":0,"flags":36,"mask":0,"work":"3021978","rng_draws":"0","outcome":2,"vm_sequence":"9030","side":5.093755722045898,"attempt":41,"sweep":449,"sweep_total":8988,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.08750581741333,"pc":0,"flags":36,"mask":0,"work":"3172555","rng_draws":"0","outcome":2,"vm_sequence":"9479","side":5.08750581741333,"attempt":42,"sweep":448,"sweep_total":9436,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.081255912780762,"pc":0,"flags":36,"mask":0,"work":"3321452","rng_draws":"0","outcome":2,"vm_sequence":"9923","side":5.081255912780762,"attempt":43,"sweep":443,"sweep_total":9879,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.075006008148193,"pc":0,"flags":36,"mask":0,"work":"3465309","rng_draws":"0","outcome":2,"vm_sequence":"10352","side":5.075006008148193,"attempt":44,"sweep":428,"sweep_total":10307,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.068756103515625,"pc":0,"flags":36,"mask":0,"work":"3609166","rng_draws":"0","outcome":2,"vm_sequence":"10781","side":5.068756103515625,"attempt":45,"sweep":428,"sweep_total":10735,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.062506198883057,"pc":0,"flags":36,"mask":0,"work":"3751343","rng_draws":"0","outcome":2,"vm_sequence":"11205","side":5.062506198883057,"attempt":46,"sweep":423,"sweep_total":11158,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.056256294250488,"pc":0,"flags":36,"mask":0,"work":"3893520","rng_draws":"0","outcome":2,"vm_sequence":"11629","side":5.056256294250488,"attempt":47,"sweep":423,"sweep_total":11581,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.05000638961792,"pc":0,"flags":36,"mask":0,"work":"4036369","rng_draws":"0","outcome":2,"vm_sequence":"12055","side":5.05000638961792,"attempt":48,"sweep":425,"sweep_total":12006,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.043756484985352,"pc":0,"flags":36,"mask":0,"work":"4178882","rng_draws":"0","outcome":2,"vm_sequence":"12480","side":5.043756484985352,"attempt":49,"sweep":424,"sweep_total":12430,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.037506580352783,"pc":0,"flags":36,"mask":0,"work":"4322067","rng_draws":"0","outcome":2,"vm_sequence":"12907","side":5.037506580352783,"attempt":50,"sweep":426,"sweep_total":12856,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.031256675720215,"pc":0,"flags":36,"mask":0,"work":"4465252","rng_draws":"0","outcome":2,"vm_sequence":"13334","side":5.031256675720215,"attempt":51,"sweep":426,"sweep_total":13282,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.0250067710876465,"pc":0,"flags":36,"mask":0,"work":"4608773","rng_draws":"0","outcome":2,"vm_sequence":"13762","side":5.0250067710876465,"attempt":52,"sweep":427,"sweep_total":13709,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.018756866455078,"pc":0,"flags":36,"mask":0,"work":"4752966","rng_draws":"0","outcome":2,"vm_sequence":"14192","side":5.018756866455078,"attempt":53,"sweep":429,"sweep_total":14138,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.01250696182251,"pc":0,"flags":36,"mask":0,"work":"4896487","rng_draws":"0","outcome":2,"vm_sequence":"14620","side":5.01250696182251,"attempt":54,"sweep":427,"sweep_total":14565,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.01250696182251,"pc":0,"flags":16,"mask":0,"work":"5057816","rng_draws":"0","outcome":4,"vm_sequence":"15101","side":5.01250696182251,"attempt":55,"sweep":480,"sweep_total":15045,"outcome_name":"REJECTED"},{"best_side":5.01250696182251,"pc":0,"flags":16,"mask":0,"work":"5219145","rng_draws":"0","outcome":4,"vm_sequence":"15582","side":5.01250696182251,"attempt":56,"sweep":480,"sweep_total":15525,"outcome_name":"REJECTED"},{"best_side":5.01250696182251,"pc":0,"flags":16,"mask":0,"work":"5380474","rng_draws":"0","outcome":4,"vm_sequence":"16063","side":5.01250696182251,"attempt":57,"sweep":480,"sweep_total":16005,"outcome_name":"REJECTED"},{"best_side":5.011725902557373,"pc":0,"flags":36,"mask":0,"work":"5487371","rng_draws":"0","outcome":2,"vm_sequence":"16382","side":5.011725902557373,"attempt":58,"sweep":318,"sweep_total":16323,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.011725902557373,"pc":0,"flags":16,"mask":0,"work":"5648700","rng_draws":"0","outcome":4,"vm_sequence":"16863","side":5.011725902557373,"attempt":59,"sweep":480,"sweep_total":16803,"outcome_name":"REJECTED"},{"best_side":5.011335372924805,"pc":0,"flags":36,"mask":0,"work":"5783485","rng_draws":"0","outcome":2,"vm_sequence":"17265","side":5.011335372924805,"attempt":60,"sweep":401,"sweep_total":17204,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":5.011335372924805,"pc":0,"flags":16,"mask":0,"work":"5944814","rng_draws":"0","outcome":4,"vm_sequence":"17746","side":5.011335372924805,"attempt":61,"sweep":480,"sweep_total":17684,"outcome_name":"REJECTED"},{"best_side":5.011335372924805,"pc":0,"flags":16,"mask":0,"work":"6106143","rng_draws":"0","outcome":4,"vm_sequence":"18227","side":5.011335372924805,"attempt":62,"sweep":480,"sweep_total":18164,"outcome_name":"REJECTED"},{"best_side":5.011335372924805,"pc":0,"flags":16,"mask":0,"work":"6267472","rng_draws":"0","outcome":4,"vm_sequence":"18708","side":5.011335372924805,"attempt":63,"sweep":480,"sweep_total":18644,"outcome_name":"REJECTED"},{"best_side":5.011335372924805,"pc":0,"flags":32,"mask":0,"work":"6267473","rng_draws":"0","outcome":3,"vm_sequence":"18709","side":5.011335372924805,"attempt":60,"sweep":401,"sweep_total":18644,"outcome_name":"NO_PROGRESS"},{"best_side":5.011335372924805,"pc":1,"flags":128,"mask":0,"work":"6267473","rng_draws":"0","outcome":3,"vm_sequence":"18709","side":5.011335372924805,"attempt":0,"sweep":0,"sweep_total":18644,"outcome_name":"NO_PROGRESS"}],"best_frame":64,"events":[{"side":10.0,"best_side":10.0,"pc":0,"phase":0,"flags":0,"attempt":0,"sweep":0,"sweep_total":0,"outcome":0,"mask":0,"work":"0","sequence":"0","rng_draws":"0"},{"side":10.0,"best_side":10.0,"pc":0,"phase":3,"flags":256,"attempt":0,"sweep":0,"sweep_total":0,"outcome":0,"mask":0,"work":"1","sequence":"1","rng_draws":"0"},{"side":9.800000190734863,"best_side":10.0,"pc":0,"phase":1,"flags":1,"attempt":1,"sweep":0,"sweep_total":0,"outcome":0,"mask":0,"work":"50","sequence":"2","rng_draws":"0"},{"side":9.800000190734863,"best_side":9.800000190734863,"pc":0,"phase":3,"flags":36,"attempt":1,"sweep":1,"sweep_total":1,"outcome":2,"mask":0,"work":"386","sequence":"3","rng_draws":"0"},{"side":9.600000381469727,"best_side":9.800000190734863,"pc":0,"phase":1,"flags":1,"attempt":2,"sweep":0,"sweep_total":1,"outcome":2,"mask":0,"work":"435","sequence":"4","rng_draws":"0"},{"side":9.600000381469727,"best_side":9.600000381469727,"pc":0,"phase":3,"flags":36,"attempt":2,"sweep":7,"sweep_total":8,"outcome":2,"mask":0,"work":"2787","sequence":"11","rng_draws":"0"},{"side":9.40000057220459,"best_side":9.600000381469727,"pc":0,"phase":1,"flags":1,"attempt":3,"sweep":0,"sweep_total":8,"outcome":2,"mask":0,"work":"2836","sequence":"12","rng_draws":"0"},{"side":9.40000057220459,"best_side":9.40000057220459,"pc":0,"phase":3,"flags":36,"attempt":3,"sweep":7,"sweep_total":15,"outcome":2,"mask":0,"work":"5188","sequence":"19","rng_draws":"0"},{"side":9.200000762939453,"best_side":9.40000057220459,"pc":0,"phase":1,"flags":1,"attempt":4,"sweep":0,"sweep_total":15,"outcome":2,"mask":0,"work":"5237","sequence":"20","rng_draws":"0"},{"side":9.200000762939453,"best_side":9.200000762939453,"pc":0,"phase":3,"flags":36,"attempt":4,"sweep":7,"sweep_total":22,"outcome":2,"mask":0,"work":"7589","sequence":"27","rng_draws":"0"},{"side":9.000000953674316,"best_side":9.200000762939453,"pc":0,"phase":1,"flags":1,"attempt":5,"sweep":0,"sweep_total":22,"outcome":2,"mask":0,"work":"7638","sequence":"28","rng_draws":"0"},{"side":9.000000953674316,"best_side":9.000000953674316,"pc":0,"phase":3,"flags":36,"attempt":5,"sweep":7,"sweep_total":29,"outcome":2,"mask":0,"work":"9990","sequence":"35","rng_draws":"0"},{"side":8.80000114440918,"best_side":9.000000953674316,"pc":0,"phase":1,"flags":1,"attempt":6,"sweep":0,"sweep_total":29,"outcome":2,"mask":0,"work":"10039","sequence":"36","rng_draws":"0"},{"side":8.80000114440918,"best_side":8.80000114440918,"pc":0,"phase":3,"flags":36,"attempt":6,"sweep":7,"sweep_total":36,"outcome":2,"mask":0,"work":"12391","sequence":"43","rng_draws":"0"},{"side":8.600001335144043,"best_side":8.80000114440918,"pc":0,"phase":1,"flags":1,"attempt":7,"sweep":0,"sweep_total":36,"outcome":2,"mask":0,"work":"12440","sequence":"44","rng_draws":"0"},{"side":8.600001335144043,"best_side":8.600001335144043,"pc":0,"phase":3,"flags":36,"attempt":7,"sweep":7,"sweep_total":43,"outcome":2,"mask":0,"work":"14792","sequence":"51","rng_draws":"0"},{"side":8.400001525878906,"best_side":8.600001335144043,"pc":0,"phase":1,"flags":1,"attempt":8,"sweep":0,"sweep_total":43,"outcome":2,"mask":0,"work":"14841","sequence":"52","rng_draws":"0"},{"side":8.400001525878906,"best_side":8.400001525878906,"pc":0,"phase":3,"flags":36,"attempt":8,"sweep":7,"sweep_total":50,"outcome":2,"mask":0,"work":"17193","sequence":"59","rng_draws":"0"},{"side":8.20000171661377,"best_side":8.400001525878906,"pc":0,"phase":1,"flags":1,"attempt":9,"sweep":0,"sweep_total":50,"outcome":2,"mask":0,"work":"17242","sequence":"60","rng_draws":"0"},{"side":8.20000171661377,"best_side":8.20000171661377,"pc":0,"phase":3,"flags":36,"attempt":9,"sweep":20,"sweep_total":70,"outcome":2,"mask":0,"work":"23962","sequence":"80","rng_draws":"0"},{"side":8.000001907348633,"best_side":8.20000171661377,"pc":0,"phase":1,"flags":1,"attempt":10,"sweep":0,"sweep_total":70,"outcome":2,"mask":0,"work":"24011","sequence":"81","rng_draws":"0"},{"side":8.000001907348633,"best_side":8.000001907348633,"pc":0,"phase":3,"flags":36,"attempt":10,"sweep":20,"sweep_total":90,"outcome":2,"mask":0,"work":"30731","sequence":"101","rng_draws":"0"},{"side":7.800002098083496,"best_side":8.000001907348633,"pc":0,"phase":1,"flags":1,"attempt":11,"sweep":0,"sweep_total":90,"outcome":2,"mask":0,"work":"30780","sequence":"102","rng_draws":"0"},{"side":7.800002098083496,"best_side":7.800002098083496,"pc":0,"phase":3,"flags":36,"attempt":11,"sweep":20,"sweep_total":110,"outcome":2,"mask":0,"work":"37500","sequence":"122","rng_draws":"0"},{"side":7.600002288818359,"best_side":7.800002098083496,"pc":0,"phase":1,"flags":1,"attempt":12,"sweep":0,"sweep_total":110,"outcome":2,"mask":0,"work":"37549","sequence":"123","rng_draws":"0"},{"side":7.600002288818359,"best_side":7.600002288818359,"pc":0,"phase":3,"flags":36,"attempt":12,"sweep":19,"sweep_total":129,"outcome":2,"mask":0,"work":"43933","sequence":"142","rng_draws":"0"},{"side":7.400002479553223,"best_side":7.600002288818359,"pc":0,"phase":1,"flags":1,"attempt":13,"sweep":0,"sweep_total":129,"outcome":2,"mask":0,"work":"43982","sequence":"143","rng_draws":"0"},{"side":7.400002479553223,"best_side":7.400002479553223,"pc":0,"phase":3,"flags":36,"attempt":13,"sweep":24,"sweep_total":153,"outcome":2,"mask":0,"work":"52046","sequence":"167","rng_draws":"0"},{"side":7.200002670288086,"best_side":7.400002479553223,"pc":0,"phase":1,"flags":1,"attempt":14,"sweep":0,"sweep_total":153,"outcome":2,"mask":0,"work":"52095","sequence":"168","rng_draws":"0"},{"side":7.200002670288086,"best_side":7.200002670288086,"pc":0,"phase":3,"flags":36,"attempt":14,"sweep":25,"sweep_total":178,"outcome":2,"mask":0,"work":"60495","sequence":"193","rng_draws":"0"},{"side":7.000002861022949,"best_side":7.200002670288086,"pc":0,"phase":1,"flags":1,"attempt":15,"sweep":0,"sweep_total":178,"outcome":2,"mask":0,"work":"60544","sequence":"194","rng_draws":"0"},{"side":7.000002861022949,"best_side":7.000002861022949,"pc":0,"phase":3,"flags":36,"attempt":15,"sweep":25,"sweep_total":203,"outcome":2,"mask":0,"work":"68944","sequence":"219","rng_draws":"0"},{"side":6.8000030517578125,"best_side":7.000002861022949,"pc":0,"phase":1,"flags":1,"attempt":16,"sweep":0,"sweep_total":203,"outcome":2,"mask":0,"work":"68993","sequence":"220","rng_draws":"0"},{"side":6.8000030517578125,"best_side":6.8000030517578125,"pc":0,"phase":3,"flags":36,"attempt":16,"sweep":25,"sweep_total":228,"outcome":2,"mask":0,"work":"77393","sequence":"245","rng_draws":"0"},{"side":6.600003242492676,"best_side":6.8000030517578125,"pc":0,"phase":1,"flags":1,"attempt":17,"sweep":0,"sweep_total":228,"outcome":2,"mask":0,"work":"77442","sequence":"246","rng_draws":"0"},{"side":6.600003242492676,"best_side":6.600003242492676,"pc":0,"phase":3,"flags":36,"attempt":17,"sweep":29,"sweep_total":257,"outcome":2,"mask":0,"work":"87186","sequence":"275","rng_draws":"0"},{"side":6.400003433227539,"best_side":6.600003242492676,"pc":0,"phase":1,"flags":1,"attempt":18,"sweep":0,"sweep_total":257,"outcome":2,"mask":0,"work":"87235","sequence":"276","rng_draws":"0"},{"side":6.400003433227539,"best_side":6.400003433227539,"pc":0,"phase":3,"flags":36,"attempt":18,"sweep":54,"sweep_total":311,"outcome":2,"mask":0,"work":"105379","sequence":"330","rng_draws":"0"},{"side":6.200003623962402,"best_side":6.400003433227539,"pc":0,"phase":1,"flags":1,"attempt":19,"sweep":0,"sweep_total":311,"outcome":2,"mask":0,"work":"105428","sequence":"331","rng_draws":"0"},{"side":6.200003623962402,"best_side":6.200003623962402,"pc":0,"phase":3,"flags":36,"attempt":19,"sweep":56,"sweep_total":367,"outcome":2,"mask":0,"work":"124244","sequence":"387","rng_draws":"0"},{"side":6.000003814697266,"best_side":6.200003623962402,"pc":0,"phase":1,"flags":1,"attempt":20,"sweep":0,"sweep_total":367,"outcome":2,"mask":0,"work":"124293","sequence":"388","rng_draws":"0"},{"side":6.000003814697266,"best_side":6.000003814697266,"pc":0,"phase":3,"flags":36,"attempt":20,"sweep":55,"sweep_total":422,"outcome":2,"mask":0,"work":"142773","sequence":"443","rng_draws":"0"},{"side":5.800004005432129,"best_side":6.000003814697266,"pc":0,"phase":1,"flags":1,"attempt":21,"sweep":0,"sweep_total":422,"outcome":2,"mask":0,"work":"142822","sequence":"444","rng_draws":"0"},{"side":5.800004005432129,"best_side":5.800004005432129,"pc":0,"phase":3,"flags":36,"attempt":21,"sweep":110,"sweep_total":532,"outcome":2,"mask":0,"work":"179782","sequence":"554","rng_draws":"0"},{"side":5.600004196166992,"best_side":5.800004005432129,"pc":0,"phase":1,"flags":1,"attempt":22,"sweep":0,"sweep_total":532,"outcome":2,"mask":0,"work":"179831","sequence":"555","rng_draws":"0"},{"side":5.600004196166992,"best_side":5.600004196166992,"pc":0,"phase":3,"flags":36,"attempt":22,"sweep":121,"sweep_total":653,"outcome":2,"mask":0,"work":"220487","sequence":"676","rng_draws":"0"},{"side":5.4000043869018555,"best_side":5.600004196166992,"pc":0,"phase":1,"flags":1,"attempt":23,"sweep":0,"sweep_total":653,"outcome":2,"mask":0,"work":"220536","sequence":"677","rng_draws":"0"},{"side":5.4000043869018555,"best_side":5.4000043869018555,"pc":0,"phase":3,"flags":36,"attempt":23,"sweep":204,"sweep_total":857,"outcome":2,"mask":0,"work":"289080","sequence":"881","rng_draws":"0"},{"side":5.200004577636719,"best_side":5.4000043869018555,"pc":0,"phase":1,"flags":1,"attempt":24,"sweep":0,"sweep_total":857,"outcome":2,"mask":0,"work":"289129","sequence":"882","rng_draws":"0"},{"side":5.200004577636719,"best_side":5.200004577636719,"pc":0,"phase":3,"flags":36,"attempt":24,"sweep":439,"sweep_total":1296,"outcome":2,"mask":0,"work":"436633","sequence":"1321","rng_draws":"0"},{"side":5.000004768371582,"best_side":5.200004577636719,"pc":0,"phase":1,"flags":1,"attempt":25,"sweep":0,"sweep_total":1296,"outcome":2,"mask":0,"work":"436682","sequence":"1322","rng_draws":"0"},{"side":5.000004768371582,"best_side":5.200004577636719,"pc":0,"phase":4,"flags":8,"attempt":25,"sweep":480,"sweep_total":1776,"outcome":4,"mask":0,"work":"597962","sequence":"1802","rng_draws":"0"},{"side":5.200004577636719,"best_side":5.200004577636719,"pc":0,"phase":5,"flags":16,"attempt":25,"sweep":480,"sweep_total":1776,"outcome":4,"mask":0,"work":"597962","sequence":"1802","rng_draws":"0"},{"side":5.10000467300415,"best_side":5.200004577636719,"pc":0,"phase":1,"flags":1,"attempt":26,"sweep":0,"sweep_total":1776,"outcome":4,"mask":0,"work":"598011","sequence":"1803","rng_draws":"0"},{"side":5.10000467300415,"best_side":5.200004577636719,"pc":0,"phase":4,"flags":8,"attempt":26,"sweep":480,"sweep_total":2256,"outcome":4,"mask":0,"work":"759291","sequence":"2283","rng_draws":"0"},{"side":5.200004577636719,"best_side":5.200004577636719,"pc":0,"phase":5,"flags":16,"attempt":26,"sweep":480,"sweep_total":2256,"outcome":4,"mask":0,"work":"759291","sequence":"2283","rng_draws":"0"},{"side":5.1500043869018555,"best_side":5.200004577636719,"pc":0,"phase":1,"flags":1,"attempt":27,"sweep":0,"sweep_total":2256,"outcome":4,"mask":0,"work":"759340","sequence":"2284","rng_draws":"0"},{"side":5.1500043869018555,"best_side":5.200004577636719,"pc":0,"phase":4,"flags":8,"attempt":27,"sweep":480,"sweep_total":2736,"outcome":4,"mask":0,"work":"920620","sequence":"2764","rng_draws":"0"},{"side":5.200004577636719,"best_side":5.200004577636719,"pc":0,"phase":5,"flags":16,"attempt":27,"sweep":480,"sweep_total":2736,"outcome":4,"mask":0,"work":"920620","sequence":"2764","rng_draws":"0"},{"side":5.175004482269287,"best_side":5.200004577636719,"pc":0,"phase":1,"flags":1,"attempt":28,"sweep":0,"sweep_total":2736,"outcome":4,"mask":0,"work":"920669","sequence":"2765","rng_draws":"0"},{"side":5.175004482269287,"best_side":5.175004482269287,"pc":0,"phase":3,"flags":36,"attempt":28,"sweep":351,"sweep_total":3087,"outcome":2,"mask":0,"work":"1038605","sequence":"3116","rng_draws":"0"},{"side":5.1500043869018555,"best_side":5.175004482269287,"pc":0,"phase":1,"flags":1,"attempt":29,"sweep":0,"sweep_total":3087,"outcome":2,"mask":0,"work":"1038654","sequence":"3117","rng_draws":"0"},{"side":5.1500043869018555,"best_side":5.175004482269287,"pc":0,"phase":4,"flags":8,"attempt":29,"sweep":480,"sweep_total":3567,"outcome":4,"mask":0,"work":"1199934","sequence":"3597","rng_draws":"0"},{"side":5.175004482269287,"best_side":5.175004482269287,"pc":0,"phase":5,"flags":16,"attempt":29,"sweep":480,"sweep_total":3567,"outcome":4,"mask":0,"work":"1199934","sequence":"3597","rng_draws":"0"},{"side":5.16250467300415,"best_side":5.175004482269287,"pc":0,"phase":1,"flags":1,"attempt":30,"sweep":0,"sweep_total":3567,"outcome":4,"mask":0,"work":"1199983","sequence":"3598","rng_draws":"0"},{"side":5.16250467300415,"best_side":5.16250467300415,"pc":0,"phase":3,"flags":36,"attempt":30,"sweep":468,"sweep_total":4035,"outcome":2,"mask":0,"work":"1357231","sequence":"4066","rng_draws":"0"},{"side":5.150004863739014,"best_side":5.16250467300415,"pc":0,"phase":1,"flags":1,"attempt":31,"sweep":0,"sweep_total":4035,"outcome":2,"mask":0,"work":"1357280","sequence":"4067","rng_draws":"0"},{"side":5.150004863739014,"best_side":5.150004863739014,"pc":0,"phase":3,"flags":36,"attempt":31,"sweep":476,"sweep_total":4511,"outcome":2,"mask":0,"work":"1517216","sequence":"4543","rng_draws":"0"},{"side":5.137505054473877,"best_side":5.150004863739014,"pc":0,"phase":1,"flags":1,"attempt":32,"sweep":0,"sweep_total":4511,"outcome":2,"mask":0,"work":"1517265","sequence":"4544","rng_draws":"0"},{"side":5.137505054473877,"best_side":5.150004863739014,"pc":0,"phase":4,"flags":8,"attempt":32,"sweep":480,"sweep_total":4991,"outcome":4,"mask":0,"work":"1678545","sequence":"5024","rng_draws":"0"},{"side":5.150004863739014,"best_side":5.150004863739014,"pc":0,"phase":5,"flags":16,"attempt":32,"sweep":480,"sweep_total":4991,"outcome":4,"mask":0,"work":"1678545","sequence":"5024","rng_draws":"0"},{"side":5.143754959106445,"best_side":5.150004863739014,"pc":0,"phase":1,"flags":1,"attempt":33,"sweep":0,"sweep_total":4991,"outcome":4,"mask":0,"work":"1678594","sequence":"5025","rng_draws":"0"},{"side":5.143754959106445,"best_side":5.143754959106445,"pc":0,"phase":3,"flags":36,"attempt":33,"sweep":436,"sweep_total":5427,"outcome":2,"mask":0,"work":"1825090","sequence":"5461","rng_draws":"0"},{"side":5.137505054473877,"best_side":5.143754959106445,"pc":0,"phase":1,"flags":1,"attempt":34,"sweep":0,"sweep_total":5427,"outcome":2,"mask":0,"work":"1825139","sequence":"5462","rng_draws":"0"},{"side":5.137505054473877,"best_side":5.137505054473877,"pc":0,"phase":3,"flags":36,"attempt":34,"sweep":439,"sweep_total":5866,"outcome":2,"mask":0,"work":"1972643","sequence":"5901","rng_draws":"0"},{"side":5.131255149841309,"best_side":5.137505054473877,"pc":0,"phase":1,"flags":1,"attempt":35,"sweep":0,"sweep_total":5866,"outcome":2,"mask":0,"work":"1972692","sequence":"5902","rng_draws":"0"},{"side":5.131255149841309,"best_side":5.131255149841309,"pc":0,"phase":3,"flags":36,"attempt":35,"sweep":438,"sweep_total":6304,"outcome":2,"mask":0,"work":"2119860","sequence":"6340","rng_draws":"0"},{"side":5.12500524520874,"best_side":5.131255149841309,"pc":0,"phase":1,"flags":1,"attempt":36,"sweep":0,"sweep_total":6304,"outcome":2,"mask":0,"work":"2119909","sequence":"6341","rng_draws":"0"},{"side":5.12500524520874,"best_side":5.12500524520874,"pc":0,"phase":3,"flags":36,"attempt":36,"sweep":440,"sweep_total":6744,"outcome":2,"mask":0,"work":"2267749","sequence":"6781","rng_draws":"0"},{"side":5.118755340576172,"best_side":5.12500524520874,"pc":0,"phase":1,"flags":1,"attempt":37,"sweep":0,"sweep_total":6744,"outcome":2,"mask":0,"work":"2267798","sequence":"6782","rng_draws":"0"},{"side":5.118755340576172,"best_side":5.118755340576172,"pc":0,"phase":3,"flags":36,"attempt":37,"sweep":446,"sweep_total":7190,"outcome":2,"mask":0,"work":"2417654","sequence":"7228","rng_draws":"0"},{"side":5.1125054359436035,"best_side":5.118755340576172,"pc":0,"phase":1,"flags":1,"attempt":38,"sweep":0,"sweep_total":7190,"outcome":2,"mask":0,"work":"2417703","sequence":"7229","rng_draws":"0"},{"side":5.1125054359436035,"best_side":5.1125054359436035,"pc":0,"phase":3,"flags":36,"attempt":38,"sweep":450,"sweep_total":7640,"outcome":2,"mask":0,"work":"2568903","sequence":"7679","rng_draws":"0"},{"side":5.106255531311035,"best_side":5.1125054359436035,"pc":0,"phase":1,"flags":1,"attempt":39,"sweep":0,"sweep_total":7640,"outcome":2,"mask":0,"work":"2568952","sequence":"7680","rng_draws":"0"},{"side":5.106255531311035,"best_side":5.106255531311035,"pc":0,"phase":3,"flags":36,"attempt":39,"sweep":449,"sweep_total":8089,"outcome":2,"mask":0,"work":"2719816","sequence":"8129","rng_draws":"0"},{"side":5.100005626678467,"best_side":5.106255531311035,"pc":0,"phase":1,"flags":1,"attempt":40,"sweep":0,"sweep_total":8089,"outcome":2,"mask":0,"work":"2719865","sequence":"8130","rng_draws":"0"},{"side":5.100005626678467,"best_side":5.100005626678467,"pc":0,"phase":3,"flags":36,"attempt":40,"sweep":450,"sweep_total":8539,"outcome":2,"mask":0,"work":"2871065","sequence":"8580","rng_draws":"0"},{"side":5.093755722045898,"best_side":5.100005626678467,"pc":0,"phase":1,"flags":1,"attempt":41,"sweep":0,"sweep_total":8539,"outcome":2,"mask":0,"work":"2871114","sequence":"8581","rng_draws":"0"},{"side":5.093755722045898,"best_side":5.093755722045898,"pc":0,"phase":3,"flags":36,"attempt":41,"sweep":449,"sweep_total":8988,"outcome":2,"mask":0,"work":"3021978","sequence":"9030","rng_draws":"0"},{"side":5.08750581741333,"best_side":5.093755722045898,"pc":0,"phase":1,"flags":1,"attempt":42,"sweep":0,"sweep_total":8988,"outcome":2,"mask":0,"work":"3022027","sequence":"9031","rng_draws":"0"},{"side":5.08750581741333,"best_side":5.08750581741333,"pc":0,"phase":3,"flags":36,"attempt":42,"sweep":448,"sweep_total":9436,"outcome":2,"mask":0,"work":"3172555","sequence":"9479","rng_draws":"0"},{"side":5.081255912780762,"best_side":5.08750581741333,"pc":0,"phase":1,"flags":1,"attempt":43,"sweep":0,"sweep_total":9436,"outcome":2,"mask":0,"work":"3172604","sequence":"9480","rng_draws":"0"},{"side":5.081255912780762,"best_side":5.081255912780762,"pc":0,"phase":3,"flags":36,"attempt":43,"sweep":443,"sweep_total":9879,"outcome":2,"mask":0,"work":"3321452","sequence":"9923","rng_draws":"0"},{"side":5.075006008148193,"best_side":5.081255912780762,"pc":0,"phase":1,"flags":1,"attempt":44,"sweep":0,"sweep_total":9879,"outcome":2,"mask":0,"work":"3321501","sequence":"9924","rng_draws":"0"},{"side":5.075006008148193,"best_side":5.075006008148193,"pc":0,"phase":3,"flags":36,"attempt":44,"sweep":428,"sweep_total":10307,"outcome":2,"mask":0,"work":"3465309","sequence":"10352","rng_draws":"0"},{"side":5.068756103515625,"best_side":5.075006008148193,"pc":0,"phase":1,"flags":1,"attempt":45,"sweep":0,"sweep_total":10307,"outcome":2,"mask":0,"work":"3465358","sequence":"10353","rng_draws":"0"},{"side":5.068756103515625,"best_side":5.068756103515625,"pc":0,"phase":3,"flags":36,"attempt":45,"sweep":428,"sweep_total":10735,"outcome":2,"mask":0,"work":"3609166","sequence":"10781","rng_draws":"0"},{"side":5.062506198883057,"best_side":5.068756103515625,"pc":0,"phase":1,"flags":1,"attempt":46,"sweep":0,"sweep_total":10735,"outcome":2,"mask":0,"work":"3609215","sequence":"10782","rng_draws":"0"},{"side":5.062506198883057,"best_side":5.062506198883057,"pc":0,"phase":3,"flags":36,"attempt":46,"sweep":423,"sweep_total":11158,"outcome":2,"mask":0,"work":"3751343","sequence":"11205","rng_draws":"0"},{"side":5.056256294250488,"best_side":5.062506198883057,"pc":0,"phase":1,"flags":1,"attempt":47,"sweep":0,"sweep_total":11158,"outcome":2,"mask":0,"work":"3751392","sequence":"11206","rng_draws":"0"},{"side":5.056256294250488,"best_side":5.056256294250488,"pc":0,"phase":3,"flags":36,"attempt":47,"sweep":423,"sweep_total":11581,"outcome":2,"mask":0,"work":"3893520","sequence":"11629","rng_draws":"0"},{"side":5.05000638961792,"best_side":5.056256294250488,"pc":0,"phase":1,"flags":1,"attempt":48,"sweep":0,"sweep_total":11581,"outcome":2,"mask":0,"work":"3893569","sequence":"11630","rng_draws":"0"},{"side":5.05000638961792,"best_side":5.05000638961792,"pc":0,"phase":3,"flags":36,"attempt":48,"sweep":425,"sweep_total":12006,"outcome":2,"mask":0,"work":"4036369","sequence":"12055","rng_draws":"0"},{"side":5.043756484985352,"best_side":5.05000638961792,"pc":0,"phase":1,"flags":1,"attempt":49,"sweep":0,"sweep_total":12006,"outcome":2,"mask":0,"work":"4036418","sequence":"12056","rng_draws":"0"},{"side":5.043756484985352,"best_side":5.043756484985352,"pc":0,"phase":3,"flags":36,"attempt":49,"sweep":424,"sweep_total":12430,"outcome":2,"mask":0,"work":"4178882","sequence":"12480","rng_draws":"0"},{"side":5.037506580352783,"best_side":5.043756484985352,"pc":0,"phase":1,"flags":1,"attempt":50,"sweep":0,"sweep_total":12430,"outcome":2,"mask":0,"work":"4178931","sequence":"12481","rng_draws":"0"},{"side":5.037506580352783,"best_side":5.037506580352783,"pc":0,"phase":3,"flags":36,"attempt":50,"sweep":426,"sweep_total":12856,"outcome":2,"mask":0,"work":"4322067","sequence":"12907","rng_draws":"0"},{"side":5.031256675720215,"best_side":5.037506580352783,"pc":0,"phase":1,"flags":1,"attempt":51,"sweep":0,"sweep_total":12856,"outcome":2,"mask":0,"work":"4322116","sequence":"12908","rng_draws":"0"},{"side":5.031256675720215,"best_side":5.031256675720215,"pc":0,"phase":3,"flags":36,"attempt":51,"sweep":426,"sweep_total":13282,"outcome":2,"mask":0,"work":"4465252","sequence":"13334","rng_draws":"0"},{"side":5.0250067710876465,"best_side":5.031256675720215,"pc":0,"phase":1,"flags":1,"attempt":52,"sweep":0,"sweep_total":13282,"outcome":2,"mask":0,"work":"4465301","sequence":"13335","rng_draws":"0"},{"side":5.0250067710876465,"best_side":5.0250067710876465,"pc":0,"phase":3,"flags":36,"attempt":52,"sweep":427,"sweep_total":13709,"outcome":2,"mask":0,"work":"4608773","sequence":"13762","rng_draws":"0"},{"side":5.018756866455078,"best_side":5.0250067710876465,"pc":0,"phase":1,"flags":1,"attempt":53,"sweep":0,"sweep_total":13709,"outcome":2,"mask":0,"work":"4608822","sequence":"13763","rng_draws":"0"},{"side":5.018756866455078,"best_side":5.018756866455078,"pc":0,"phase":3,"flags":36,"attempt":53,"sweep":429,"sweep_total":14138,"outcome":2,"mask":0,"work":"4752966","sequence":"14192","rng_draws":"0"},{"side":5.01250696182251,"best_side":5.018756866455078,"pc":0,"phase":1,"flags":1,"attempt":54,"sweep":0,"sweep_total":14138,"outcome":2,"mask":0,"work":"4753015","sequence":"14193","rng_draws":"0"},{"side":5.01250696182251,"best_side":5.01250696182251,"pc":0,"phase":3,"flags":36,"attempt":54,"sweep":427,"sweep_total":14565,"outcome":2,"mask":0,"work":"4896487","sequence":"14620","rng_draws":"0"},{"side":5.006257057189941,"best_side":5.01250696182251,"pc":0,"phase":1,"flags":1,"attempt":55,"sweep":0,"sweep_total":14565,"outcome":2,"mask":0,"work":"4896536","sequence":"14621","rng_draws":"0"},{"side":5.006257057189941,"best_side":5.01250696182251,"pc":0,"phase":4,"flags":8,"attempt":55,"sweep":480,"sweep_total":15045,"outcome":4,"mask":0,"work":"5057816","sequence":"15101","rng_draws":"0"},{"side":5.01250696182251,"best_side":5.01250696182251,"pc":0,"phase":5,"flags":16,"attempt":55,"sweep":480,"sweep_total":15045,"outcome":4,"mask":0,"work":"5057816","sequence":"15101","rng_draws":"0"},{"side":5.0093817710876465,"best_side":5.01250696182251,"pc":0,"phase":1,"flags":1,"attempt":56,"sweep":0,"sweep_total":15045,"outcome":4,"mask":0,"work":"5057865","sequence":"15102","rng_draws":"0"},{"side":5.0093817710876465,"best_side":5.01250696182251,"pc":0,"phase":4,"flags":8,"attempt":56,"sweep":480,"sweep_total":15525,"outcome":4,"mask":0,"work":"5219145","sequence":"15582","rng_draws":"0"},{"side":5.01250696182251,"best_side":5.01250696182251,"pc":0,"phase":5,"flags":16,"attempt":56,"sweep":480,"sweep_total":15525,"outcome":4,"mask":0,"work":"5219145","sequence":"15582","rng_draws":"0"},{"side":5.010944366455078,"best_side":5.01250696182251,"pc":0,"phase":1,"flags":1,"attempt":57,"sweep":0,"sweep_total":15525,"outcome":4,"mask":0,"work":"5219194","sequence":"15583","rng_draws":"0"},{"side":5.010944366455078,"best_side":5.01250696182251,"pc":0,"phase":4,"flags":8,"attempt":57,"sweep":480,"sweep_total":16005,"outcome":4,"mask":0,"work":"5380474","sequence":"16063","rng_draws":"0"},{"side":5.01250696182251,"best_side":5.01250696182251,"pc":0,"phase":5,"flags":16,"attempt":57,"sweep":480,"sweep_total":16005,"outcome":4,"mask":0,"work":"5380474","sequence":"16063","rng_draws":"0"},{"side":5.011725902557373,"best_side":5.01250696182251,"pc":0,"phase":1,"flags":1,"attempt":58,"sweep":0,"sweep_total":16005,"outcome":4,"mask":0,"work":"5380523","sequence":"16064","rng_draws":"0"},{"side":5.011725902557373,"best_side":5.011725902557373,"pc":0,"phase":3,"flags":36,"attempt":58,"sweep":318,"sweep_total":16323,"outcome":2,"mask":0,"work":"5487371","sequence":"16382","rng_draws":"0"},{"side":5.010944843292236,"best_side":5.011725902557373,"pc":0,"phase":1,"flags":1,"attempt":59,"sweep":0,"sweep_total":16323,"outcome":2,"mask":0,"work":"5487420","sequence":"16383","rng_draws":"0"},{"side":5.010944843292236,"best_side":5.011725902557373,"pc":0,"phase":4,"flags":8,"attempt":59,"sweep":480,"sweep_total":16803,"outcome":4,"mask":0,"work":"5648700","sequence":"16863","rng_draws":"0"},{"side":5.011725902557373,"best_side":5.011725902557373,"pc":0,"phase":5,"flags":16,"attempt":59,"sweep":480,"sweep_total":16803,"outcome":4,"mask":0,"work":"5648700","sequence":"16863","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011725902557373,"pc":0,"phase":1,"flags":1,"attempt":60,"sweep":0,"sweep_total":16803,"outcome":4,"mask":0,"work":"5648749","sequence":"16864","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":0,"phase":3,"flags":36,"attempt":60,"sweep":401,"sweep_total":17204,"outcome":2,"mask":0,"work":"5783485","sequence":"17265","rng_draws":"0"},{"side":5.010944843292236,"best_side":5.011335372924805,"pc":0,"phase":1,"flags":1,"attempt":61,"sweep":0,"sweep_total":17204,"outcome":2,"mask":0,"work":"5783534","sequence":"17266","rng_draws":"0"},{"side":5.010944843292236,"best_side":5.011335372924805,"pc":0,"phase":4,"flags":8,"attempt":61,"sweep":480,"sweep_total":17684,"outcome":4,"mask":0,"work":"5944814","sequence":"17746","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":0,"phase":5,"flags":16,"attempt":61,"sweep":480,"sweep_total":17684,"outcome":4,"mask":0,"work":"5944814","sequence":"17746","rng_draws":"0"},{"side":5.011139869689941,"best_side":5.011335372924805,"pc":0,"phase":1,"flags":1,"attempt":62,"sweep":0,"sweep_total":17684,"outcome":4,"mask":0,"work":"5944863","sequence":"17747","rng_draws":"0"},{"side":5.011139869689941,"best_side":5.011335372924805,"pc":0,"phase":4,"flags":8,"attempt":62,"sweep":480,"sweep_total":18164,"outcome":4,"mask":0,"work":"6106143","sequence":"18227","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":0,"phase":5,"flags":16,"attempt":62,"sweep":480,"sweep_total":18164,"outcome":4,"mask":0,"work":"6106143","sequence":"18227","rng_draws":"0"},{"side":5.011235237121582,"best_side":5.011335372924805,"pc":0,"phase":1,"flags":1,"attempt":63,"sweep":0,"sweep_total":18164,"outcome":4,"mask":0,"work":"6106192","sequence":"18228","rng_draws":"0"},{"side":5.011235237121582,"best_side":5.011335372924805,"pc":0,"phase":4,"flags":8,"attempt":63,"sweep":480,"sweep_total":18644,"outcome":4,"mask":0,"work":"6267472","sequence":"18708","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":0,"phase":5,"flags":16,"attempt":63,"sweep":480,"sweep_total":18644,"outcome":4,"mask":0,"work":"6267472","sequence":"18708","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":1,"phase":3,"flags":256,"attempt":0,"sweep":0,"sweep_total":18644,"outcome":3,"mask":0,"work":"6267473","sequence":"18709","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":0,"phase":3,"flags":32,"attempt":0,"sweep":0,"sweep_total":18644,"outcome":3,"mask":0,"work":"6267473","sequence":"18709","rng_draws":"0"},{"side":5.011335372924805,"best_side":5.011335372924805,"pc":1,"phase":6,"flags":128,"attempt":0,"sweep":0,"sweep_total":18644,"outcome":3,"mask":0,"work":"6267473","sequence":"18709","rng_draws":"0"}],"event_policy":"All bounded semantic boundaries; sampled sweeps; start/best/final geometry reserved."},"numeric_sha256":"14a839bbd7aecf606fd9ef0dccab81043686f8f67be27f7d921c4862af418224"}}</script>
+<script>
+(() => {
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("trajectory-data").textContent);
+  const A = {};
+  const PHASES = ["INITIAL", "TRIAL", "RELAXING", "ACCEPTED", "REJECTED", "ROLLBACK", "FINAL"];
+  const COLORS = ["#e2b35c", "#78d6c3", "#d88978", "#a5c66f", "#b49be5", "#e1a1c9", "#77b5de", "#e5d08a", "#eb8650", "#58c9e2", "#e66fad", "#78a9ef", "#d6e761", "#bf9472", "#95d4ef", "#c6a8d2", "#6eb894", "#efb8a2", "#99a7cc", "#d4cbbc", "#e6cc58", "#9ee0d8", "#df776d", "#96b768", "#d28eed", "#efaddb", "#5c9ac2", "#cebf75", "#c887a0", "#a4c8ad", "#8fbcea", "#c5d094"];
+  const endpoint = DATA.metadata.comparison || {};
+  const sampling = DATA.metadata.sampling || {};
+  const provenance = DATA.metadata.provenance || {};
+  const originalProvenance = provenance.original || {};
+  const replayProvenance = provenance.replay || {};
+  const validationRecords = Array.isArray(DATA.metadata.validations) ? DATA.metadata.validations : [];
+
+  function decodeBase64(spec) {
+    const text = atob(spec.base64);
+    const bytes = new Uint8Array(text.length);
+    for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i);
+    const count = spec.shape.reduce((a, b) => a * b, 1);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const out = spec.dtype === "<f4" ? new Float32Array(count)
+      : spec.dtype === "<i4" ? new Int32Array(count)
+      : spec.dtype === "<i8" ? new Array(count)
+      : new Uint8Array(count);
+    for (let i = 0; i < count; i += 1) {
+      if (spec.dtype === "<f4") out[i] = view.getFloat32(i * 4, true);
+      else if (spec.dtype === "<i4") out[i] = view.getInt32(i * 4, true);
+      else if (spec.dtype === "<i8") out[i] = view.getBigInt64(i * 8, true);
+      else out[i] = view.getUint8(i);
+    }
+    return out;
+  }
+  for (const [name, spec] of Object.entries(DATA.arrays)) A[name] = decodeBase64(spec);
+  const F = DATA.arrays.poses.shape[0];
+  const N = DATA.arrays.poses.shape[1];
+  const strategy = DATA.metadata.strategy || null;
+  let strategyPanel = null;
+  let strategyRows = [];
+  if (strategy) {
+    strategyPanel = document.createElement("section");
+    strategyPanel.className = "panel";
+    strategyPanel.style.margin = "16px 0";
+    strategyPanel.innerHTML = '<div class="panel-head"><h2>World strategy</h2><span id="strategy-position"></span></div><div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:16px;padding:14px"><ol id="strategy-code" style="max-height:190px;overflow:auto;margin:0;padding-left:32px"></ol><div><canvas id="strategy-graph" style="width:100%;height:105px" aria-label="Current and protected best side against consumed work"></canvas><p id="strategy-state"></p><p id="strategy-selection"></p><button id="go-best" type="button">Go to best state</button> <button id="go-final-current" type="button">Go to final current</button></div></div>';
+    document.querySelector(".panels").before(strategyPanel);
+    strategyRows = strategy.program.instructions.map(instruction => {
+      const row = document.createElement("li");
+      row.textContent = `${instruction.pc}: ${instruction.op} · ${instruction.source_node}`;
+      row.title = `Operands: ${JSON.stringify(instruction.words.slice(1))}. Exact FP32 words: ${instruction.fp32_bits.join(" ")}`;
+      row.style.padding = "4px";
+      document.getElementById("strategy-code").append(row);
+      return row;
+    });
+  }
+  let frame = 0;
+  let playing = false;
+  let lastTick = 0;
+  let speed = 4;
+  let showSquares = true;
+  let showContainer = true;
+  let showIds = true;
+  let showOrientation = true;
+  let showTrails = true;
+  let trailSquare = "all";
+  let onlySelectedTrail = false;
+  let trailHistory = 0;
+  let currentZoom = 1;
+  let currentCenter = [0, 0];
+  let baseScale = 1;
+  let rangeStart = 0;
+  let rangeEnd = F - 1;
+  let loopRange = false;
+  let playbackGeneration = 0;
+  const initialSideValue = Number(A.side[0]);
+  const initialSide = Number.isFinite(initialSideValue) && initialSideValue > 0 ? initialSideValue : 1;
+  const retainedCount = sampling.retained ?? sampling.retained_frames ?? F;
+  const observedCount = sampling.observed ?? sampling.events_seen ?? F;
+  const suppressedCount = sampling.suppressed ?? sampling.suppressed_frames ?? 0;
+  const effectiveStride = sampling.effective_stride ?? 1;
+  const frameCap = sampling.max_frames ?? F;
+  const initialCanvas = document.getElementById("initial-canvas");
+  const currentCanvas = document.getElementById("current-canvas");
+  const slider = document.getElementById("frame-slider");
+  const trailSelect = document.getElementById("trail-square");
+  const legend = document.getElementById("square-legend");
+  const legendKeys = [];
+  for (let square = 0; square < N; square += 1) {
+    const option = document.createElement("option");
+    option.value = String(square); option.textContent = `focus square ${String(A.square_ids[square])}`;
+    trailSelect.appendChild(option);
+    const key = document.createElement("button"), swatch = document.createElement("span"), label = document.createElement("span");
+    key.type = "button"; key.className = "legend-key"; key.dataset.squareIndex = String(square);
+    key.style.setProperty("--square-color", COLORS[square]);
+    key.setAttribute("aria-label", `Show center trail for square ${String(A.square_ids[square])}`);
+    swatch.className = "legend-swatch"; swatch.setAttribute("aria-hidden", "true"); label.textContent = String(A.square_ids[square]);
+    key.append(swatch, label); legend.appendChild(key); legendKeys.push(key);
+    key.addEventListener("click", () => selectSquare(square));
+  }
+  slider.max = String(Math.max(0, F - 1));
+  document.getElementById("range-start").max = String(F - 1);
+  document.getElementById("range-end").max = String(F - 1);
+  document.getElementById("trial-line").textContent = `Trial ${String(DATA.metadata.trial_id)} · ${N} unit squares · seed ${String(DATA.metadata.seed)}`;
+  document.getElementById("initial-caption").textContent = `L = ${Number.isFinite(initialSideValue) && initialSideValue > 0 ? initialSideValue.toPrecision(7) : "invalid diagnostic value"} · frame 1 / fixed reference`;
+  document.getElementById("comparison-status").textContent = String(endpoint.status || "REFERENCE_INCOMPLETE");
+  document.getElementById("termination-status").textContent = String(DATA.metadata.termination_reason || "UNKNOWN");
+  document.getElementById("sampling-detail").textContent = `Sampling: ${String(retainedCount)} retained / ${String(observedCount)} observed; ${String(suppressedCount)} suppressed; effective stride ${String(effectiveStride)}; cap ${String(frameCap)}.`;
+  document.getElementById("comparison-detail").textContent = `This is a newly recorded replay. Endpoint/result comparison scope: ${String(endpoint.scope || "defined saved endpoint fields")} — intermediate states are not proven identical.`;
+  const replayRevision = replayProvenance.source_revision || replayProvenance.revision || provenance.replay_revision || provenance.source_revision || "unrecorded";
+  const replayDevice = replayProvenance.device_uuid || replayProvenance.device_name || replayProvenance.gpu_uuid || replayProvenance.gpu_model || provenance.replay_gpu_uuid || "unrecorded";
+  const provenanceStatus = provenance.status || endpoint.provenance_status || "unrecorded";
+  document.getElementById("provenance-detail").textContent = `Provenance: ${String(provenanceStatus)} · replay revision ${String(replayRevision)} · replay device ${String(replayDevice)} · original revision ${String(originalProvenance.source_revision || originalProvenance.revision || "unrecorded")}.`;
+
+  function dimensions(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(160, Math.floor(rect.width || 500));
+    const height = Math.max(160, Math.floor(rect.height || 350));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) { canvas.width = width * dpr; canvas.height = height * dpr; }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, width, height };
+  }
+  function mapPoint(x, y, width, height, scale, center = [0, 0]) { return [width / 2 + (x - center[0]) * scale, height / 2 - (y - center[1]) * scale]; }
+  function poseAt(index, square) {
+    const offset = (index * N + square) * 3;
+    return [Number(A.poses[offset]), Number(A.poses[offset + 1]), Number(A.poses[offset + 2])];
+  }
+  function trailSegments(index, square) {
+    const segments = []; let segment = [];
+    for (let saved = trailStart(index); saved <= index; saved += 1) {
+      const [x, y] = poseAt(saved, square);
+      if (Number.isFinite(x) && Number.isFinite(y)) segment.push([x, y]);
+      else if (segment.length) { segments.push(segment); segment = []; }
+    }
+    if (segment.length) segments.push(segment);
+    return segments;
+  }
+  function trailStart(index) { return trailHistory > 0 ? Math.max(0, index - trailHistory + 1) : 0; }
+  function trailSquares() {
+    return onlySelectedTrail && trailSquare !== "all" ? [Number(trailSquare)] : Array.from({length: N}, (_, square) => square);
+  }
+  function trailStyle(square) { return trailSquare === "all" ? [0.65, 1.25] : trailSquare === String(square) ? [0.95, 2] : [0.12, 1]; }
+  function selectSquare(square) {
+    trailSquare = square === null ? "all" : String(square); trailSelect.value = trailSquare;
+    showTrails = true; document.getElementById("show-trails").checked = true; trailSelect.disabled = false; render();
+  }
+  function drawTrails(ctx, index, width, height, scale, center) {
+    ctx.save(); ctx.lineJoin = "round";
+    for (const square of trailSquares()) {
+      [ctx.globalAlpha, ctx.lineWidth] = trailStyle(square);
+      ctx.strokeStyle = COLORS[square % COLORS.length]; ctx.fillStyle = ctx.strokeStyle;
+      for (const segment of trailSegments(index, square)) {
+        const points = segment.map(([x, y]) => mapPoint(x, y, width, height, scale, center));
+        ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
+        for (let saved = 1; saved < points.length; saved += 1) ctx.lineTo(points[saved][0], points[saved][1]);
+        ctx.stroke();
+        for (const [x, y] of points) { ctx.beginPath(); ctx.arc(x, y, 1.5, 0, 2 * Math.PI); ctx.fill(); }
+      }
+      const [startX, startY] = poseAt(trailStart(index), square);
+      if (Number.isFinite(startX) && Number.isFinite(startY)) {
+        const [x, y] = mapPoint(startX, startY, width, height, scale, center);
+        ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 2 * Math.PI); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  function labelLayout(ctx, square) {
+    const text = String(A.square_ids[square]);
+    ctx.font = "11px ui-monospace, monospace";
+    return {text, halfWidth: ctx.measureText(text).width / 2 + 3, halfHeight: 8};
+  }
+  function orientationPoints(center, theta, scale, label) {
+    const dx = Math.cos(theta), dy = -Math.sin(theta);
+    const clearance = showIds ? Math.min(label.halfWidth / Math.max(Math.abs(dx), 1e-12), label.halfHeight / Math.max(Math.abs(dy), 1e-12)) + 3 : 0;
+    const start = Math.max(0.28 * scale, clearance), end = 0.44 * scale;
+    if (start >= end) return null;
+    return [[center[0] + start * dx, center[1] + start * dy], [center[0] + end * dx, center[1] + end * dy]];
+  }
+  function drawPanel(canvas, index, isInitial, sharedScale, viewCenter = [0, 0]) {
+    const {ctx, width, height} = dimensions(canvas);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#0b1012"; ctx.fillRect(0, 0, width, height);
+    const side = Number(A.side[index]);
+    const validSide = Number.isFinite(side) && side > 0;
+    if (showContainer && validSide) {
+      const [left, top] = mapPoint(-side / 2, side / 2, width, height, sharedScale, viewCenter);
+      ctx.strokeStyle = "#62727a"; ctx.lineWidth = 1.4; ctx.strokeRect(left, top, side * sharedScale, side * sharedScale);
+    }
+    let omittedSquares = 0;
+    for (let square = 0; square < N; square += 1) {
+      const [x, y, theta] = poseAt(index, square);
+      if (![x, y, theta].every(Number.isFinite)) { omittedSquares += 1; continue; }
+      if (!showSquares) continue;
+      const ux = Math.cos(theta), uy = Math.sin(theta), vx = -uy, vy = ux;
+      const corners = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => {
+        return mapPoint(x + 0.5 * (sx * ux + sy * vx), y + 0.5 * (sx * uy + sy * vy), width, height, sharedScale, viewCenter);
+      });
+      ctx.beginPath(); ctx.moveTo(corners[0][0], corners[0][1]);
+      for (let k = 1; k < corners.length; k += 1) ctx.lineTo(corners[k][0], corners[k][1]);
+      ctx.closePath(); ctx.fillStyle = COLORS[square % COLORS.length] + "99"; ctx.fill();
+      const selected = strategy && !isInitial && (BigInt(strategy.frames[index].mask) & (1n << BigInt(square))) !== 0n;
+      ctx.strokeStyle = selected ? "#ffffff" : COLORS[square % COLORS.length]; ctx.lineWidth = selected ? 2.8 : 1.15; ctx.stroke();
+    }
+    if (showTrails && !isInitial) drawTrails(ctx, index, width, height, sharedScale, viewCenter);
+    for (let square = 0; square < N; square += 1) {
+      const [x, y, theta] = poseAt(index, square);
+      if (![x, y, theta].every(Number.isFinite)) continue;
+      const center = mapPoint(x, y, width, height, sharedScale, viewCenter);
+      const label = labelLayout(ctx, square);
+      const marker = orientationPoints(center, theta, sharedScale, label);
+      if (showOrientation && marker) { ctx.beginPath(); ctx.moveTo(...marker[0]); ctx.lineTo(...marker[1]); ctx.strokeStyle = "#f2eee4"; ctx.lineWidth = 1.5; ctx.stroke(); }
+      if (showIds) {
+        ctx.fillStyle = "#0b1012"; ctx.fillRect(center[0] - label.halfWidth, center[1] - label.halfHeight, 2 * label.halfWidth, 2 * label.halfHeight);
+        ctx.fillStyle = "#f2eee4"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label.text, center[0], center[1]);
+      }
+    }
+    ctx.fillStyle = "#a5aaa7"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    if (omittedSquares) {
+      ctx.fillStyle = "#e88475";
+      ctx.fillText(`non-finite poses: ${omittedSquares} square(s) omitted`, 9, 8);
+    }
+  }
+  function validationFor(index) {
+    return validationRecords.find((item) => {
+      const candidate = item.frame ?? item.frame_index;
+      const numeric = typeof candidate === "string" && /^\d+$/.test(candidate) ? Number(candidate) : candidate;
+      return Number.isInteger(numeric) && numeric === index;
+    }) || null;
+  }
+  function validationDetails(record, provisional, restored) {
+    const values = record.validation && typeof record.validation === "object" ? record.validation : record;
+    const outcomes = {NUMERICALLY_VALIDATED: "constraints passed", INVALID: "constraint violation detected", INDETERMINATE: "result indeterminate within numerical tolerance"};
+    const parts = [provisional ? "Provisional geometry measurements" : `${restored ? "Restored accepted state" : "Independent numerical check"}: ${outcomes[values.status || record.status] || "checked"}`];
+    for (const [field, label] of [["max_penetration", "Maximum overlap depth"], ["min_pair_separation", "Minimum square separation"], ["min_wall_clearance", "Minimum wall clearance"], ["tolerance", "Check tolerance"]]) {
+      const value = values[field];
+      if (typeof value === "number" && Number.isFinite(value)) parts.push(`${label}: ${value === 0 ? "0" : value.toPrecision(5)} unit lengths`);
+    }
+    if (values.nonfinite) parts.push("Non-finite coordinates detected");
+    if (provisional) parts.push("These measurements do not mark the state as accepted");
+    return parts.join(" · ") + ".";
+  }
+  function render() {
+    const first = dimensions(initialCanvas);
+    const current = dimensions(currentCanvas);
+    const scale = Math.max(1, Math.min((first.width - 28) / initialSide, (first.height - 28) / initialSide, (current.width - 28) / initialSide, (current.height - 28) / initialSide));
+    baseScale = scale;
+    drawPanel(initialCanvas, 0, true, scale);
+    drawPanel(currentCanvas, frame, false, scale * currentZoom, currentCenter);
+    document.getElementById("current-zoom").value = String(Number(currentZoom.toPrecision(7)));
+    document.getElementById("only-selected-trail").disabled = trailSquare === "all";
+    document.getElementById("trail-detail").textContent = `Center trails: ${trailHistory ? `last ${trailHistory} saved frames` : "full history"}, from index ${trailStart(frame)} through ${frame}. Dots mark recorded centers, not physical speed; connecting lines do not reconstruct skipped motion.`;
+    updateMarkers();
+    const phase = Number(A.phase[frame]);
+    const validation = validationFor(frame);
+    const isProvisional = phase === 1 || phase === 2 || phase === 4;
+    const isRestoredAccepted = phase === 5;
+    const phaseLabel = PHASES[phase] || "UNKNOWN";
+    const sequence = A.sequence[frame];
+    const sequenceText = typeof sequence === "bigint" ? sequence.toString() : String(sequence);
+    document.getElementById("frame-status").textContent = `${frame + 1} / ${F} · ${phaseLabel}`;
+    document.getElementById("frame-output").textContent = `Frame ${frame + 1} / ${F}`;
+    document.getElementById("algorithm-line").textContent = `Algorithm sequence ${sequenceText} · attempt ${String(A.attempt[frame])} · sweep ${String(A.sweep[frame])} within attempt · cumulative sweeps ${String(A.sweep_total[frame])} · phase ${phaseLabel}.`;
+    const side = Number(A.side[frame]);
+    document.getElementById("current-caption").textContent = `L = ${Number.isFinite(side) && side > 0 ? side.toPrecision(7) : "invalid diagnostic value"} · ${phaseLabel.toLowerCase()} · ${playing ? "playing" : "paused"}`;
+    legendKeys.forEach((key, square) => key.setAttribute("aria-pressed", String(showTrails && trailSquare === String(square))));
+    document.getElementById("side-line").textContent = `Container side L = ${Number.isFinite(side) ? side.toPrecision(9) : "non-finite diagnostic value"}.`;
+    const validationValue = validation && validation.validation;
+    const validationStatus = validationValue && typeof validationValue === "object" ? validationValue.status : validationValue || (validation && validation.status) || "CHECKED";
+    const validationLabels = {NUMERICALLY_VALIDATED: "Numerically validated", INVALID: "Constraint violation", INDETERMINATE: "Numerically indeterminate", CHECKED: "Checked"};
+    document.getElementById("validation-status").textContent = isProvisional ? "PROVISIONAL · measured diagnostics" : isRestoredAccepted ? "RESTORED ACCEPTED" : (validation ? validationLabels[validationStatus] || "Check available" : "NOT CHECKED");
+    document.getElementById("validation-detail").textContent = validation ? validationDetails(validation, isProvisional, isRestoredAccepted) : (isProvisional ? "No accepted/CPU validation badge is inherited by this provisional state." : isRestoredAccepted ? "Rollback restored the previously accepted pose; no new CPU validation record was retained for this frame." : "No per-frame validation record was retained.");
+    document.getElementById("validation-status").classList.toggle("provisional", isProvisional);
+    if (strategy) renderStrategy();
+  }
+  function renderStrategy() {
+    const item = strategy.frames[frame];
+    const instruction = strategy.program.instructions[item.pc];
+    strategyRows.forEach((row, pc) => {
+      row.style.background = pc === item.pc ? "#30454d" : "transparent";
+      row.setAttribute("aria-current", String(pc === item.pc));
+    });
+    document.getElementById("strategy-position").textContent = instruction ? `${instruction.op} · ${instruction.source_node}` : "Initial protected state";
+    const labels = [[1,"proposal"],[2,"repair"],[4,"commit"],[8,"rejection"],[16,"rollback"],[32,"best snapshot"],[64,"discontinuous restore"],[128,"finalization"],[256,"invocation"]];
+    const markers = labels.filter(([flag]) => item.flags & flag).map(([,label]) => label).join(" · ");
+    document.getElementById("strategy-state").textContent = `Current L ${Number(item.side).toPrecision(8)} · protected best L ${Number(item.best_side).toPrecision(8)} · body work ${item.work} · ${item.outcome_name} · ${markers}`;
+    const ids = Array.from({length:N}, (_,square) => square).filter(square => (BigInt(item.mask) & (1n << BigInt(square))) !== 0n);
+    document.getElementById("strategy-selection").textContent = `Selected square IDs: ${ids.length ? ids.join(", ") : "none"}. Attempt ${item.attempt}, sweep ${item.sweep}; operator RNG draws ${item.rng_draws}. Fractions multiply the side at operation entry; squares retain unit side.`;
+    const graph = document.getElementById("strategy-graph"), ctx = graph.getContext("2d");
+    graph.width = Math.max(300, graph.clientWidth * devicePixelRatio); graph.height = 105 * devicePixelRatio;
+    const width = graph.width, height = graph.height, margin = 14 * devicePixelRatio;
+    const maxWork = Math.max(1, ...strategy.frames.map(value => Number(value.work)));
+    const minSide = Math.min(...strategy.frames.flatMap(value => [value.side, value.best_side]));
+    const maxSide = Math.max(...strategy.frames.flatMap(value => [value.side, value.best_side]));
+    const x = value => margin + Number(value.work) / maxWork * (width - 2 * margin);
+    const y = value => margin + (maxSide - value) / Math.max(1e-8, maxSide - minSide) * (height - 2 * margin);
+    ctx.clearRect(0, 0, width, height);
+    for (const [key, color] of [["side","#e2b35c"],["best_side","#78d6c3"]]) {
+      ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5 * devicePixelRatio;
+      strategy.frames.forEach((value, index) => {
+        if (index === 0 || (key === "side" && value.flags & (16 | 64))) ctx.moveTo(x(value), y(value[key]));
+        else ctx.lineTo(x(value), y(value[key]));
+      });
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(x(item), margin); ctx.lineTo(x(item), height - margin); ctx.stroke();
+    graph.title = `Current L ${item.side}; best L ${item.best_side}; body work ${item.work}. Amber: current; teal: protected best. Click to seek by work.`;
+  }
+  function setFrame(value) { frame = Math.max(0, Math.min(F - 1, Number(value) || 0)); slider.value = String(frame); render(); }
+  function seekFrame(value) { if (playing) setPlaying(false); setFrame(value); }
+  function setPlaying(value) {
+    playing = Boolean(value); playbackGeneration += 1;
+    document.getElementById("play-pause").textContent = playing ? "Pause" : "Play";
+    if (playing) { if (frame < rangeStart || frame >= rangeEnd) setFrame(rangeStart); lastTick = 0; const generation = playbackGeneration; requestAnimationFrame(now => tick(now, generation)); }
+    render();
+  }
+  function tick(now, generation) {
+    if (!playing || generation !== playbackGeneration) return;
+    if (!lastTick) lastTick = now;
+    if (now - lastTick >= 1000 / speed) {
+      lastTick = now;
+      if (frame >= rangeEnd) { if (loopRange) setFrame(rangeStart); else { setPlaying(false); return; } }
+      else setFrame(frame + 1);
+    }
+    requestAnimationFrame(next => tick(next, generation));
+  }
+  function updateMarkers() {
+    document.getElementById("range-start").value = String(rangeStart); document.getElementById("range-end").value = String(rangeEnd);
+    const start = 100 * rangeStart / Math.max(1, F - 1), end = 100 * rangeEnd / Math.max(1, F - 1);
+    document.getElementById("start-marker").style.left = `${start}%`; document.getElementById("end-marker").style.left = `${end}%`;
+    document.getElementById("marker-band").style.left = `${start}%`; document.getElementById("marker-band").style.width = `${end - start}%`;
+  }
+  function setMarker(which, value) {
+    if (playing) setPlaying(false);
+    const index = Math.max(0, Math.min(F - 1, Math.round(Number(value) || 0)));
+    if (which === "start") { rangeStart = index; if (rangeEnd < index) rangeEnd = index; }
+    else { rangeEnd = index; if (rangeStart > index) rangeStart = index; }
+    updateMarkers();
+  }
+  function clampZoom(value) { return Math.max(0.25, Math.min(65536, Number(value) || 1)); }
+  function zoomTo(value, point = null) {
+    const {width, height} = dimensions(currentCanvas), next = clampZoom(value);
+    if (point) {
+      const dx = point[0] - width / 2, dy = point[1] - height / 2;
+      currentCenter = [currentCenter[0] + dx / (baseScale * currentZoom) - dx / (baseScale * next), currentCenter[1] - dy / (baseScale * currentZoom) + dy / (baseScale * next)];
+    }
+    currentZoom = next; render();
+  }
+  function fitTrajectory() {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const include = (x, y) => { if (Number.isFinite(x) && Number.isFinite(y)) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); } };
+    for (let saved = 0; saved < F; saved += 1) {
+      const side = Number(A.side[saved]);
+      if (showContainer && Number.isFinite(side) && side > 0) { include(-side / 2, -side / 2); include(side / 2, side / 2); }
+      for (const square of (showSquares ? Array.from({length: N}, (_, index) => index) : trailSquares())) {
+        const [x, y, theta] = poseAt(saved, square); include(x, y);
+        if (showSquares && Number.isFinite(theta)) {
+          const extent = 0.5 * (Math.abs(Math.cos(theta)) + Math.abs(Math.sin(theta)));
+          include(x - extent, y - extent); include(x + extent, y + extent);
+        }
+      }
+    }
+    if (!Number.isFinite(minX)) return;
+    const {width, height} = dimensions(currentCanvas);
+    currentCenter = [minX + (maxX - minX) / 2, minY + (maxY - minY) / 2];
+    zoomTo(Math.min((width - 28) / Math.max(1e-6, maxX - minX), (height - 28) / Math.max(1e-6, maxY - minY)) / baseScale);
+  }
+  function selectAt(point) {
+    const {width, height} = dimensions(currentCanvas), scale = baseScale * currentZoom;
+    const worldX = currentCenter[0] + (point[0] - width / 2) / scale, worldY = currentCenter[1] - (point[1] - height / 2) / scale;
+    for (let square = N - 1; square >= 0; square -= 1) {
+      const [x, y, theta] = poseAt(frame, square); if (![x, y, theta].every(Number.isFinite)) continue;
+      const dx = worldX - x, dy = worldY - y;
+      if (showSquares ? Math.abs(dx * Math.cos(theta) + dy * Math.sin(theta)) <= 0.5 && Math.abs(-dx * Math.sin(theta) + dy * Math.cos(theta)) <= 0.5 : showIds && Math.hypot(dx, dy) * scale <= 12) { selectSquare(square); return; }
+    }
+    selectSquare(null);
+  }
+  document.getElementById("zoom-in").addEventListener("click", () => zoomTo(currentZoom * 2));
+  document.getElementById("zoom-out").addEventListener("click", () => zoomTo(currentZoom / 2));
+  document.getElementById("current-zoom").addEventListener("change", event => zoomTo(event.target.value));
+  document.getElementById("reset-view").addEventListener("click", () => { currentCenter = [0, 0]; zoomTo(1); });
+  document.getElementById("fit-current").addEventListener("click", () => { const side = Number(A.side[frame]); if (Number.isFinite(side) && side > 0) { currentCenter = [0, 0]; zoomTo(initialSide / side); } });
+  document.getElementById("fit-trajectory").addEventListener("click", fitTrajectory);
+  document.getElementById("focus-trail").addEventListener("click", () => { if (trailSquare !== "all") { const [x, y] = poseAt(frame, Number(trailSquare)); if (Number.isFinite(x) && Number.isFinite(y)) { currentCenter = [x, y]; render(); } } });
+  currentCanvas.addEventListener("wheel", event => { event.preventDefault(); const rect = currentCanvas.getBoundingClientRect(); zoomTo(currentZoom * Math.exp(-event.deltaY * 0.002), [event.clientX - rect.left, event.clientY - rect.top]); }, {passive: false});
+  let sceneDrag = null;
+  currentCanvas.addEventListener("pointerdown", event => { if (event.button !== 0) return; sceneDrag = {x: event.clientX, y: event.clientY, center: [...currentCenter], moved: false}; currentCanvas.setPointerCapture(event.pointerId); });
+  currentCanvas.addEventListener("pointermove", event => {
+    if (!sceneDrag) return;
+    const dx = event.clientX - sceneDrag.x, dy = event.clientY - sceneDrag.y;
+    if (Math.hypot(dx, dy) > 3) sceneDrag.moved = true;
+    if (sceneDrag.moved) { const scale = baseScale * currentZoom; currentCenter = [sceneDrag.center[0] - dx / scale, sceneDrag.center[1] + dy / scale]; currentCanvas.classList.add("dragging"); render(); }
+  });
+  currentCanvas.addEventListener("pointerup", event => { if (sceneDrag && !sceneDrag.moved) { const rect = currentCanvas.getBoundingClientRect(); selectAt([event.clientX - rect.left, event.clientY - rect.top]); } sceneDrag = null; currentCanvas.classList.remove("dragging"); });
+  currentCanvas.addEventListener("pointercancel", () => { sceneDrag = null; currentCanvas.classList.remove("dragging"); });
+  for (const which of ["start", "end"]) {
+    document.getElementById(`range-${which}`).addEventListener("change", event => setMarker(which, event.target.value));
+    document.getElementById(`set-range-${which}`).addEventListener("click", () => setMarker(which, frame));
+    const marker = document.getElementById(`${which}-marker`); let dragging = false;
+    marker.addEventListener("pointerdown", event => { if (event.button !== 0) return; dragging = true; event.preventDefault(); marker.setPointerCapture(event.pointerId); });
+    marker.addEventListener("pointermove", event => { if (!dragging) return; const rect = document.getElementById("marker-track").getBoundingClientRect(); setMarker(which, (event.clientX - rect.left) / rect.width * (F - 1)); });
+    marker.addEventListener("pointerup", () => { dragging = false; }); marker.addEventListener("pointercancel", () => { dragging = false; });
+  }
+  document.getElementById("playback-mode").addEventListener("change", event => { loopRange = event.target.value === "loop"; });
+  document.getElementById("reset-range").addEventListener("click", () => { if (playing) setPlaying(false); rangeStart = 0; rangeEnd = F - 1; updateMarkers(); });
+  document.getElementById("first-frame").addEventListener("click", () => seekFrame(0));
+  document.getElementById("previous-frame").addEventListener("click", () => seekFrame(frame - 1));
+  document.getElementById("next-frame").addEventListener("click", () => seekFrame(frame + 1));
+  document.getElementById("last-frame").addEventListener("click", () => seekFrame(F - 1));
+  document.getElementById("play-pause").addEventListener("click", () => setPlaying(!playing));
+  slider.addEventListener("input", (event) => seekFrame(event.target.value));
+  document.getElementById("speed").addEventListener("change", (event) => { speed = Number(event.target.value) || 4; });
+  document.getElementById("show-squares").addEventListener("change", (event) => { showSquares = event.target.checked; render(); });
+  document.getElementById("show-container").addEventListener("change", (event) => { showContainer = event.target.checked; render(); });
+  document.getElementById("show-ids").addEventListener("change", (event) => { showIds = event.target.checked; render(); });
+  document.getElementById("show-orientation").addEventListener("change", (event) => { showOrientation = event.target.checked; render(); });
+  document.getElementById("show-trails").addEventListener("change", (event) => { showTrails = event.target.checked; trailSelect.disabled = !showTrails; render(); });
+  trailSelect.addEventListener("change", (event) => { trailSquare = event.target.value; render(); });
+  document.getElementById("only-selected-trail").addEventListener("change", event => { onlySelectedTrail = event.target.checked; render(); });
+  document.getElementById("trail-history").addEventListener("change", event => { trailHistory = Math.max(0, Math.min(4096, Math.round(Number(event.target.value) || 0))); event.target.value = String(trailHistory); render(); });
+  window.addEventListener("resize", render);
+
+  function xml(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function exportCurrentSvg() {
+    const width = 900, height = 700, margin = 70, scale = Math.min((width - 2 * margin) / initialSide, (height - 2 * margin) / initialSide) * currentZoom;
+    const side = Number(A.side[frame]);
+    const validSide = Number.isFinite(side) && side > 0;
+    const map = (x, y) => mapPoint(x, y, width, height, scale, currentCenter);
+    const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-zoom="${currentZoom}" data-view-x="${currentCenter[0]}" data-view-y="${currentCenter[1]}" data-trail-start="${trailStart(frame)}"><title>Asquerix trajectory frame ${frame + 1}</title>`, `<rect width="${width}" height="${height}" fill="#0b1012"/>`];
+    if (showContainer && validSide) { const [left, top] = map(-side / 2, side / 2); parts.push(`<rect data-container-boundary="true" x="${left}" y="${top}" width="${side * scale}" height="${side * scale}" fill="none" stroke="#62727a"/>`); }
+    let omittedSquares = 0;
+    for (let square = 0; square < N; square += 1) { const [x, y, theta] = poseAt(frame, square); if (![x, y, theta].every(Number.isFinite)) { omittedSquares += 1; continue; } if (!showSquares) continue; const ux = Math.cos(theta), uy = Math.sin(theta), vx = -uy, vy = ux; const points = [[1,1],[-1,1],[-1,-1],[1,-1]].map(([sx, sy]) => map(x + .5 * (sx * ux + sy * vx), y + .5 * (sx * uy + sy * vy))).map(([px, py]) => `${px},${py}`).join(" "); parts.push(`<polygon points="${points}" fill="${COLORS[square % COLORS.length]}99" stroke="${COLORS[square % COLORS.length]}"/>`); }
+    if (showTrails) {
+      for (const square of trailSquares()) {
+        const color = COLORS[square % COLORS.length];
+        const [opacity, lineWidth] = trailStyle(square);
+        parts.push(`<g data-center-trail="${xml(A.square_ids[square])}" fill="${color}" stroke="${color}" opacity="${opacity}" stroke-width="${lineWidth}">`);
+        for (const segment of trailSegments(frame, square)) {
+          const points = segment.map(([x, y]) => map(x, y));
+          parts.push(`<polyline points="${points.map(([x, y]) => `${x},${y}`).join(" ")}" fill="none" stroke-linejoin="round"/>`);
+          for (const [x, y] of points) parts.push(`<circle cx="${x}" cy="${y}" r="1.5" stroke="none"/>`);
+        }
+        const [startX, startY] = poseAt(trailStart(frame), square);
+        if (Number.isFinite(startX) && Number.isFinite(startY)) { const [x, y] = map(startX, startY); parts.push(`<circle cx="${x}" cy="${y}" r="3.5" fill="none"/>`); }
+        parts.push("</g>");
+      }
+    }
+    const measureContext = currentCanvas.getContext("2d");
+    for (let square = 0; square < N; square += 1) {
+      const [x, y, theta] = poseAt(frame, square);
+      if (![x, y, theta].every(Number.isFinite)) continue;
+      const center = map(x, y), label = labelLayout(measureContext, square);
+      const marker = orientationPoints(center, theta, scale, label);
+      if (showOrientation && marker) parts.push(`<line data-orientation="${xml(A.square_ids[square])}" x1="${marker[0][0]}" y1="${marker[0][1]}" x2="${marker[1][0]}" y2="${marker[1][1]}" stroke="#f2eee4" stroke-width="1.5"/>`);
+      if (showIds) parts.push(`<rect data-label="${xml(A.square_ids[square])}" x="${center[0] - label.halfWidth}" y="${center[1] - label.halfHeight}" width="${2 * label.halfWidth}" height="${2 * label.halfHeight}" fill="#0b1012"/><text x="${center[0]}" y="${center[1]}" text-anchor="middle" dominant-baseline="middle" fill="#f2eee4" font-family="ui-monospace, monospace" font-size="11">${xml(label.text)}</text>`);
+    }
+    if (showTrails) parts.push(`<text x="${margin}" y="${height - 12}" fill="#a5aaa7" font-family="monospace" font-size="11">Center trails connect saved positions through frame ${frame + 1}; skipped motion is not reconstructed.</text>`);
+    if (!validSide) parts.push(`<text x="${margin}" y="${height - 48}" fill="#e88475" font-family="monospace" font-size="12">invalid diagnostic side; boundary omitted</text>`);
+    if (omittedSquares) parts.push(`<text x="${margin}" y="${height - 30}" fill="#e88475" font-family="monospace" font-size="12">non-finite poses: ${omittedSquares} square(s) omitted</text>`);
+    parts.push(`<text x="${margin}" y="30" fill="#e7e5df" font-family="monospace" font-size="14">trial ${xml(DATA.metadata.trial_id)} · frame ${frame + 1}/${F} · ${xml(PHASES[Number(A.phase[frame])] || "UNKNOWN")}</text></svg>`);
+    const blob = new Blob([parts.join("")], {type: "image/svg+xml;charset=utf-8"}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `trial-${String(DATA.metadata.trial_id)}-frame-${frame + 1}.svg`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  }
+  document.getElementById("export-svg").addEventListener("click", exportCurrentSvg);
+  if (strategy) {
+    document.getElementById("go-best").addEventListener("click", () => seekFrame(strategy.best_frame));
+    document.getElementById("go-final-current").addEventListener("click", () => seekFrame(F - 1));
+    document.getElementById("strategy-graph").addEventListener("click", event => {
+      const box = event.currentTarget.getBoundingClientRect();
+      const fraction = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+      seekNormalizedWork(fraction);
+    });
+  }
+  function seekNormalizedWork(fraction) {
+    if (!strategy) { seekFrame(Math.round(fraction * (F - 1))); return; }
+    const work = fraction * Number(strategy.frames[F - 1].work);
+    let nearest = 0;
+    strategy.frames.forEach((item, index) => { if (Math.abs(Number(item.work) - work) < Math.abs(Number(strategy.frames[nearest].work) - work)) nearest = index; });
+    seekFrame(nearest);
+  }
+  window.asquerixTrajectory = {seekFrame, seekNormalizedWork, setPlaying, getFrame: () => frame, frameCount: F,
+    initialIdentity: DATA.metadata.initial_identity || null, frameMetadata: index => strategy ? strategy.frames[index] : null};
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent || !event.data || event.data.type !== "asquerix-seek") return;
+    if (event.data.mode === "work") seekNormalizedWork(Number(event.data.value));
+    else if (event.data.mode === "frame") seekFrame(Number(event.data.value));
+  });
+  render();
+})();
+</script>
+</body>
+</html>
