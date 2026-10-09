@@ -1,0 +1,6 @@
+Generated source trees: 1000; accepted: 859; rejected by limits: 141
+Independent AST/bytecode path comparisons: 6872; mismatches: 0
+Binary round trips passed for every accepted tree.
+Geometry, GPU execution, finalization, and evolution were not exercised.
+
+exit_code=0

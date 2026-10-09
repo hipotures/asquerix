@@ -1,0 +1,312 @@
+{
+  "verified_at_utc": "2026-10-09T11:02:39.006985+00:00",
+  "repository_source_revision": "afa10b10802e46a4d16a1f56120295c685c908d0",
+  "repository_branch": "main",
+  "verification_scope": "Standalone CPU language reference; no production solver changes or GPU execution",
+  "python_executable": "/usr/bin/python3",
+  "python_version": "3.14.7 (main, Aug 14 2026, 06:38:32) [GCC 16.2.1 20260810]",
+  "platform": "Linux-7.2.9-1-cachyos-x86_64-with-glibc2.44",
+  "uv_version": "uv 0.12.23 (46b84fd0b 2026-10-03 x86_64-unknown-linux-gnu)",
+  "original_inputs": [
+    {
+      "path": "/home/user/Downloads/ASQUERIX_EVOLVING_STRATEGY_PROGRAMS_DESIGN.md",
+      "bytes": 65710,
+      "sha256": "6f1fc9322f7759e7ee3fa2fc01463afc28bf9c0d49138ad526513fc0b4cf0a50"
+    },
+    {
+      "path": "/home/user/Downloads/ASQUERIX_STRATEGY_DESIGN_AND_REFERENCE.zip",
+      "bytes": 33640,
+      "sha256": "2949e09ae2662ac7b3820c68cb35e2dda08e547d579831398a1bb62c77a1096e"
+    }
+  ],
+  "zip_members": [
+    {
+      "path": "asquerix-strategy-design/ASQUERIX_EVOLVING_STRATEGY_PROGRAMS_DESIGN.md",
+      "bytes": 65710,
+      "sha256": "6f1fc9322f7759e7ee3fa2fc01463afc28bf9c0d49138ad526513fc0b4cf0a50"
+    },
+    {
+      "path": "asquerix-strategy-design/README.md",
+      "bytes": 1547,
+      "sha256": "9d4e71209c59d4afad0d1fddd8809cc022668b80f13b6c7582c9b697c098a0f0"
+    },
+    {
+      "path": "asquerix-strategy-design/strategy_reference.py",
+      "bytes": 13496,
+      "sha256": "d5dc04d95e6b4c3410d5bffa9d22ed40b9f0ae329913eb5c256720121137e43a"
+    },
+    {
+      "path": "asquerix-strategy-design/test_strategy_reference.py",
+      "bytes": 7911,
+      "sha256": "bb95b38a1e66a763f2a759bfd7eac3f03225c9c92025e2e91f882788cad6ed70"
+    },
+    {
+      "path": "asquerix-strategy-design/reference-tests.txt",
+      "bytes": 3637,
+      "sha256": "7d460942066fb71b5c16eca5b8f8d9a1f24fc5dd66f4441e905b9c1a122b23ea"
+    }
+  ],
+  "zip_crc_error_member": null,
+  "standalone_document_matches_zip": true,
+  "results": {
+    "unit_tests_passed": 31,
+    "supplied_control_flow_cases": 500,
+    "supplied_generation_mutation_cases": 100,
+    "documentation_examples_passed": 3,
+    "independent_source_trees": 1000,
+    "independent_accepted_trees": 859,
+    "independent_rejected_trees": 141,
+    "independent_path_comparisons": 6872,
+    "independent_mismatches": 0,
+    "demo_instruction_count": 17,
+    "demo_payload_bytes": 556,
+    "demo_program_sha256": "959669b0ae0bff912fcc82cb92e3b141e9d7520967c4291365ddf0482d5e1b9a"
+  },
+  "runs": [
+    {
+      "name": "runtime",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "-c",
+        "import platform, sys; print(sys.executable); print(sys.version); print(platform.platform())"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.06303666898747906,
+      "log": "evidence/runtime.log"
+    },
+    {
+      "name": "uv-version",
+      "command": [
+        "uv",
+        "--version"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.010369832045398653,
+      "log": "evidence/uv-version.log"
+    },
+    {
+      "name": "strategy_reference",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "strategy_reference.py"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009/reference",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.07847943698288873,
+      "log": "evidence/strategy_reference.log"
+    },
+    {
+      "name": "unittest",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "-m",
+        "unittest",
+        "-v",
+        "test_strategy_reference.py"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009/reference",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.7104231080156751,
+      "log": "evidence/unittest.log"
+    },
+    {
+      "name": "doc_example_1_authoring",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "evidence/doc_example_1_authoring.py"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": "reference"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.08513454400235787,
+      "log": "evidence/doc_example_1_authoring.log"
+    },
+    {
+      "name": "doc_example_2_fuel",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "evidence/doc_example_2_fuel.py"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": "reference"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.07980271300766617,
+      "log": "evidence/doc_example_2_fuel.log"
+    },
+    {
+      "name": "doc_example_3_generation",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "evidence/doc_example_3_generation.py"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": "reference"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 0.07931742101209238,
+      "log": "evidence/doc_example_3_generation.log"
+    },
+    {
+      "name": "differential",
+      "command": [
+        "uv",
+        "run",
+        "--no-project",
+        "--python",
+        "/usr/bin/python3",
+        "python",
+        "evidence/differential_check.py",
+        "reference"
+      ],
+      "cwd_relative_to_repository": "artifacts/audit/strategy-reference-20261009",
+      "environment": {
+        "UV_CACHE_DIR": "/tmp/asquerix-strategy-uv-cache",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "exit_code": 0,
+      "elapsed_seconds": 1.5327907869941555,
+      "log": "evidence/differential.log"
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "evidence/differential.log",
+      "bytes": 269,
+      "sha256": "ff3fe3c6e4f2eea4d00cab4e6e46923818b33188f1c2f694365aff0e7e39c019"
+    },
+    {
+      "path": "evidence/differential_check.py",
+      "bytes": 3157,
+      "sha256": "6ca485379f7ac8bc7a7cb1f12f1c86329d6381b0b97fe64427b5dc35f891b595"
+    },
+    {
+      "path": "evidence/doc_example_1_authoring.log",
+      "bytes": 78,
+      "sha256": "9e9261515cc3fd37881384efcebb8ac5654f0ddc4183e499aa34901d3aedf2a0"
+    },
+    {
+      "path": "evidence/doc_example_1_authoring.py",
+      "bytes": 631,
+      "sha256": "c3f4e4e855070743804c3b7d7af9bdc5258abccd6cee0368c88ff28425d687eb"
+    },
+    {
+      "path": "evidence/doc_example_2_fuel.log",
+      "bytes": 13,
+      "sha256": "9fa3b6ead7afc298499f30c5b70014c78b6686a8269611537606fa5a7c02b6a2"
+    },
+    {
+      "path": "evidence/doc_example_2_fuel.py",
+      "bytes": 239,
+      "sha256": "e1d00d9e134118aaf19e54abb7c253225b0da7f76fe66911649a51ac41d12d2d"
+    },
+    {
+      "path": "evidence/doc_example_3_generation.log",
+      "bytes": 13,
+      "sha256": "9fa3b6ead7afc298499f30c5b70014c78b6686a8269611537606fa5a7c02b6a2"
+    },
+    {
+      "path": "evidence/doc_example_3_generation.py",
+      "bytes": 353,
+      "sha256": "7b2256933256805ccba69ef06c24353b5d46dde276dff671052f117289c32b9e"
+    },
+    {
+      "path": "evidence/runtime.log",
+      "bytes": 133,
+      "sha256": "ee3d42a435691c841346dd1b9987958e8bb45d3b17ef8713cfcdb43646773831"
+    },
+    {
+      "path": "evidence/strategy_reference.log",
+      "bytes": 361,
+      "sha256": "27e46140e5df871c54190820e631acf88d1cfd32186b3f504c5ba24d1e180be7"
+    },
+    {
+      "path": "evidence/test-scope.txt",
+      "bytes": 1842,
+      "sha256": "f18147f53f9792d67c709b0510239f5954036ebec70ad15fd93724d03d57d8de"
+    },
+    {
+      "path": "evidence/unittest.log",
+      "bytes": 3650,
+      "sha256": "9a23e90c325e4e9a6927fc2982ab17c6fffa5f550c2a0e2e862ba918e116f0bb"
+    },
+    {
+      "path": "evidence/uv-version.log",
+      "bytes": 72,
+      "sha256": "bbfdb3580741aec4d0260c5a0a4bf35cd0b315dbfd79cfa2e02dc7267bed992b"
+    },
+    {
+      "path": "reference/strategy_reference.py",
+      "bytes": 13496,
+      "sha256": "d5dc04d95e6b4c3410d5bffa9d22ed40b9f0ae329913eb5c256720121137e43a"
+    },
+    {
+      "path": "reference/test_strategy_reference.py",
+      "bytes": 7911,
+      "sha256": "bb95b38a1e66a763f2a759bfd7eac3f03225c9c92025e2e91f882788cad6ed70"
+    },
+    {
+      "path": "REPORT.md",
+      "bytes": 5680,
+      "sha256": "0107e48fce4a65cab4eceb5ad4c4eba2311fb7d5f2300677df003ce6e8b3936b"
+    }
+  ]
+}

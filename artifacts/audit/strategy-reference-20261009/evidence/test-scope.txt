@@ -1,0 +1,31 @@
+Static inspection of test_strategy_reference.py (sha256 recorded in input-sha256.txt):
+
+- 31 unittest methods are defined in StrategyReferenceTests (lines 16-180).
+- test_statically_unrolled_programs_terminate (lines 151-165) runs 500 generated
+  Repeat/If programs using seeded random parameters, then checks encode/decode,
+  dry-run action count, and HALTED status.
+- test_generator_and_mutation_are_bounded_and_reproducible (lines 168-175)
+  runs 100 seeds, checks deterministic generation, mutates the first compression,
+  verifies encode/decode, and checks HALTED status.
+- Other repeated cases cover 4 nonfinite values, 4 bad Fuel costs, 3 malformed
+  binary sizes, 5 invalid mutation factors, and the explicit maximum-size/depth
+  cases.
+
+Functional scope exercised:
+- Typed source nodes, compile-time repeat unrolling, forward-only conditionals,
+  final HALT, code-size/depth/repeat limits, and raw-control rejection.
+- Fixed-width bytecode encode/decode, canonical float32 normalization, hash
+  stability, malformed payload rejection, unknown opcode/predicate/selector,
+  reserved operands, and trailing-byte rejection.
+- Dry-run branch behavior, predicate type checking, dispatch budget exhaustion.
+- Fuel reservation validation and no-refund behavior; bounded template generation
+  and one parameter mutation.
+
+Scope not exercised by this package:
+- No geometry/contact/collision implementation, numerical validation, rollback
+  or packing-state execution.
+- No Warp/CUDA kernel, GPU interpreter, GPU memory behavior, launch slicing,
+  device timing, throughput, or hardware compatibility check.
+- No population-level evolutionary loop, fitness/evaluation implementation,
+  selection/crossover, campaign reproducibility, or scientific packing result.
+- The dry-run records opcodes only; it does not execute any operator semantics.

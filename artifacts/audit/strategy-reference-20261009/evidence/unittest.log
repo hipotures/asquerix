@@ -1,0 +1,38 @@
+test_all_selector_forbids_count (test_strategy_reference.StrategyReferenceTests.test_all_selector_forbids_count) ... ok
+test_bool_is_not_a_budget (test_strategy_reference.StrategyReferenceTests.test_bool_is_not_a_budget) ... ok
+test_canonical_hash_ignores_float_precision_beyond_f32 (test_strategy_reference.StrategyReferenceTests.test_canonical_hash_ignores_float_precision_beyond_f32) ... ok
+test_deep_sequences_rejected (test_strategy_reference.StrategyReferenceTests.test_deep_sequences_rejected) ... ok
+test_dispatch_limit (test_strategy_reference.StrategyReferenceTests.test_dispatch_limit) ... ok
+test_empty_strategy_halts (test_strategy_reference.StrategyReferenceTests.test_empty_strategy_halts) ... ok
+test_example_false_branch (test_strategy_reference.StrategyReferenceTests.test_example_false_branch) ... ok
+test_example_roundtrip (test_strategy_reference.StrategyReferenceTests.test_example_roundtrip) ... ok
+test_example_true_branch (test_strategy_reference.StrategyReferenceTests.test_example_true_branch) ... ok
+test_float32_underflow_rejected (test_strategy_reference.StrategyReferenceTests.test_float32_underflow_rejected) ... ok
+test_forward_jump_only (test_strategy_reference.StrategyReferenceTests.test_forward_jump_only) ... ok
+test_fuel_bad_costs (test_strategy_reference.StrategyReferenceTests.test_fuel_bad_costs) ... ok
+test_fuel_no_refund_on_failed_reservation (test_strategy_reference.StrategyReferenceTests.test_fuel_no_refund_on_failed_reservation) ... ok
+test_generator_and_mutation_are_bounded_and_reproducible (test_strategy_reference.StrategyReferenceTests.test_generator_and_mutation_are_bounded_and_reproducible) ... ok
+test_invalid_binary_sizes (test_strategy_reference.StrategyReferenceTests.test_invalid_binary_sizes) ... ok
+test_last_possible_program_size (test_strategy_reference.StrategyReferenceTests.test_last_possible_program_size) ... ok
+test_missing_halt (test_strategy_reference.StrategyReferenceTests.test_missing_halt) ... ok
+test_move_valid_and_invalid (test_strategy_reference.StrategyReferenceTests.test_move_valid_and_invalid) ... ok
+test_mutation_rejects_bad_factor (test_strategy_reference.StrategyReferenceTests.test_mutation_rejects_bad_factor) ... ok
+test_nonfinite_parameters (test_strategy_reference.StrategyReferenceTests.test_nonfinite_parameters) ... ok
+test_out_of_bounds_jump (test_strategy_reference.StrategyReferenceTests.test_out_of_bounds_jump) ... ok
+test_predicate_result_type (test_strategy_reference.StrategyReferenceTests.test_predicate_result_type) ... ok
+test_raw_control_node_rejected (test_strategy_reference.StrategyReferenceTests.test_raw_control_node_rejected) ... ok
+test_repeat_count_limit (test_strategy_reference.StrategyReferenceTests.test_repeat_count_limit) ... ok
+test_reserved_operands (test_strategy_reference.StrategyReferenceTests.test_reserved_operands) ... ok
+test_size_checked_before_unrolling (test_strategy_reference.StrategyReferenceTests.test_size_checked_before_unrolling) ... ok
+test_statically_unrolled_programs_terminate (test_strategy_reference.StrategyReferenceTests.test_statically_unrolled_programs_terminate) ... ok
+test_trailing_bytes_rejected (test_strategy_reference.StrategyReferenceTests.test_trailing_bytes_rejected) ... ok
+test_unknown_opcode (test_strategy_reference.StrategyReferenceTests.test_unknown_opcode) ... ok
+test_unknown_predicate (test_strategy_reference.StrategyReferenceTests.test_unknown_predicate) ... ok
+test_unknown_selector (test_strategy_reference.StrategyReferenceTests.test_unknown_selector) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.581s
+
+OK
+
+exit_code=0

@@ -1,0 +1,7 @@
+Instructions: 17; bytes: 556
+Program SHA-256: 959669b0ae0bff912fcc82cb92e3b141e9d7520967c4291365ddf0482d5e1b9a
+Control-flow example (all predicates true): COMPRESS -> EXPAND -> ROTATE -> COMPRESS -> EXPAND -> ROTATE -> COMPRESS -> EXPAND -> ROTATE -> COMPRESS
+Status: HALTED
+No packing simulations or GPU benchmarks were performed by this example.
+
+exit_code=0
