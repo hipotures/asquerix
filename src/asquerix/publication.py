@@ -1101,6 +1101,9 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
                 if experiment.collection_kind == _TRACE_COLLECTION_KIND:
                     completed_text = experiment.replay_completed_count or 0
                     message = f"trajectory: {experiment.name} ({completed_text} replays)"
+                elif experiment.collection_kind == "strategy-campaign":
+                    episodes = experiment.summary["completed_episode_executions"]
+                    message = f"lab campaign: {experiment.name} ({experiment.run_status}, {episodes} episodes)"
                 else:
                     message_side = _best_side(experiment.summary)
                     side_text = f", best L={message_side:.9g}" if isinstance(message_side, (int, float)) else ""

@@ -248,6 +248,7 @@ def test_campaign_worker_report_and_publication_end_to_end(cuda_device, tmp_path
     result = publish(directory, repo=repo, push=True)
     assert result["status"] == "PUBLISHED", result
     assert git(remote, "rev-parse", "main") == result["commit_sha"]
+    assert git(remote, "log", "-1", "--format=%s", "main") == "lab campaign: Worker publication (COMPLETED, 4 episodes)"
     published = git(remote, "ls-tree", "-r", "--name-only", "main").splitlines()
     assert result["artifact_path"] + "/report.html" in published
     assert any(path.endswith(".npz") and "/trajectories/episode-" in path for path in published)

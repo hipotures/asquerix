@@ -255,3 +255,36 @@ uv run python tools/trajectory_browser_smoke.py \
 ```
 
 Original search CUDA-event time and trials/s stay unchanged. `trace.json.gz` separates replay GPU, transfer, validation, export, module loading and total postprocessing; the publication receipt reports total CLI time including tracing/publication. Offline viewer regeneration alone does not publish or create a scientific experiment.
+
+## Experiment laboratory
+
+The laboratory (`asquerix lab`) runs rigid-square strategy programs on the same Warp/CUDA geometry. One immutable program controls one whole world with `COMPRESS`, `EXPAND`, `MOVE`, `ROTATE`, `RELAX`, `RESTORE_BEST` and `STOP`, bounded repetition and conditions. Nothing compresses unless the program asks for it. The evaluator keeps `current`, `trial` and a protected `best` state. It returns `best`, validates every ranked pose on the CPU and freezes training winners before an untouched holdout bank. Two search methods are implemented: independent random programs and mutation-guided `(1 + lambda)`. Fixed controls are `legacy_compress`, which reproduces the legacy solver's defined result bytes, and the handwritten `pulse_rotate`. Requirements: [`docs/lab-prd.md`](docs/lab-prd.md).
+
+These commands were exercised on a display-attached RTX 4070 Ti. Port 8765 was in use on that machine, so the tested runs used `--port 8766` with a matching `--url`:
+
+```bash
+# Server, coordinator and owned CUDA worker; the browser UI is http://127.0.0.1:8765
+uv run asquerix lab serve --port 8765 --root runs/lab
+
+# Rich clients; closing them (or the browser) does not stop the campaign
+uv run asquerix lab submit --config examples/lab/n12-controls.json
+uv run asquerix lab watch <campaign-id>
+uv run asquerix lab status <campaign-id>
+uv run asquerix lab report <campaign-id>
+uv run asquerix lab export <campaign-id> --output runs/lab-export/<campaign-id>
+uv run asquerix lab pause|resume|stop <campaign-id>
+```
+
+Example campaigns are in `examples/lab`: `n11-compare.json` (the reference two-method comparison: 32 candidates per method, 4,224 training and up to 256 holdout episodes), `n11-three-program-evaluation.json`, `n12-controls.json`, `n16-controls.json` and `n11-fixed-smoke.json`. `--json` saves structured client output under `runs/lab-cli` and prints only paths. Campaigns publish their finalized directory to remote `main` by default (`"publication": {"enabled": false}` keeps them local). A publication failure is recorded on the campaign and never discards its results.
+
+The browser shows the campaign list, the creation form with a plan summary, live progress, program inspection with mutation diffs, paired replays on the same initial world, durable history and selected geometric replays. Replays reuse the offline trajectory viewer with the executing instruction, selection mask, rollback/restore markers and current/best L overlaid. `report.html` in each campaign directory is self-contained and plays its selected trajectories with the network disabled.
+
+Verification tools:
+
+```bash
+uv run pytest -q                                              # includes CUDA interpreter, replay and publication tests
+uv run python tools/lab_browser_smoke.py --url http://127.0.0.1:8765   # real UI checks with headless Chromium
+uv run python tools/lab_overhead.py                           # legacy_compress interpreter vs legacy solver
+```
+
+Evidence and the pilot report are in [`artifacts/lab/REPORT.md`](artifacts/lab/REPORT.md).
