@@ -200,7 +200,7 @@ for(const button of document.querySelectorAll('.pager button'))button.addEventLi
 document.getElementById('live-curve-axis').addEventListener('change',()=>programs());
 for(const button of document.querySelectorAll('#tab-programs .sort'))button.addEventListener('click',()=>{programSort=button.dataset.sort;programOffset=0;programs().catch(e=>fail(e.message));});
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',async()=>{for(const tab of ['programs','history','replays'])document.getElementById('tab-'+tab).hidden=tab!==button.dataset.tab;for(const other of document.querySelectorAll('[data-tab]'))other.setAttribute('aria-selected',String(other===button));if(button.dataset.tab==='history')await history();if(button.dataset.tab==='replays')replays();});
-// Arrow keys, the spinner and the wheel step size fields by powers of two and time budgets by minutes;
+// Arrow keys, the spinner and the wheel step the batch and storage size fields by powers of two;
 // typed values are kept as entered. Keys are handled directly; spinner/wheel steps are any input that is
 // not typing or deleting (browsers differ in the event they raise for a step).
 function stepped(input,up){
@@ -217,7 +217,7 @@ function stepperState(input){const wrap=input.parentElement;if(!wrap?.classList.
   const [down,up]=wrap.querySelectorAll('button');down.disabled=!(value>min);up.disabled=!(value<max);up.title=up.disabled?`Maximum ${input.max}`:up.dataset.title;down.title=down.disabled?`Minimum ${input.min||1}`:down.dataset.title;}
 function addSteppers(root=document){for(const input of root.querySelectorAll('input[data-step]')){if(input.parentElement.classList.contains('stepper'))continue;
   const wrap=element('span',undefined,'stepper'),pow2=input.dataset.step==='pow2';input.replaceWith(wrap);wrap.append(input);
-  for(const [up,text,title] of [[false,'−',pow2?'Halve':`−${input.dataset.step} s`],[true,'+',pow2?'Double':`+${input.dataset.step} s`]]){
+  for(const [up,text,title] of [[false,'−',pow2?'Halve':`−${input.dataset.step}`],[true,'+',pow2?'Double':`+${input.dataset.step}`]]){
     const button=element('button',text);button.type='button';button.dataset.title=title;button.setAttribute('aria-label',title);
     button.addEventListener('click',()=>{input.dataset.previous=input.value;stepped(input,up);input.dispatchEvent(new Event('change',{bubbles:true}));stepperState(input);});
     up?wrap.append(button):wrap.insertBefore(button,input);}
