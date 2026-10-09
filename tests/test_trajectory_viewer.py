@@ -64,6 +64,18 @@ def test_html_is_self_contained_and_recovers_exact_numeric_payload() -> None:
     assert "frame-slider" in html
     assert "play-pause" in html
     assert "export-svg" in html
+    assert 'id="show-trails"' in html
+    assert 'id="trail-square"' in html
+    assert 'id="show-squares"' in html
+    assert 'id="square-legend"' in html
+    assert 'id="show-container"' in html
+    assert 'id="current-zoom"' in html
+    assert 'id="range-start"' in html
+    assert 'id="range-end"' in html
+    assert 'id="playback-mode"' in html
+    assert 'id="trail-history"' in html
+    assert "Intermediate states marked provisional may contain overlaps" not in html
+    assert "connecting lines do not reconstruct skipped states" in html
     assert "no interpolation" in html
 
 

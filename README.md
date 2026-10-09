@@ -238,13 +238,19 @@ Online deterministic compaction and stride doubling bound GPU/host buffers durin
 
 `REPLAY_MATCHED` means available defined FP32 endpoint/result fields—including signed-zero bits, counters, termination and identities—matched the saved reference exactly. It does not prove equality of every unrecorded intermediate state. Unknown reference precision or missing fields produce `REFERENCE_INCOMPLETE`; differences produce `REPLAY_MISMATCH` with bounded field diagnostics and the actual replay saved separately. Source/environment provenance has an independent status, hashes, revisions, GPU identity and dependency/driver versions. The historical ID 4124 demonstration intentionally reports a mismatch with its older solver evidence. No historical source is checked out or executed. Numerical validation is not mathematical certification or proof of optimality.
 
-The viewer opens locally with no server or network. It starts paused at `[Initial arrangement | Current recorded frame]`, uses one fixed units-per-pixel scale in both panels based on the initial container, and shows actual saved frames without interpolation. Playback speed means frames per second, not physical time. Square IDs/colors stay stable and labels stay upright. Slider, first/last, previous/next, ID/orientation toggles and on-demand export of the current frame to SVG are available.
+The viewer opens locally with no server or network. It starts paused at `[Initial arrangement | Current recorded frame]`, with a shared default units-per-pixel scale based on the initial container. Playback visits saved frames without interpolation; speed means frames per second, not physical time. Square IDs/colors stay stable and labels stay upright, with a clear gap before orientation marks. Container side captions sit outside the drawings, and validation appears as readable measurements rather than raw JSON.
+
+Zoom the current panel with the wheel, buttons or `Zoom ×` (0.25–65536), and drag to pan. Container, squares and trails share one scene transform. The initial panel stays fixed; frame changes never move the camera automatically. `Fit container` uses the current frame's L, while `Fit full trajectory` fits all recorded positions. Select an ID and use `Focus selected ID` plus a high zoom to inspect micromovements. Labels and line widths keep readable screen sizes.
+
+Center trails are enabled by default. `Trail frames` limits them to the last K saved frames; 0 means full history. Dots mark recorded centers, not physical speed, and connecting lines do not reconstruct skipped motion. Non-finite centers break the trail. Click a square, its color/ID legend entry or the selector to highlight its trail and dim the others; `only selected trail` hides the rest. Independent square, container boundary, ID and orientation toggles allow clean trails alone.
+
+Drag A/B markers, enter their zero-based frame indices or use `Set A here` / `Set B here`. `Play range once` stops on B; `Loop range` returns to A. The default is the full recording. Manual slider/first/last/previous/next navigation pauses playback. On-demand SVG export preserves the camera, history window and visibility settings. Regenerate older HTML with `trace-render` to get these controls without replaying CUDA or changing recorded data. [Refreshed examples and browser evidence](artifacts/trajectories/viewer-center-trails/README.md) cover these controls.
 
 Compact genuine examples and device/test evidence are in [the trajectory report](artifacts/trajectories/REPORT.md). A reproducible headless Chromium check uses the standard-library tool:
 
 ```bash
 uv run python tools/trajectory_browser_smoke.py \
-  --html artifacts/trajectories/demo-sweeps/trajectories/trial-1.html \
+  --html artifacts/trajectories/viewer-center-trails/trial-1.html \
   --output runs/browser-smoke.json.gz --screenshot-dir runs/browser-smoke
 ```
 
