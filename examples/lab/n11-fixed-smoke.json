@@ -1,0 +1,62 @@
+{
+  "schema": "asquerix-lab-campaign-v1",
+  "name": "n11-fixed-compression-smoke",
+  "n": 11,
+  "initial_side": 10.0,
+  "device": "cuda:0",
+  "batch_capacity": 4096,
+  "datasets": {
+    "initializer_seed": "20261008",
+    "training": {
+      "first_id": "100000",
+      "valid_count": 2
+    },
+    "holdout": {
+      "first_id": "200000",
+      "valid_count": 2
+    }
+  },
+  "operator_seed": "20261009",
+  "operator_replicates": 1,
+  "evaluation_profile": "rigid-square-lab-v1",
+  "controls": [],
+  "search": {
+    "methods": [],
+    "seed": "8001",
+    "candidate_budget_per_method": 1,
+    "initial_pool": 1,
+    "lambda": 1,
+    "shared_initial_pool": true
+  },
+  "recording": {
+    "automatic": true,
+    "mode": "accepted",
+    "max_traces": 8,
+    "max_frames_per_trace": 64,
+    "max_trace_mib": 10.0
+  },
+  "limits": {
+    "max_seconds": 60.0,
+    "max_artifact_mib": 256.0
+  },
+  "publication": {
+    "enabled": false
+  },
+  "fixed_programs": [
+    {
+      "schema": "asquerix-strategy-v1",
+      "name": "Bounded fixed compression",
+      "body": [
+        {
+          "op": "COMPRESS",
+          "target_reduction": null,
+          "attempt_limit": 16,
+          "sweep_limit": 120
+        },
+        {
+          "op": "STOP"
+        }
+      ]
+    }
+  ]
+}

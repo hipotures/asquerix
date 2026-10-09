@@ -14,9 +14,9 @@ Execute the assigned goal: implement, test, run bounded experiments, preserve ar
 
 ## Scope discipline
 
-The first milestone contains only random non-overlapping square initialization, wall-driven compression, positional contact relaxation with rotations, batched single-GPU execution, independent numerical validation, sparse offline SVG output, and measurement/reporting. Selected CUDA trajectory replays and self-contained offline HTML playback are supported diagnostics; keep ordinary campaigns uninstrumented and replay results separate from scientific trial counts.
+The legacy compression path remains maintained. The Experiment Laboratory assignment additionally authorizes a single-host FastAPI server and browser client, rigid-square strategy programs, transactional compression/expansion/move/rotation operators, independent random and `(1 + lambda)` mutation search, durable common datasets, and campaign/program/trajectory inspection. The requirements are preserved in `docs/lab-prd.md`. Keep ordinary campaigns uninstrumented and selected replays separate from scientific episode counts.
 
-Do not add morphing, soft shape deformation, evolutionary search, modifier frameworks, shaking, deliberate expansion cycles, interactive UI, a server, or multi-GPU orchestration without a new goal. Numerical rollback is allowed. A new random trial is runner behavior, not an in-trial restart operator.
+Do not add morphing, soft shape deformation, crossover, population evolution, modifier frameworks, reinforcement learning, arbitrary executable programs, or production multi-GPU orchestration. Only explicitly programmed rigid-square operations act within an episode; there is no autonomous compressor. Numerical rollback is allowed and does not refund RNG or work. A new initial world is dataset preparation, not an in-trial restart operator.
 
 Use NVIDIA Warp for GPU kernels. Keep one implementation of the production simulation; the independent CPU validator is an oracle, not a second production simulator. Inspect actual installed APIs and wheel/driver compatibility. Do not silently fall back to CPU for a GPU run.
 

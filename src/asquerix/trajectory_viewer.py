@@ -249,6 +249,24 @@ label input { accent-color: var(--accent-2); vertical-align: -1px; }
   for (const [name, spec] of Object.entries(DATA.arrays)) A[name] = decodeBase64(spec);
   const F = DATA.arrays.poses.shape[0];
   const N = DATA.arrays.poses.shape[1];
+  const strategy = DATA.metadata.strategy || null;
+  let strategyPanel = null;
+  let strategyRows = [];
+  if (strategy) {
+    strategyPanel = document.createElement("section");
+    strategyPanel.className = "panel";
+    strategyPanel.style.margin = "16px 0";
+    strategyPanel.innerHTML = '<div class="panel-head"><h2>World strategy</h2><span id="strategy-position"></span></div><div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:16px;padding:14px"><ol id="strategy-code" style="max-height:190px;overflow:auto;margin:0;padding-left:32px"></ol><div><canvas id="strategy-graph" style="width:100%;height:105px" aria-label="Current and protected best side against consumed work"></canvas><p id="strategy-state"></p><p id="strategy-selection"></p><button id="go-best" type="button">Go to best state</button> <button id="go-final-current" type="button">Go to final current</button></div></div>';
+    document.querySelector(".panels").before(strategyPanel);
+    strategyRows = strategy.program.instructions.map(instruction => {
+      const row = document.createElement("li");
+      row.textContent = `${instruction.pc}: ${instruction.op} · ${instruction.source_node}`;
+      row.title = `Operands: ${JSON.stringify(instruction.words.slice(1))}. Exact FP32 words: ${instruction.fp32_bits.join(" ")}`;
+      row.style.padding = "4px";
+      document.getElementById("strategy-code").append(row);
+      return row;
+    });
+  }
   let frame = 0;
   let playing = false;
   let lastTick = 0;
@@ -395,7 +413,8 @@ label input { accent-color: var(--accent-2); vertical-align: -1px; }
       ctx.beginPath(); ctx.moveTo(corners[0][0], corners[0][1]);
       for (let k = 1; k < corners.length; k += 1) ctx.lineTo(corners[k][0], corners[k][1]);
       ctx.closePath(); ctx.fillStyle = COLORS[square % COLORS.length] + "99"; ctx.fill();
-      ctx.strokeStyle = COLORS[square % COLORS.length]; ctx.lineWidth = 1.15; ctx.stroke();
+      const selected = strategy && !isInitial && (BigInt(strategy.frames[index].mask) & (1n << BigInt(square))) !== 0n;
+      ctx.strokeStyle = selected ? "#ffffff" : COLORS[square % COLORS.length]; ctx.lineWidth = selected ? 2.8 : 1.15; ctx.stroke();
     }
     if (showTrails && !isInitial) drawTrails(ctx, index, width, height, sharedScale, viewCenter);
     for (let square = 0; square < N; square += 1) {
@@ -466,6 +485,40 @@ label input { accent-color: var(--accent-2); vertical-align: -1px; }
     document.getElementById("validation-status").textContent = isProvisional ? "PROVISIONAL · measured diagnostics" : isRestoredAccepted ? "RESTORED ACCEPTED" : (validation ? validationLabels[validationStatus] || "Check available" : "NOT CHECKED");
     document.getElementById("validation-detail").textContent = validation ? validationDetails(validation, isProvisional, isRestoredAccepted) : (isProvisional ? "No accepted/CPU validation badge is inherited by this provisional state." : isRestoredAccepted ? "Rollback restored the previously accepted pose; no new CPU validation record was retained for this frame." : "No per-frame validation record was retained.");
     document.getElementById("validation-status").classList.toggle("provisional", isProvisional);
+    if (strategy) renderStrategy();
+  }
+  function renderStrategy() {
+    const item = strategy.frames[frame];
+    const instruction = strategy.program.instructions[item.pc];
+    strategyRows.forEach((row, pc) => {
+      row.style.background = pc === item.pc ? "#30454d" : "transparent";
+      row.setAttribute("aria-current", String(pc === item.pc));
+    });
+    document.getElementById("strategy-position").textContent = instruction ? `${instruction.op} · ${instruction.source_node}` : "Initial protected state";
+    const labels = [[1,"proposal"],[2,"repair"],[4,"commit"],[8,"rejection"],[16,"rollback"],[32,"best snapshot"],[64,"discontinuous restore"],[128,"finalization"],[256,"invocation"]];
+    const markers = labels.filter(([flag]) => item.flags & flag).map(([,label]) => label).join(" · ");
+    document.getElementById("strategy-state").textContent = `Current L ${Number(item.side).toPrecision(8)} · protected best L ${Number(item.best_side).toPrecision(8)} · body work ${item.work} · ${item.outcome_name} · ${markers}`;
+    const ids = Array.from({length:N}, (_,square) => square).filter(square => (BigInt(item.mask) & (1n << BigInt(square))) !== 0n);
+    document.getElementById("strategy-selection").textContent = `Selected square IDs: ${ids.length ? ids.join(", ") : "none"}. Attempt ${item.attempt}, sweep ${item.sweep}; operator RNG draws ${item.rng_draws}. Fractions multiply the side at operation entry; squares retain unit side.`;
+    const graph = document.getElementById("strategy-graph"), ctx = graph.getContext("2d");
+    graph.width = Math.max(300, graph.clientWidth * devicePixelRatio); graph.height = 105 * devicePixelRatio;
+    const width = graph.width, height = graph.height, margin = 14 * devicePixelRatio;
+    const maxWork = Math.max(1, ...strategy.frames.map(value => Number(value.work)));
+    const minSide = Math.min(...strategy.frames.flatMap(value => [value.side, value.best_side]));
+    const maxSide = Math.max(...strategy.frames.flatMap(value => [value.side, value.best_side]));
+    const x = value => margin + Number(value.work) / maxWork * (width - 2 * margin);
+    const y = value => margin + (maxSide - value) / Math.max(1e-8, maxSide - minSide) * (height - 2 * margin);
+    ctx.clearRect(0, 0, width, height);
+    for (const [key, color] of [["side","#e2b35c"],["best_side","#78d6c3"]]) {
+      ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5 * devicePixelRatio;
+      strategy.frames.forEach((value, index) => {
+        if (index === 0 || (key === "side" && value.flags & (16 | 64))) ctx.moveTo(x(value), y(value[key]));
+        else ctx.lineTo(x(value), y(value[key]));
+      });
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(x(item), margin); ctx.lineTo(x(item), height - margin); ctx.stroke();
+    graph.title = `Current L ${item.side}; best L ${item.best_side}; body work ${item.work}. Amber: current; teal: protected best. Click to seek by work.`;
   }
   function setFrame(value) { frame = Math.max(0, Math.min(F - 1, Number(value) || 0)); slider.value = String(frame); render(); }
   function seekFrame(value) { if (playing) setPlaying(false); setFrame(value); }
@@ -622,6 +675,29 @@ label input { accent-color: var(--accent-2); vertical-align: -1px; }
     const blob = new Blob([parts.join("")], {type: "image/svg+xml;charset=utf-8"}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `trial-${String(DATA.metadata.trial_id)}-frame-${frame + 1}.svg`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 0);
   }
   document.getElementById("export-svg").addEventListener("click", exportCurrentSvg);
+  if (strategy) {
+    document.getElementById("go-best").addEventListener("click", () => seekFrame(strategy.best_frame));
+    document.getElementById("go-final-current").addEventListener("click", () => seekFrame(F - 1));
+    document.getElementById("strategy-graph").addEventListener("click", event => {
+      const box = event.currentTarget.getBoundingClientRect();
+      const fraction = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+      seekNormalizedWork(fraction);
+    });
+  }
+  function seekNormalizedWork(fraction) {
+    if (!strategy) { seekFrame(Math.round(fraction * (F - 1))); return; }
+    const work = fraction * Number(strategy.frames[F - 1].work);
+    let nearest = 0;
+    strategy.frames.forEach((item, index) => { if (Math.abs(Number(item.work) - work) < Math.abs(Number(strategy.frames[nearest].work) - work)) nearest = index; });
+    seekFrame(nearest);
+  }
+  window.asquerixTrajectory = {seekFrame, seekNormalizedWork, setPlaying, getFrame: () => frame, frameCount: F,
+    initialIdentity: DATA.metadata.initial_identity || null, frameMetadata: index => strategy ? strategy.frames[index] : null};
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent || !event.data || event.data.type !== "asquerix-seek") return;
+    if (event.data.mode === "work") seekNormalizedWork(Number(event.data.value));
+    else if (event.data.mode === "frame") seekFrame(Number(event.data.value));
+  });
   render();
 })();
 </script>

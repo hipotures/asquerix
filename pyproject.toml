@@ -4,13 +4,18 @@ version = "0.1.0"
 description = "Batched GPU quasistatic compression of rotating unit squares"
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.115,<1",
     "numpy>=2.3,<3",
     "rich>=14,<15",
+    "uvicorn>=0.34,<1",
     "warp-lang==1.18.0",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8,<10"]
+dev = [
+    "httpx>=0.28,<1",
+    "pytest>=8,<10",
+]
 
 [project.scripts]
 asquerix = "asquerix.cli:main"

@@ -125,8 +125,13 @@ def _comparisons(directories):
 
 
 def main(argv=None):
+    arguments = sys.argv[1:] if argv is None else argv
+    if arguments and arguments[0] == "lab":
+        from .lab.cli import main as lab_main
+        return lab_main(arguments[1:])
     parser = argparse.ArgumentParser(description="Batched GPU compression of rotating unit squares")
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("lab", help="Configure, compare and replay rigid-square strategy campaigns")
     run_parser = commands.add_parser(
         "run", help="Run a bounded CUDA campaign and publish its artifacts",
         epilog="Integer options accept binary suffixes: k=1024, m=1048576, g=1073741824 (case-insensitive).",

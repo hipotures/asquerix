@@ -1,0 +1,49 @@
+{
+  "schema": "asquerix-lab-campaign-v1",
+  "name": "n12-controls",
+  "n": 12,
+  "initial_side": 10.0,
+  "device": "cuda:0",
+  "batch_capacity": 4096,
+  "datasets": {
+    "initializer_seed": "20261008",
+    "training": {
+      "first_id": "100000",
+      "valid_count": 16
+    },
+    "holdout": {
+      "first_id": "200000",
+      "valid_count": 16
+    }
+  },
+  "operator_seed": "20261009",
+  "operator_replicates": 1,
+  "evaluation_profile": "rigid-square-lab-v1",
+  "controls": [
+    "legacy_compress",
+    "pulse_rotate"
+  ],
+  "search": {
+    "methods": [],
+    "seed": "8001",
+    "candidate_budget_per_method": 32,
+    "initial_pool": 8,
+    "lambda": 8,
+    "shared_initial_pool": true
+  },
+  "recording": {
+    "automatic": true,
+    "mode": "accepted",
+    "max_traces": 2,
+    "max_frames_per_trace": 256,
+    "max_trace_mib": 10
+  },
+  "limits": {
+    "max_seconds": 600,
+    "max_artifact_mib": 256
+  },
+  "publication": {
+    "enabled": false
+  },
+  "description": "Configurability check: both fixed controls on 16 training and 16 holdout starts at n=12."
+}

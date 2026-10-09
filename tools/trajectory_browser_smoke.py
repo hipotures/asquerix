@@ -433,7 +433,7 @@ def _write_report(path: Path, report: dict[str, Any]) -> None:
         raise
 
 
-def _start_chromium(profile: Path, port: int) -> subprocess.Popen[bytes]:
+def _start_chromium(profile: Path, port: int, extra_args: tuple[str, ...] = ()) -> subprocess.Popen[bytes]:
     command = [
         "/usr/bin/chromium",
         "--headless=new",
@@ -445,12 +445,14 @@ def _start_chromium(profile: Path, port: int) -> subprocess.Popen[bytes]:
         "--disable-component-update",
         "--disable-default-apps",
         "--disable-sync",
+        "--password-store=basic",
         "--metrics-recording-only",
         "--no-first-run",
         "--no-default-browser-check",
         "--remote-allow-origins=*",
         f"--user-data-dir={profile}",
         f"--remote-debugging-port={port}",
+        *extra_args,
         "about:blank",
     ]
     return subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

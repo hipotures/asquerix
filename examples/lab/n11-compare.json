@@ -1,0 +1,51 @@
+{
+  "schema": "asquerix-lab-campaign-v1",
+  "name": "n11-random-vs-mutation-pilot",
+  "n": 11,
+  "initial_side": 10.0,
+  "device": "cuda:0",
+  "batch_capacity": 4096,
+  "datasets": {
+    "initializer_seed": "20261008",
+    "training": {
+      "first_id": "100000",
+      "valid_count": 64
+    },
+    "holdout": {
+      "first_id": "200000",
+      "valid_count": 64
+    }
+  },
+  "operator_seed": "20261009",
+  "operator_replicates": 1,
+  "evaluation_profile": "rigid-square-lab-v1",
+  "controls": [
+    "legacy_compress",
+    "pulse_rotate"
+  ],
+  "search": {
+    "methods": [
+      "random_program_search",
+      "one_plus_lambda"
+    ],
+    "seed": "8001",
+    "candidate_budget_per_method": 32,
+    "initial_pool": 8,
+    "lambda": 8,
+    "shared_initial_pool": true
+  },
+  "recording": {
+    "automatic": true,
+    "mode": "accepted",
+    "max_traces": 8,
+    "max_frames_per_trace": 256,
+    "max_trace_mib": 10.0
+  },
+  "limits": {
+    "max_seconds": 600.0,
+    "max_artifact_mib": 256.0
+  },
+  "publication": {
+    "enabled": false
+  }
+}

@@ -38,6 +38,7 @@ _TRACE_OPERATION_SCHEMA = "asquerix-trace-operation-v1"
 _TRACE_COLLECTION_KIND = "trajectory-replay"
 _TRACE_OPERATION_ID = re.compile(r"^trace-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _TRAJECTORY_PATH = re.compile(r"^trajectories/trial-([0-9]+)\.(npz|html)$")
+_LAB_NATIVE_PATH = re.compile(r"^(?:initial-bank\.npz|evaluations/part-[0-9a-f]{16}-[0-9]{4}\.npz|(?:collections/[0-9a-f]{32}/)?trajectories/episode-[0-9a-f]{64}\.(?:npz|html)|report\.html)$")
 _UINT64_MAX = (1 << 64) - 1
 # Trace creation leaves this amount unconsumed for publication.  The receipt
 # itself is much smaller in normal operation; reserve a separate conservative
@@ -235,6 +236,21 @@ def _trace_solver(config: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def _experiment(directory: Path) -> _Experiment:
+    if (directory / "campaign.json.gz").is_file():
+        from .lab.config import Campaign
+        from .lab.storage import bounded_json
+        campaign = bounded_json(directory / "campaign.json.gz")
+        spec = Campaign.model_validate(campaign["spec"])
+        summary = bounded_json(directory / "summaries.json.gz")
+        if (campaign.get("id") != summary.get("id") or not re.fullmatch(r"[0-9a-f]{32}", str(campaign.get("id")))
+                or summary.get("schema") != "asquerix-lab-summary-v1" or summary.get("state") not in ("COMPLETED", "PARTIAL")):
+            raise PublicationError("Laboratory campaign is not a finalized matching collection")
+        return _Experiment(directory=directory, name=spec.name, slug=_safe_part(spec.name, "campaign"),
+                           run_id=campaign["id"], run_status=summary["state"], requested_trials=None,
+                           completed_trials=None, seed=None, trial_offset=None, solver=campaign["profile"],
+                           runner=campaign["plan"], summary=summary, config=spec.document(),
+                           environment=bounded_json(directory / "environment.json.gz"),
+                           collection_kind="strategy-campaign", export_limit_bytes=int(spec.limits.max_artifact_mib * 1024**2))
     summary = _read_optional(directory, "summary")
     config = _read_optional(directory, "config")
     environment = _read_optional(directory, "environment")
@@ -403,6 +419,10 @@ def _validate_trajectory_html(path: Path, relative: Path) -> None:
 
     if _trajectory_kind(relative) != "html":
         raise PublicationError(f"trajectory HTML has an invalid path: {relative}")
+    _validate_selfcontained_html(path, relative)
+
+
+def _validate_selfcontained_html(path: Path, relative: Path) -> None:
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
@@ -425,6 +445,7 @@ def _validate_trajectory_html(path: Path, relative: Path) -> None:
 def _collect_files(directory: Path, *, include_manifest: bool = True) -> list[tuple[Path, str, int, str]]:
     files: list[tuple[Path, str, int, str]] = []
     total = 0
+    laboratory = _experiment(directory) if (directory / "campaign.json.gz").is_file() else None
     ignored_directories = {"__pycache__", ".pytest_cache", ".warp-cache"}
     for path in sorted(directory.rglob("*")):
         relative = path.relative_to(directory)
@@ -453,9 +474,21 @@ def _collect_files(directory: Path, *, include_manifest: bool = True) -> list[tu
             )
         trajectory_kind = _trajectory_kind(relative)
         if relative.suffix in {".npz", ".html"}:
-            if trajectory_kind is None:
+            if laboratory and _LAB_NATIVE_PATH.fullmatch(relative.as_posix()):
+                try:
+                    if relative.suffix == ".html":
+                        _validate_selfcontained_html(path, relative)
+                    elif relative.parent.name == "trajectories":
+                        from .lab.trace import load_trace
+                        load_trace(path)
+                    else:
+                        from .lab.storage import load_npz
+                        load_npz(path)
+                except (ValueError, OSError, KeyError) as error:
+                    raise PublicationError(f"Invalid laboratory artifact {relative}: {error}") from error
+            elif trajectory_kind is None:
                 raise PublicationError(f"unsupported trajectory artifact path: {relative}")
-            if trajectory_kind == "npz":
+            elif trajectory_kind == "npz":
                 _validate_trajectory_npz(path, relative)
             else:
                 _validate_trajectory_html(path, relative)
@@ -468,6 +501,8 @@ def _collect_files(directory: Path, *, include_manifest: bool = True) -> list[tu
             raise PublicationError(
                 f"artifacts total {total} bytes; the safe total limit is {MAX_TOTAL_ARTIFACT_BYTES}"
             )
+        if laboratory and total > laboratory.export_limit_bytes:
+            raise PublicationError("Laboratory publication exceeds its declared campaign artifact quota")
         files.append((path, relative.as_posix(), size, _sha256(path)))
     return files
 
@@ -541,6 +576,14 @@ def _best_side(summary: Mapping[str, Any]) -> Any:
 
 
 def _trace_manifest_fields(experiment: _Experiment) -> dict[str, Any]:
+    if experiment.collection_kind == "strategy-campaign":
+        return {"collection_kind": experiment.collection_kind,
+                "profile_hash": experiment.summary["profile_hash"],
+                "executable_hash": experiment.summary["executable_hash"],
+                "completed_candidates": experiment.summary["completed_candidates"],
+                "completed_episode_executions": experiment.summary["completed_episode_executions"],
+                "submitted_episode_attempts": experiment.summary["submitted_episode_attempts"],
+                "diagnostic_replay_executions": experiment.summary["replay_executions"]}
     operation = experiment.trace_operation
     if operation is None:
         return {}
