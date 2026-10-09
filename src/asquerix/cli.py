@@ -42,6 +42,21 @@ def _saved(paths):
         print(f"{label}: {path}")
 
 
+def _trace_summary(result, directory, console):
+    message = f"Trace: {result['status']} | {result['completed_count']} replays | {result.get('total_export_bytes', 0)} bytes before publication"
+    if console is None:
+        print(message)
+    else:
+        console.print(message)
+    for outcome in result.get("outcomes", []):
+        print(f"Trial {outcome['trial_id']}: {outcome['status']} | {outcome.get('recording_status', 'RECORDED')} | {outcome['retained_frames']} retained frames")
+    for artifact in result.get("artifacts", []):
+        if artifact["path"].endswith((".html", ".npz")):
+            print(f"Artifact: {directory / artifact['path']} ({artifact['size_bytes']} bytes)")
+    if result.get("error"):
+        print(f"Trace diagnostic: {result['error']}", file=sys.stderr)
+
+
 def _console(*, file=None):
     from rich.console import Console
     stream = sys.stdout if file is None else file
@@ -131,6 +146,26 @@ def main(argv=None):
     run_parser.add_argument("--experiment", help="Safe human-readable experiment name")
     run_parser.add_argument("--no-push", action="store_true", help="Save artifacts locally without Git publication")
     run_parser.add_argument("--retain-all", action="store_true", help="Transfer/audit all poses in a small correctness run")
+    run_parser.add_argument("--trace-best", type=_integer, default=0, help="Record up to 16 globally best retained validated trials after search (default: off)")
+    run_parser.add_argument("--trace-mode", choices=("accepted", "sweeps"), default="accepted")
+    run_parser.add_argument("--trace-max-frames", type=_integer, default=256, help="Bounded retained frames per replay, 2-4096")
+    run_parser.add_argument("--trace-every", type=_integer, default=16, help="Completed sweep sampling interval")
+    run_parser.add_argument("--trace-max-mib", type=float, default=10, help="Total trajectory export limit including viewers and metadata")
+    trace = commands.add_parser("trace", help="Record selected global trial IDs from an existing experiment on CUDA")
+    trace.add_argument("directory", type=Path)
+    selector = trace.add_mutually_exclusive_group(required=True)
+    selector.add_argument("--trial-id", type=_integer, action="append", help="Global trial ID; repeat at most 16 times")
+    selector.add_argument("--best", type=_integer, help="Select retained independently validated leaderboard trials, at most 16")
+    trace.add_argument("--mode", choices=("accepted", "sweeps"), default="accepted")
+    trace.add_argument("--max-frames", type=_integer, default=256)
+    trace.add_argument("--every", type=_integer, default=16)
+    trace.add_argument("--max-mib", type=float, default=10)
+    trace.add_argument("--device", default="cuda:0")
+    trace.add_argument("--output", type=Path, required=True, help="New companion collection outside the original experiment")
+    trace.add_argument("--no-push", action="store_true", help="Save finalized traces locally without Git publication")
+    trace_render = commands.add_parser("trace-render", help="Regenerate a self-contained trajectory viewer offline without CUDA")
+    trace_render.add_argument("path", type=Path, help="Recorded trial NPZ; associated metadata is required")
+    trace_render.add_argument("--output", type=Path, required=True)
     diagnose = commands.add_parser("diagnose", help="Inspect actual software and CUDA environment")
     diagnose.add_argument("--output", type=Path)
     valid = commands.add_parser("validate", help="Independently check saved poses, including gzip archives")
@@ -146,31 +181,53 @@ def main(argv=None):
     compare = commands.add_parser("compare", help="Compare measured performance and validation coverage")
     compare.add_argument("directories", type=Path, nargs="+")
     compare.add_argument("--output", type=Path)
-    for command in (run_parser, diagnose, valid, render, report, compare):
+    for command in (run_parser, trace, trace_render, diagnose, valid, render, report, compare):
         command.add_argument("--json", action="store_true", help="Save compressed structured results; print paths, never JSON payloads")
     args = parser.parse_args(argv)
     console = None if args.json else _console()
     try:
         if args.command == "run":
             from .runner import run
-            from .publication import publish
+            from .publication import publish, save_receipt
             from .presentation import PlainProgress, RunProgress
             import warp as wp
             display = PlainProgress() if args.json else RunProgress(_console(file=sys.stderr))
             options = vars(args).copy()
             for key in ("command", "json", "no_push"):
                 options.pop(key)
+            trace_options = {key: options.pop(key) for key in ("trace_best", "trace_mode", "trace_max_frames", "trace_every", "trace_max_mib")}
+            if args.trace_best:
+                from .trajectory import options_valid
+                options_valid(args.trace_mode, args.trace_max_frames, args.trace_every, args.trace_max_mib, args.trace_best)
+            elif args.trace_best < 0:
+                raise ValueError("trace-best must be in [0,16]")
             config = Config(**{f.name: options.pop(f.name) for f in fields(Config)})
             call_started = perf_counter()
             with wp.ScopedLogLevel(wp.LOG_WARNING), display:
                 with redirect_stdout(sys.stderr):
                     result = run(config, **options, progress=display.update)
+            trace_result = None
+            if trace_options["trace_best"]:
+                from .trajectory import record
+                from .presentation import TraceProgress
+                try:
+                    with wp.ScopedLogLevel(wp.LOG_WARNING), TraceProgress(None if args.json else _console(file=sys.stderr)) as trace_display:
+                        with redirect_stdout(sys.stderr):
+                            trace_result = record(result["directory"], output=result["directory"], best=args.trace_best,
+                                                  mode=args.trace_mode, max_frames=args.trace_max_frames,
+                                                  every=args.trace_every, max_mib=args.trace_max_mib, device=args.device,
+                                                  companion=False, progress=trace_display.update,
+                                                  stop_requested=lambda: result["summary"].get("metadata", {}).get("stop_reason") == "SIGINT")
+                except (Exception, KeyboardInterrupt) as error:
+                    trace_result = {"status": "REPLAY_ERROR", "error": f"{type(error).__name__}: {error}", "completed_count": 0, "artifacts": []}
+                    write_json(Path(result["directory"]) / "trace-error.json", trace_result)
+                    print(f"Trace failed; completed search remains saved: {error}", file=sys.stderr)
             computation_seconds = perf_counter() - call_started
             publication = publish(result["directory"], push=not args.no_push)
             publication["computation_end_to_end_seconds"] = computation_seconds
             publication["total_end_to_end_seconds"] = perf_counter() - call_started
             publication["timing_boundary"] = "Total CLI time includes run and publication; excludes final receipt serialization and completion display."
-            receipt = write_json(Path(result["directory"]) / "publication.json", publication)
+            receipt = save_receipt(result["directory"], publication)
             if publication.get("error") and not args.no_push:
                 print(f"Publication failed; saved results remain at {result['directory']}: {publication.get('error')}", file=sys.stderr)
             if args.json:
@@ -189,7 +246,37 @@ def main(argv=None):
             else:
                 from .presentation import run_summary
                 run_summary(console, result, publication)
+            if trace_result:
+                _trace_summary(trace_result, Path(result["directory"]), console)
             return 3 if publication["status"] == "PUSH_FAILED" else 0
+        if args.command == "trace-render":
+            from .trajectory_format import load_trajectory, write_bytes
+            from .trajectory_viewer import render_html
+            arrays, metadata = load_trajectory(args.path)
+            if args.output.exists():
+                raise ValueError(f"Output already exists: {args.output}")
+            write_bytes(args.output, render_html(arrays, metadata))
+            _saved([("HTML", args.output)])
+            return 0
+        if args.command == "trace":
+            from .trajectory import record
+            from .publication import publish, save_receipt
+            from .presentation import TraceProgress
+            import warp as wp
+            call_started = perf_counter()
+            with wp.ScopedLogLevel(wp.LOG_WARNING), TraceProgress(None if args.json else _console(file=sys.stderr)) as display:
+                with redirect_stdout(sys.stderr):
+                    result = record(args.directory, output=args.output, trial_ids=args.trial_id, best=args.best,
+                                    mode=args.mode, max_frames=args.max_frames, every=args.every,
+                                    max_mib=args.max_mib, device=args.device, progress=display.update)
+            publication = publish(args.output, push=not args.no_push)
+            publication["total_end_to_end_seconds"] = perf_counter() - call_started
+            receipt = save_receipt(args.output, publication)
+            _trace_summary(result, args.output, console)
+            print(f"Publication: {publication['status']} ({receipt})")
+            if publication.get("error") and not args.no_push:
+                print(f"Publication diagnostic: {publication['error']}", file=sys.stderr)
+            return 3 if publication["status"] == "PUSH_FAILED" else 2 if result["status"] == "REPLAY_ERROR" else 0
         if args.command == "diagnose":
             from .runner import environment
             import warp as wp

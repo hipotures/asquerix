@@ -8,31 +8,42 @@ publication failure leaves it intact and is recorded in ``publication.json.gz``.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from contextlib import contextmanager
-from dataclasses import dataclass
 import fcntl
 import gzip
 import hashlib
+import io
+import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
 from time import monotonic
-from typing import Any, Iterator
-from uuid import uuid4
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
+from uuid import uuid4
 
-from .persistence import read_json, write_json
-
+from .persistence import GZIP_COMPRESSION_LEVEL, read_json, write_json
 
 PUBLICATION_BRANCH = "main"
 MAX_ARTIFACT_BYTES = 95 * 1024 * 1024
 MAX_TOTAL_ARTIFACT_BYTES = 500 * 1024 * 1024
 PUBLICATION_SCHEMA = "asquerix-publication-v1"
 _ARTIFACT_SUFFIXES = (".json", ".json.gz", ".jsonl", ".jsonl.gz", ".md", ".svg", ".csv")
+_TRACE_OPERATION_SCHEMA = "asquerix-trace-operation-v1"
+_TRACE_COLLECTION_KIND = "trajectory-replay"
+_TRACE_OPERATION_ID = re.compile(r"^trace-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_TRAJECTORY_PATH = re.compile(r"^trajectories/trial-([0-9]+)\.(npz|html)$")
+_UINT64_MAX = (1 << 64) - 1
+# Trace creation leaves this amount unconsumed for publication.  The receipt
+# itself is much smaller in normal operation; reserve a separate conservative
+# amount while measuring the manifest before writing it.
+TRACE_PUBLICATION_RESERVE_BYTES = 64 * 1024
+TRACE_RECEIPT_RESERVE_BYTES = 8 * 1024
 
 
 class PublicationError(RuntimeError):
@@ -67,6 +78,12 @@ class _Experiment:
     summary: Mapping[str, Any]
     config: Mapping[str, Any]
     environment: Mapping[str, Any]
+    collection_kind: str | None = None
+    source_directory: str | None = None
+    replay_requested_count: int | None = None
+    replay_completed_count: int | None = None
+    export_limit_bytes: int | None = None
+    trace_operation: Mapping[str, Any] | None = None
 
 
 class _GitError(PublicationError):
@@ -136,10 +153,129 @@ def _optional_int(value: Any) -> int | None:
     return None
 
 
+def _trace_int(value: Any, field: str, *, positive: bool = False) -> int:
+    converted = _optional_int(value)
+    if converted is None or converted < (1 if positive else 0):
+        requirement = "a positive integer" if positive else "a non-negative integer"
+        raise PublicationError(f"trace operation field '{field}' must be {requirement}")
+    return converted
+
+
+def _trace_operation(directory: Path) -> Mapping[str, Any] | None:
+    """Read and validate a trace-operation document when one is present.
+
+    A trace operation is intentionally a small companion collection.  It has
+    no scientific ``summary.json.gz``, ``config.json.gz`` or
+    ``environment.json.gz`` documents, so publication must classify it before
+    deriving ordinary experiment fields.
+    """
+
+    path = _json_candidate(directory, "trace")
+    if path is None:
+        return None
+    value = _json_read(path)
+    if not isinstance(value, Mapping):
+        raise PublicationError("trace operation document must be a JSON object")
+    if value.get("schema") != _TRACE_OPERATION_SCHEMA:
+        raise PublicationError(
+            f"trace operation schema must be {_TRACE_OPERATION_SCHEMA!r}"
+        )
+    if value.get("collection_kind") != _TRACE_COLLECTION_KIND:
+        raise PublicationError(
+            f"trace operation collection_kind must be {_TRACE_COLLECTION_KIND!r}"
+        )
+    operation_id = value.get("operation_id")
+    if not isinstance(operation_id, str) or _TRACE_OPERATION_ID.fullmatch(operation_id) is None:
+        raise PublicationError("trace operation operation_id must be a safe trace-<uuid> value")
+    source_directory = value.get("source_directory")
+    if not isinstance(source_directory, str) or not source_directory.strip():
+        raise PublicationError("trace operation source_directory must be a non-empty string")
+    status = value.get("status")
+    if status not in {"COMPLETE", "INTERRUPTED", "EXPORT_LIMIT", "REPLAY_ERROR"}:
+        raise PublicationError(
+            "trace operation status must be COMPLETE, INTERRUPTED, EXPORT_LIMIT, or REPLAY_ERROR"
+        )
+    _trace_int(value.get("requested_count"), "requested_count")
+    _trace_int(value.get("completed_count"), "completed_count")
+    _trace_int(value.get("export_limit_bytes"), "export_limit_bytes", positive=True)
+    if not isinstance(value.get("config"), Mapping):
+        raise PublicationError("trace operation config must be a JSON object")
+    if not isinstance(value.get("replay_environment"), Mapping):
+        raise PublicationError("trace operation replay_environment must be a JSON object")
+    if not isinstance(value.get("timings", {}), Mapping):
+        raise PublicationError("trace operation timings must be a JSON object")
+    artifacts = value.get("artifacts", [])
+    if not isinstance(artifacts, list):
+        raise PublicationError("trace operation artifacts must be a JSON array")
+    source_artifacts = value.get("source_artifacts", [])
+    if not isinstance(source_artifacts, list):
+        raise PublicationError("trace operation source_artifacts must be a JSON array")
+    return value
+
+
+def _trace_status(status: str) -> str:
+    if status == "COMPLETE":
+        return "COMPLETED"
+    if status in {"INTERRUPTED", "EXPORT_LIMIT"}:
+        return "PARTIAL"
+    return "ERROR"
+
+
+def _trace_operation_artifacts(operation: Mapping[str, Any]) -> list[Any]:
+    value = operation.get("source_artifacts")
+    if isinstance(value, list):
+        return list(value)
+    value = operation.get("artifacts")
+    return list(value) if isinstance(value, list) else []
+
+
+def _trace_solver(config: Mapping[str, Any]) -> Mapping[str, Any]:
+    nested = _nested(config, "solver")
+    return nested if nested else config
+
+
 def _experiment(directory: Path) -> _Experiment:
     summary = _read_optional(directory, "summary")
     config = _read_optional(directory, "config")
     environment = _read_optional(directory, "environment")
+    trace_operation = _trace_operation(directory)
+
+    if trace_operation is not None and not any((summary, config, environment)):
+        operation_id = str(trace_operation["operation_id"])
+        trace_config = _nested(trace_operation, "config")
+        replay_environment = _nested(trace_operation, "replay_environment")
+        requested = _trace_int(trace_operation.get("requested_count"), "requested_count")
+        completed = _trace_int(trace_operation.get("completed_count"), "completed_count")
+        status = str(trace_operation["status"])
+        return _Experiment(
+            directory=directory,
+            name=operation_id,
+            slug=_safe_part(operation_id, "trace"),
+            run_id=operation_id,
+            run_status=_trace_status(status),
+            requested_trials=None,
+            completed_trials=None,
+            seed=None,
+            trial_offset=None,
+            solver=_trace_solver(trace_config),
+            runner={},
+            summary={
+                "collection_kind": _TRACE_COLLECTION_KIND,
+                "metadata": dict(trace_operation),
+                "timings": dict(_nested(trace_operation, "timings")),
+            },
+            config=trace_config,
+            environment=replay_environment,
+            collection_kind=_TRACE_COLLECTION_KIND,
+            source_directory=str(trace_operation["source_directory"]),
+            replay_requested_count=requested,
+            replay_completed_count=completed,
+            export_limit_bytes=_trace_int(
+                trace_operation.get("export_limit_bytes"), "export_limit_bytes", positive=True
+            ),
+            trace_operation=trace_operation,
+        )
+
     metadata = _nested(summary, "metadata")
     solver = _nested(config, "solver")
     runner = _nested(config, "runner")
@@ -189,6 +325,27 @@ def _experiment(directory: Path) -> _Experiment:
         summary=summary,
         config=config,
         environment=environment,
+        source_directory=(
+            str(trace_operation.get("source_directory"))
+            if trace_operation is not None and isinstance(trace_operation.get("source_directory"), str)
+            else None
+        ),
+        replay_requested_count=(
+            _trace_int(trace_operation.get("requested_count"), "requested_count")
+            if trace_operation is not None
+            else None
+        ),
+        replay_completed_count=(
+            _trace_int(trace_operation.get("completed_count"), "completed_count")
+            if trace_operation is not None
+            else None
+        ),
+        export_limit_bytes=(
+            _trace_int(trace_operation.get("export_limit_bytes"), "export_limit_bytes", positive=True)
+            if trace_operation is not None
+            else None
+        ),
+        trace_operation=trace_operation,
     )
 
 
@@ -207,6 +364,62 @@ def _validate_gzip(path: Path) -> None:
                 pass
     except (OSError, EOFError, gzip.BadGzipFile) as exc:
         raise PublicationError(f"invalid gzip artifact {path}: {exc}") from exc
+
+
+def _trajectory_kind(relative: Path) -> str | None:
+    match = _TRAJECTORY_PATH.fullmatch(relative.as_posix())
+    if match is None:
+        return None
+    try:
+        trial_id = int(match.group(1), 10)
+    except ValueError:  # pragma: no cover - the regular expression is decimal-only
+        return None
+    if trial_id > _UINT64_MAX:
+        return None
+    return match.group(2)
+
+
+def _validate_trajectory_npz(path: Path, relative: Path) -> None:
+    """Validate a trajectory archive through the shared bounded loader."""
+
+    if _trajectory_kind(relative) != "npz":
+        raise PublicationError(f"trajectory NPZ has an invalid path: {relative}")
+    try:
+        from .trajectory_format import load_trajectory
+
+        _, metadata = load_trajectory(path)
+        match = _TRAJECTORY_PATH.fullmatch(relative.as_posix())
+        if metadata["trial_id"] != str(int(match.group(1))):
+            raise ValueError("trajectory filename disagrees with metadata trial identity")
+    except Exception as exc:
+        # A malformed or incomplete trajectory must never enter a publication
+        # snapshot.  Keep the original exception as diagnostic context while
+        # presenting a stable publication-level error to callers.
+        raise PublicationError(f"invalid trajectory NPZ {relative}: {exc}") from exc
+
+
+def _validate_trajectory_html(path: Path, relative: Path) -> None:
+    """Require a self-contained HTML document for a selected trajectory."""
+
+    if _trajectory_kind(relative) != "html":
+        raise PublicationError(f"trajectory HTML has an invalid path: {relative}")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise PublicationError(f"invalid trajectory HTML {relative}: {exc}") from exc
+    normalized = text.lstrip("\ufeff").lower()
+    if "<html" not in normalized or "</html>" not in normalized:
+        raise PublicationError(f"trajectory HTML is not a complete HTML document: {relative}")
+    # A local viewer may use inline scripts and styles, but it must not depend
+    # on a server, CDN, browser extension, or another local file.
+    resource_attribute = re.compile(r"(?is)\b(?:src|href)\s*=\s*(['\"])(.*?)\1")
+    for match in resource_attribute.finditer(text):
+        target = match.group(2).strip().lower()
+        if target and not target.startswith(("#", "data:", "blob:")):
+            raise PublicationError(f"trajectory HTML is not self-contained: {relative}")
+    external_request = re.compile(r"(?is)\b(?:fetch|importScripts|XMLHttpRequest)\s*\(")
+    if external_request.search(text):
+        raise PublicationError(f"trajectory HTML requests a network resource: {relative}")
 
 
 def _collect_files(directory: Path, *, include_manifest: bool = True) -> list[tuple[Path, str, int, str]]:
@@ -233,13 +446,21 @@ def _collect_files(directory: Path, *, include_manifest: bool = True) -> list[tu
             continue
         if any(part in {".", ".."} for part in relative.parts):
             raise PublicationError(f"invalid artifact path: {relative}")
-        if not relative.name.endswith(_ARTIFACT_SUFFIXES):
-            raise PublicationError(f"unsupported artifact extension: {relative}")
         size = path.stat().st_size
         if size > MAX_ARTIFACT_BYTES:
             raise PublicationError(
                 f"artifact {relative} is {size} bytes; the safe per-file limit is {MAX_ARTIFACT_BYTES}"
             )
+        trajectory_kind = _trajectory_kind(relative)
+        if relative.suffix in {".npz", ".html"}:
+            if trajectory_kind is None:
+                raise PublicationError(f"unsupported trajectory artifact path: {relative}")
+            if trajectory_kind == "npz":
+                _validate_trajectory_npz(path, relative)
+            else:
+                _validate_trajectory_html(path, relative)
+        elif not relative.name.endswith(_ARTIFACT_SUFFIXES):
+            raise PublicationError(f"unsupported artifact extension: {relative}")
         if path.name.endswith(".gz"):
             _validate_gzip(path)
         total += size
@@ -319,6 +540,24 @@ def _best_side(summary: Mapping[str, Any]) -> Any:
     return _nested(_nested(summary, "statistics"), "numerically_validated").get("best")
 
 
+def _trace_manifest_fields(experiment: _Experiment) -> dict[str, Any]:
+    operation = experiment.trace_operation
+    if operation is None:
+        return {}
+    fields: dict[str, Any] = {
+        "collection_kind": _TRACE_COLLECTION_KIND,
+        "source_directory": experiment.source_directory,
+        "requested_count": experiment.replay_requested_count,
+        "completed_count": experiment.replay_completed_count,
+        "trace_status": operation.get("status"),
+        "export_limit_bytes": experiment.export_limit_bytes,
+        "source_artifacts": _trace_operation_artifacts(operation),
+    }
+    if experiment.collection_kind is None:
+        return {"trajectory": fields}
+    return fields
+
+
 def _manifest(
     experiment: _Experiment,
     *,
@@ -332,7 +571,7 @@ def _manifest(
         trial_range["first_trial_id"] = experiment.trial_offset
         if experiment.completed_trials:
             trial_range["last_trial_id"] = experiment.trial_offset + experiment.completed_trials - 1
-    return {
+    manifest = {
         "schema": PUBLICATION_SCHEMA,
         "experiment_name": experiment.name,
         "experiment_slug": experiment.slug,
@@ -358,6 +597,8 @@ def _manifest(
         ],
         "excluded_from_artifact_hashes": ["manifest.json.gz", "publication.json.gz"],
     }
+    manifest.update(_trace_manifest_fields(experiment))
+    return manifest
 
 
 def _git(repo: Path, arguments: list[str], *, env: Mapping[str, str] | None = None, timeout: float = 30.0) -> str:
@@ -567,16 +808,64 @@ def _commit_url(remote_url: str, commit: str) -> str:
     return f"{url}#commit/{commit}"
 
 
-def _write_receipt(directory: Path, result: Mapping[str, Any]) -> None:
+def _bounded_receipt(result: Mapping[str, Any], max_bytes: int) -> dict[str, Any]:
+    document = dict(result)
+    if _gzip_json_size(document) <= max_bytes:
+        return document
+    error = document.get("error")
+    document["error"] = str(error)[:2048] if error is not None else None
+    document["receipt_truncated"] = True
+    if _gzip_json_size(document) <= max_bytes:
+        return document
+    # Keep the publication state and its location even if a remote diagnostic
+    # or future extension added an unexpectedly large field.
+    compact = {
+        key: document[key]
+        for key in (
+            "status",
+            "commit_sha",
+            "local_commit_sha",
+            "url",
+            "error",
+            "seconds",
+            "artifact_path",
+            "directory",
+            "experiment_name",
+            "run_status",
+            "receipt_truncated",
+        )
+        if key in document
+    }
+    return compact
+
+
+def _write_receipt(
+    directory: Path, result: Mapping[str, Any], *, max_bytes: int | None = None
+) -> None:
     try:
-        write_json(directory / "publication.json.gz", dict(result))
+        document = dict(result)
+        if max_bytes is not None:
+            document = _bounded_receipt(document, max_bytes)
+        write_json(directory / "publication.json.gz", document)
     except OSError:
         # A receipt cannot make a successfully finalized experiment look like
         # a failed computation.  The returned result still contains the error.
         pass
 
 
+def save_receipt(directory: Path | str, result: Mapping[str, Any]) -> Path:
+    """Save final CLI timing through the same bounded publication serializer."""
+    directory = Path(directory)
+    maximum = TRACE_RECEIPT_RESERVE_BYTES if _json_candidate(directory, "trace") else None
+    _write_receipt(directory, result, max_bytes=maximum)
+    return directory / "publication.json.gz"
+
+
 def _base_result(directory: Path, experiment: _Experiment, started: float) -> dict[str, Any]:
+    if experiment.collection_kind == _TRACE_COLLECTION_KIND:
+        artifact_path = f"trajectory-replays/{experiment.slug}/{experiment.run_id}"
+    else:
+        artifact_path = f"experiments/{experiment.slug}/{experiment.run_id}"
     return {
         "status": "LOCAL_ONLY",
         "commit_sha": None,
@@ -584,11 +873,80 @@ def _base_result(directory: Path, experiment: _Experiment, started: float) -> di
         "url": None,
         "error": None,
         "seconds": 0.0,
-        "artifact_path": f"experiments/{experiment.slug}/{experiment.run_id}",
+        "artifact_path": artifact_path,
         "directory": str(directory),
         "experiment_name": experiment.name,
         "run_status": experiment.run_status,
     }
+
+
+def _gzip_json_size(value: Mapping[str, Any]) -> int:
+    """Measure the deterministic gzip representation written by ``write_json``."""
+
+    payload = json.dumps(
+        dict(value), ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False
+    ).encode("utf-8") + b"\n"
+    stream = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=stream,
+        mode="wb",
+        filename="",
+        mtime=0,
+        compresslevel=GZIP_COMPRESSION_LEVEL,
+    ) as compressed:
+        compressed.write(payload)
+    return len(stream.getvalue())
+
+
+def _trace_budget_bytes(
+    experiment: _Experiment,
+    files: list[tuple[Path, str, int, str]],
+) -> int:
+    """Return the bytes covered by a trace export budget.
+
+    A standalone companion contains only replay artifacts, so all finalized
+    files count.  An ordinary run may also contain the scientific campaign;
+    its trace budget covers the trace operation document and trajectory
+    directory without charging the original experiment evidence twice.
+    """
+
+    if experiment.trace_operation is None:
+        return 0
+    if experiment.collection_kind == _TRACE_COLLECTION_KIND:
+        return sum(size for _path, _relative, size, _digest in files)
+    return sum(
+        size
+        for _path, relative, size, _digest in files
+        if relative == "trace.json.gz" or relative.startswith("trajectories/")
+    )
+
+
+def _check_trace_export_budget(
+    experiment: _Experiment,
+    files: list[tuple[Path, str, int, str]],
+    manifest: Mapping[str, Any],
+) -> None:
+    limit = experiment.export_limit_bytes
+    if limit is None:
+        return
+    trace_bytes = _trace_budget_bytes(experiment, files)
+    manifest_bytes = _gzip_json_size(manifest)
+    publication_bytes = manifest_bytes + TRACE_RECEIPT_RESERVE_BYTES
+    projected = trace_bytes + publication_bytes
+    if publication_bytes > TRACE_PUBLICATION_RESERVE_BYTES:
+        raise PublicationError(
+            "trajectory export limit exceeded before manifest publication: "
+            f"manifest plus receipt reserve is {publication_bytes} bytes, above the "
+            f"{TRACE_PUBLICATION_RESERVE_BYTES}-byte publication reserve"
+        )
+    if projected > limit:
+        raise PublicationError(
+            "trajectory export limit exceeded before manifest publication: "
+            f"{trace_bytes} bytes of trace files + {manifest_bytes} bytes of manifest + "
+            f"{TRACE_RECEIPT_RESERVE_BYTES} bytes reserved for publication receipt "
+            f"= {projected} > {limit} bytes (publication reserve: "
+            f"{TRACE_PUBLICATION_RESERVE_BYTES} bytes)"
+        )
 
 
 def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool = True) -> dict[str, Any]:
@@ -645,6 +1003,7 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
             artifact_path=artifact_path,
             files=frozen_without_manifest,
         )
+        _check_trace_export_budget(experiment, files_without_manifest, manifest)
         write_json(output / "manifest.json.gz", manifest)
         manifest_file = [item for item in _collect_files(output) if item[1] == "manifest.json.gz"]
         if len(manifest_file) != 1:
@@ -696,10 +1055,14 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
                     result["error"] = f"artifact path already exists on {PUBLICATION_BRANCH}: {artifact_path}"
                     return result
                 _assert_files_unchanged(output, files_without_manifest)
-                message_side = _best_side(experiment.summary)
-                side_text = f", best L={message_side:.9g}" if isinstance(message_side, (int, float)) else ""
-                completed_text = experiment.completed_trials if experiment.completed_trials is not None else 0
-                message = f"experiment: {experiment.name} ({completed_text} trials{side_text})"
+                if experiment.collection_kind == _TRACE_COLLECTION_KIND:
+                    completed_text = experiment.replay_completed_count or 0
+                    message = f"trajectory: {experiment.name} ({completed_text} replays)"
+                else:
+                    message_side = _best_side(experiment.summary)
+                    side_text = f", best L={message_side:.9g}" if isinstance(message_side, (int, float)) else ""
+                    completed_text = experiment.completed_trials if experiment.completed_trials is not None else 0
+                    message = f"experiment: {experiment.name} ({completed_text} trials{side_text})"
                 commit, _index = _build_commit(repo_root, base, artifact_path, files, message)
                 _delete_ref(repo_root, unpublished_ref)
                 unpublished_ref = _anchor_unpublished_commit(repo_root, commit)
@@ -741,6 +1104,10 @@ def publish(directory: Path | str, *, repo: Path | str | None = None, push: bool
         return result
     finally:
         result["seconds"] = monotonic() - started
-        _write_receipt(output, result)
+        _write_receipt(
+            output,
+            result,
+            max_bytes=TRACE_RECEIPT_RESERVE_BYTES if experiment.trace_operation is not None else None,
+        )
         if snapshot_directory is not None:
             shutil.rmtree(snapshot_directory, ignore_errors=True)

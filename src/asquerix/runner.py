@@ -69,6 +69,7 @@ def environment():
     status = command(["git", "status", "--porcelain"])
     return {
         "python": platform.python_version(), "platform": platform.platform(),
+        "numerical_precision": "float32",
         "source_root": str(root),
         "dependencies": {key: importlib.metadata.version(key) for key in ("numpy", "warp-lang", "asquerix", "rich")},
         "wheel_variant": "warp-lang 1.18.0 default PyPI CUDA 13.4 wheel",
@@ -291,6 +292,7 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
         metadata["device"] = str(batch.device)
         metadata["device_selector"] = device
         metadata["device_name"] = getattr(batch.device, "name", None)
+        metadata["device_uuid"] = getattr(batch.device, "uuid", None)
         metadata["kernel_properties"] = getattr(batch, "kernel_properties", {})
         # Warm-up uses the identical production budget, and repeats ID 0 without
         # recording it as an attempted trial. Production IDs are never skipped.
@@ -340,7 +342,7 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
                             timings["validation_seconds"] += perf_counter() - begin
                             record["validation_status"] = validation["status"]
                             record["independent_validation"] = validation
-                            document = {**record, "poses": pose_map[i].tolist(), "validation": validation}
+                            document = {**record, "poses": pose_map[i].tolist(), "pose_dtype": "float32", "validation": validation}
                         else:
                             document = {**record, "poses": [], "validation": {"status": "NOT_CHECKED"},
                                         "diagnostic": "Initialization exhausted; no complete pose exists."}

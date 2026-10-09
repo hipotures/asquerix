@@ -35,6 +35,36 @@ class PlainProgress:
             self.last = now
 
 
+class TraceProgress:
+    """Separate replay progress, never counted as scientific search trials."""
+    def __init__(self, console):
+        self.console = console
+        self.progress = None
+        self.task = None
+
+    def __enter__(self):
+        if self.console is not None:
+            from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+            self.progress = Progress(SpinnerColumn(), TextColumn("{task.description}"), TimeElapsedColumn(),
+                                     console=self.console, transient=True)
+            self.progress.start()
+        return self
+
+    def __exit__(self, *exc):
+        if self.progress:
+            self.progress.stop()
+        return False
+
+    def update(self, event):
+        description = f"Recording replay {event['trial_id']} · {event['completed']}/{event['total']} finalized"
+        if self.progress:
+            if self.task is None:
+                self.task = self.progress.add_task(description, total=event["total"])
+            self.progress.update(self.task, description=description, completed=event["completed"])
+        elif event["event"] == "replay-completed":
+            print(f"Replay {event['trial_id']}: {event['status']}", file=sys.stderr, flush=True)
+
+
 class RunProgress:
     """Show batch progress; a single GPU batch uses only a spinner and elapsed time."""
     def __init__(self, console):

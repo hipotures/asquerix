@@ -192,3 +192,60 @@ Publication uses a private snapshot and temporary Git index, never the active in
 Statuses are `COMPLETED + PUBLISHED`, `PARTIAL + PUBLISHED`, or computation status plus `LOCAL_ONLY`/`PUSH_FAILED`. Exit codes: 0 for successful computation/publication or explicit local-only mode, 1 for invalid saved geometry, 2 for input/runtime errors, 3 for failed automatic publication. Ctrl-C or a deadline stops new batches and publishes completed partial results after the current batch drains.
 
 CUDA-event `device_seconds` excludes transfers, CPU validation, gzip and Git. Persistence/compression, rendering/reporting and publication have separate intervals. Summary end-to-end time includes computation and reporting through the documented final-summary boundary; the publication receipt adds the full `run()` duration and total CLI duration. Maintained tools under `tools/` read old/new formats and default to fresh runtime output paths. Archived scripts under `artifacts/` remain immutable provenance; internal library/pilot runs stay local and do not automatically publish.
+
+## Selected trajectories and offline playback
+
+Recording is off by default. The production kernel and its allocations are unchanged. Search first; only selected global trial IDs are replayed on one explicit CUDA device afterward. Replays never increase scientific trial counts, modify the histogram or replace the original best result.
+
+These commands were exercised on a display-attached RTX 4070 Ti. Use fresh output paths:
+
+```bash
+# Ordinary campaign, no recording
+uv run asquerix run --n 12 --trials 8 --batch-size 8 --max-images 0 \
+  --no-push --json --output runs/ordinary
+
+# Select once after search: up to three retained independently validated trials
+uv run asquerix run --experiment trajectory-best-demo \
+  --n 12 --max-sweeps 480 --trials 32 --batch-size 32 \
+  --trace-best 3 --trace-max-frames 256 \
+  --no-push --json --output runs/trajectory-best
+
+# Explicit historical global ID, using exactly its saved solver configuration
+uv run asquerix trace artifacts/audit/campaign/retained-n11 \
+  --trial-id 4124 --mode accepted --max-frames 256 --device cuda:0 \
+  --no-push --json --output runs/historical-4124
+
+# Dense diagnostic replay, including provisional steps and rollback
+uv run asquerix trace runs/trajectory-best \
+  --trial-id 1 --mode sweeps --every 1 --max-frames 256 --max-mib 10 \
+  --device cuda:0 --no-push --json --output runs/trajectory-sweeps
+
+# Regenerate a viewer without a CUDA context; it embeds all numeric data
+uv run asquerix trace-render runs/trajectory-sweeps/trajectories/trial-1.npz \
+  --output runs/trajectory-sweeps-view.html --json
+# Open runs/trajectory-sweeps-view.html in your browser using File > Open.
+```
+
+`trace --best K` is an alternative to repeated `--trial-id` arguments. IDs and `--best` are mutually exclusive. Selection uses the existing validated leaderboard, ordered by `(side, global_trial_id)`, with duplicates removed. It neither increases pose retention nor promotes unchecked results. Fewer retained eligible candidates produce fewer recordings. An explicit ID without a retained complete pose fails with `REFERENCE_INCOMPLETE` before replay. Plain historical JSON and current gzip JSON remain readable. Standalone tracing writes a new companion collection outside the source experiment.
+
+Run options are `--trace-best` (default 0), `--trace-mode accepted|sweeps` (accepted), `--trace-max-frames` (256), `--trace-every` (16) and `--trace-max-mib` (10). Standalone spellings omit the `trace-` prefix. The maximum is 16 selected trials, 2–4096 frames per trial, and a positive sweep interval fitting signed 32 bits. The export limit covers all new trajectory files, viewers, operation metadata, manifest and receipt. A conservative 64 KiB publication reserve must fit inside it. Actual file sizes are checked before making a pending trial visible; a size limit stops further exports and preserves finalized earlier traces and the original search. No automatic SVG frames, GIFs or videos are generated. `--no-push` keeps the collection local; omitting it uses the existing isolated-index publisher on remote `main`. `--json` uses no Rich and prints statuses/paths, never raw payloads. Browsers are never launched by the CLI.
+
+Each successful replay produces `trajectories/trial-ID.npz`, `trial-ID.meta.json.gz` and `trial-ID.html`. Schema `asquerix-trajectory-v1` stores C-contiguous little-endian `poses float32[F,N,3]`, `side float32[F]`, `sequence int64[F]`, `attempt/sweep/sweep_total int32[F]`, `phase/roles uint8[F]` and `square_ids int32[N]`. No pose quantization, rotation normalization, square reordering or lossy deltas are used. JSON uses deterministic gzip level 3. Loading checks bounded ZIP/NPY headers, primitive dtypes, shapes, endpoint roles, unique IDs and the NPZ checksum; pickle loading is disabled. Browser seed/trial identifiers are decimal strings, preserving all unsigned 64 bits.
+
+`INITIAL=0` is the real successfully placed random arrangement before any compression. `TRIAL=1`, `RELAXING=2` and `REJECTED=4` use the proposed side and are provisional; they may overlap or violate walls. `ACCEPTED=3` and `ROLLBACK=5` use accepted-pose storage and accepted side. `FINAL=6` identifies a separately stored final accepted endpoint when needed. Role bits `INITIAL=1` and `FINAL=2` preserve endpoints without duplicating their geometry; a zero-attempt run has one frame with both roles. Attempts are zero-based, `sweep` counts completed sweeps within that attempt, and `sweep_total` is cumulative completed sweeps. Initial indices are `-1` and cumulative sweeps zero. Rejected accepted-mode attempts use bounded final scalar counters rather than repeated unchanged poses.
+
+Online deterministic compaction and stride doubling bound GPU/host buffers during recording and retain coverage from start to final endpoint. Metadata/viewers disclose observed, retained and suppressed event counts and effective stride; omitted states cannot be recovered. The independent CPU validator checks every retained frame. Provisional checks are residual measurements, never accepted-geometry badges. Initialization failure emits only failure metadata, without unwritten pose slots or invented starting geometry. Ctrl-C stops scheduling new replays and drains the already executing bounded replay; drain time is recorded.
+
+`REPLAY_MATCHED` means available defined FP32 endpoint/result fields—including signed-zero bits, counters, termination and identities—matched the saved reference exactly. It does not prove equality of every unrecorded intermediate state. Unknown reference precision or missing fields produce `REFERENCE_INCOMPLETE`; differences produce `REPLAY_MISMATCH` with bounded field diagnostics and the actual replay saved separately. Source/environment provenance has an independent status, hashes, revisions, GPU identity and dependency/driver versions. The historical ID 4124 demonstration intentionally reports a mismatch with its older solver evidence. No historical source is checked out or executed. Numerical validation is not mathematical certification or proof of optimality.
+
+The viewer opens locally with no server or network. It starts paused at `[Initial arrangement | Current recorded frame]`, uses one fixed units-per-pixel scale in both panels based on the initial container, and shows actual saved frames without interpolation. Playback speed means frames per second, not physical time. Square IDs/colors stay stable and labels stay upright. Slider, first/last, previous/next, ID/orientation toggles and on-demand export of the current frame to SVG are available.
+
+Compact genuine examples and device/test evidence are in [the trajectory report](artifacts/trajectories/REPORT.md). A reproducible headless Chromium check uses the standard-library tool:
+
+```bash
+uv run python tools/trajectory_browser_smoke.py \
+  --html artifacts/trajectories/demo-sweeps/trajectories/trial-1.html \
+  --output runs/browser-smoke.json.gz --screenshot-dir runs/browser-smoke
+```
+
+Original search CUDA-event time and trials/s stay unchanged. `trace.json.gz` separates replay GPU, transfer, validation, export, module loading and total postprocessing; the publication receipt reports total CLI time including tracing/publication. Offline viewer regeneration alone does not publish or create a scientific experiment.

@@ -14,7 +14,7 @@ Execute the assigned goal: implement, test, run bounded experiments, preserve ar
 
 ## Scope discipline
 
-The first milestone contains only random non-overlapping square initialization, wall-driven compression, positional contact relaxation with rotations, batched single-GPU execution, independent numerical validation, sparse offline SVG output, and measurement/reporting.
+The first milestone contains only random non-overlapping square initialization, wall-driven compression, positional contact relaxation with rotations, batched single-GPU execution, independent numerical validation, sparse offline SVG output, and measurement/reporting. Selected CUDA trajectory replays and self-contained offline HTML playback are supported diagnostics; keep ordinary campaigns uninstrumented and replay results separate from scientific trial counts.
 
 Do not add morphing, soft shape deformation, evolutionary search, modifier frameworks, shaking, deliberate expansion cycles, interactive UI, a server, or multi-GPU orchestration without a new goal. Numerical rollback is allowed. A new random trial is runner behavior, not an in-trial restart operator.
 
