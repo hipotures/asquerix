@@ -14,7 +14,7 @@ uv run asquerix diagnose
 uv run pytest -q
 ```
 
-The default Warp wheel uses CUDA 13.4 and requires an R580 or newer driver and a Turing or newer GPU. The inspected machine has a display-attached RTX 4070 Ti, driver 615.71.09, and 12,282 MiB memory. No driver changes were made. Wheel URLs and hashes are in `uv.lock`. See [official compatibility documentation](https://nvidia.github.io/warp/stable/user_guide/compatibility.html).
+The default Warp wheel uses CUDA 13.4 and requires an R580 or newer driver and a Turing or newer GPU. Earlier measurements used a display-attached RTX 4070 Ti with 12,282 MiB memory. The latest campaign used two physical RTX 4090 cards with 24,564 MiB each and driver 615.71.09. No driver changes were made. Wheel URLs and hashes are in `uv.lock`. See [official compatibility documentation](https://nvidia.github.io/warp/stable/user_guide/compatibility.html).
 
 CUDA tests explicitly skip when CUDA is unavailable; independent CPU tests still run. GPU runs fail with a diagnostic rather than substituting CPU execution. In the original Codex sandbox `/dev/nvidia*` was hidden; authorized execution outside that sandbox exposed the GPU.
 
@@ -56,12 +56,16 @@ uv run python tools/extended_benchmark.py --output runs/extended-archive-new --r
 
 The extended script preserves every scalar record in gzip archives, with uncompressed SHA-256 hashes. New run directories under `runs/` use gzip JSON/JSONL. See [the measured report](artifacts/pilot/REPORT.md) for durations, variability, audit coverage, and limitations.
 
-The performance-only CUDA campaign freezes production revision `d4ec238`, including the `eb8d2ac` minimum-step correction. It compares every result field and final pose byte, then measures alternating 131,072-world batches with unchanged budgets. See [the kernel optimization report](artifacts/performance/cuda-20261009/REPORT.md) for accepted and rejected candidates, timings, register usage, and reproducibility limits.
+The completed first CUDA optimization campaign froze revision `d4ec238`, including the `eb8d2ac` minimum-step correction. See [its historical report](artifacts/performance/cuda-20261009/REPORT.md). The new reference already includes that accepted optimization: production `d5ea525`, archived with its source hash in [the dual-4090 report](artifacts/performance/dual4090-20261009T005128Z/REPORT.md). It measures actual concurrent execution, full bytewise output equality, CPU/native waiting, and the ordinary result-saving pipeline. No additional kernel candidate was retained. Explicit lossless gzip level 3 improved ordinary-pipeline throughput at fixed kernel/device count; new run metadata records this policy.
 
 ```bash
 uv run --locked pytest -q
-uv run --locked python tools/kernel_benchmark.py compare --output runs/kernel-exact-check.json
-uv run --locked python tools/kernel_benchmark.py benchmark --count 131072 --repeats 3 --output runs/kernel-benchmark-new
+uv run --frozen python tools/kernel_benchmark.py compare \
+  --reference artifacts/performance/dual4090-20261009T005128Z/corpus-A \
+  --source src/asquerix/gpu.py --device cuda:0 --output runs/kernel-exact-check.json.gz
+uv run --frozen python tools/kernel_benchmark.py benchmark \
+  --baseline-source artifacts/performance/dual4090-20261009T005128Z/baseline/gpu.py \
+  --device cuda:0 --count 131072 --repeats 3 --output runs/kernel-benchmark-new
 ```
 
 The benchmark tool never publishes experiments. Its frozen source is an archival comparison reference; production retains one solver. `axes()` shares the existing standard sine/cosine evaluations and uses bit-preserving CUDA operand copies to retain the original SAT rounding behavior. No fast math, tolerance, contact ordering, or stopping criterion changes are enabled.
@@ -106,7 +110,7 @@ All trials transfer compact scalar records. Selected poses use a batched GPU gat
 
 RNG identity is `(seed, global_trial_id)`, both uint64. SplitMix64 starts at `seed XOR mix64(global_trial_id)`, adds its 64-bit Weyl constant per draw, and converts the top 24 bits to FP32. Out-of-range identifiers are rejected rather than truncated. Tests cover IDs near `2**64-1`, distinct sampled worlds, repetition, and partition equivalence. Statistical independence is not proved. Bitwise reproducibility is tested on the same hardware/configuration/kernel/dependency versions; cross-hardware/compiler/version equivalence is not promised.
 
-Explicit device selection and disjoint global ID ranges permit later independent device assignments. Multi-GPU scheduling is outside this milestone.
+The focused benchmark `tools/dual_gpu_benchmark.py` assigns disjoint global-ID ranges to persistent spawned workers identified by physical UUID. It verifies each worker's local CUDA mapping, prewarms both cards, releases a common start and measures actual overlap. The production CLI remains single-GPU. Reproduction commands, timing boundaries and the durable full-array manifest are in [the dual-4090 report](artifacts/performance/dual4090-20261009T005128Z/REPORT.md).
 
 ## Validation and evidence
 
@@ -175,7 +179,7 @@ Compare shows CUDA-event GPU time/rate, relative speedup, end-to-end timing, bud
 
 `diagnose`, `validate`, `render`, `report` and `compare` also accept `--json`. For commands without an existing run destination, use `--output results-name.json.gz`; otherwise a unique file is created under `runs/`. Validation and comparison do not overwrite historical source files.
 
-New runs save `summary.json.gz`, `config.json.gz`, `environment.json.gz`, `validation.json.gz`, `audit_ids.json.gz`, `trials.jsonl.gz`, and `poses/trial-<id>.json.gz`. Gzip metadata and JSON serialization are deterministic; identical serialized bytes and streaming flush boundaries produce identical compressed bytes. JSONL is streamed and finalized on graceful interruption. Readers transparently accept both historical plain files and compressed archives. Markdown, CSV and SVG remain uncompressed.
+New runs save `summary.json.gz`, `config.json.gz`, `environment.json.gz`, `validation.json.gz`, `audit_ids.json.gz`, `trials.jsonl.gz`, and `poses/trial-<id>.json.gz`. Gzip level 3 is explicit and lossless. Gzip metadata and JSON serialization are deterministic; identical serialized bytes, compression level and streaming flush boundaries produce identical compressed bytes. JSONL is streamed and finalized on graceful interruption. Readers transparently accept both historical plain files and compressed archives. Markdown, CSV and SVG remain uncompressed.
 
 Names use 1–80 ASCII letters, digits, dots, underscores or hyphens, starting with a letter or digit. Omitted names incorporate N, sweeps, batch size and a unique UTC run ID. Existing output directories are never overwritten.
 

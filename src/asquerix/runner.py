@@ -19,7 +19,7 @@ import numpy as np
 from .geometry import validate_pose
 from .gpu import Batch, Config, TERMINATIONS
 from .output import render_selected, write_report
-from .persistence import open_jsonl_writer, write_json
+from .persistence import GZIP_COMPRESSION_LEVEL, open_jsonl_writer, write_json
 
 
 _EXPERIMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z")
@@ -205,6 +205,8 @@ def run(config: Config, *, trials=64, batch_size=32, trial_offset=0, device="cud
                    sample_every=sample_every, keep_best=keep_best, max_images=max_images,
                    audit_size=audit_size, failure_examples=failure_examples, retain_all=retain_all,
                    max_seconds=max_seconds)
+    options["gzip_compression_level"] = GZIP_COMPRESSION_LEVEL
+    metadata["compression"] = {"format": "gzip", "level": GZIP_COMPRESSION_LEVEL, "mtime": 0}
     initial_persistence_started = perf_counter_ns()
     write_json(output / "config.json", {"solver": asdict(config), "runner": options})
     write_json(output / "environment.json", metadata)

@@ -28,10 +28,7 @@ def _seed_centered_square(poses: wp.array2d(dtype=wp.vec3),
 def backend(request):
     wp.init()
     if request.param == "cuda":
-        devices = wp.get_cuda_devices()
-        if not devices:
-            pytest.skip("No CUDA device is available")
-        return devices[0]
+        return request.getfixturevalue("cuda_device")
     return wp.get_device("cpu")
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import json
 from pathlib import Path
+import struct
 
 import pytest
 
@@ -102,3 +103,27 @@ def test_streaming_archive_bytes_are_deterministic(tmp_path):
             stream.flush()
     assert (tmp_path / "one.jsonl.gz").read_bytes() == (tmp_path / "two.jsonl.gz").read_bytes()
     assert len(list(read_jsonl(tmp_path / "one.jsonl"))) == 5000
+
+
+def test_explicit_compression_policy_preserves_float_bits_and_uint64(tmp_path, monkeypatch):
+    from asquerix import persistence
+
+    levels = []
+    original = gzip.GzipFile
+
+    def recording_gzip(*args, **kwargs):
+        levels.append(kwargs.get("compresslevel"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(gzip, "GzipFile", recording_gzip)
+    record = {"trial_id": 2**64 - 1, "values": [-0.0, 0.0, 1.0000000000000002, 1e-300]}
+    write_json(tmp_path / "record.json", record)
+    with open_jsonl_writer(tmp_path / "records.jsonl") as stream:
+        stream.write(json.dumps(record) + "\n")
+    assert levels == [persistence.GZIP_COMPRESSION_LEVEL] * 2
+    for restored in (read_json(tmp_path / "record.json"), *read_jsonl(tmp_path / "records.jsonl")):
+        assert restored["trial_id"] == 2**64 - 1
+        assert type(restored["trial_id"]) is int
+        assert [struct.pack("!d", x) for x in restored["values"]] == [
+            struct.pack("!d", x) for x in record["values"]
+        ]

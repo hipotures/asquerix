@@ -20,6 +20,8 @@ from typing import Any
 
 _JSON_SUFFIXES = (".json", ".jsonl")
 _GZIP_SUFFIX = ".gz"
+# Explicit lossless compression policy; benchmarked independently of the solver.
+GZIP_COMPRESSION_LEVEL = 3
 
 
 def _compressed_path(path: Path) -> Path:
@@ -97,6 +99,7 @@ def write_json(path: str | os.PathLike[str], value: Any) -> Path:
                     mode="wb",
                     filename="",
                     mtime=0,
+                    compresslevel=GZIP_COMPRESSION_LEVEL,
                 ) as compressed:
                     compressed.write(payload)
             else:
@@ -188,6 +191,7 @@ def open_jsonl_writer(path: str | os.PathLike[str]) -> Iterator[io.TextIOBase]:
                 mode="wb",
                 filename="",
                 mtime=0,
+                compresslevel=GZIP_COMPRESSION_LEVEL,
             )
             text_stream = io.TextIOWrapper(compressed, encoding="utf-8", newline="")
         else:

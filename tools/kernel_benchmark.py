@@ -11,7 +11,6 @@ from dataclasses import asdict, replace
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
-import json
 from pathlib import Path
 import subprocess
 import sys
@@ -23,16 +22,14 @@ import warp as wp
 from asquerix import gpu
 from asquerix.geometry import validate_pose
 from asquerix.runner import environment
+from asquerix.persistence import read_json, write_json
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACT = ROOT / "artifacts/performance/cuda-20261009"
 CURRENT_SOURCE_HASH = hashlib.sha256(Path(gpu.__file__).read_bytes()).hexdigest()
 
 
 def save_json(path, data):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    return write_json(path, data)
 
 
 def load_source(path, name="asquerix_perf_reference"):
@@ -47,7 +44,8 @@ def exact(actual, expected, label):
     """Compare complete representations, including signed zeros and all fields."""
     if actual.dtype != expected.dtype or actual.shape != expected.shape:
         raise AssertionError(f"{label}: dtype/shape mismatch")
-    if not np.array_equal(actual.view(np.uint8), expected.view(np.uint8)):
+    if not np.array_equal(np.ascontiguousarray(actual).view(np.uint8),
+                          np.ascontiguousarray(expected).view(np.uint8)):
         raise AssertionError(f"{label}: bitwise mismatch")
 
 
@@ -83,7 +81,7 @@ def occupancy(module, device):
             "sm_count": selected.sm_count, "method": "CUDA driver occupancy API; not achieved occupancy"}
 
 
-def diagnostic(module, p_host, q_host, wall_mode, device="cuda:0"):
+def diagnostic(module, p_host, q_host, wall_mode, device):
     p = wp.array(p_host, dtype=wp.vec3, device=device)
     q = wp.array(q_host, dtype=wp.vec3, device=device)
     values = wp.zeros((len(p_host), 7), dtype=float, device=device)
@@ -124,7 +122,7 @@ def contact_inputs():
             np.concatenate([np.asarray([b for _, b in cases], np.float32), q]))
 
 
-def capture(output):
+def capture(output, module, device):
     output.mkdir(parents=True, exist_ok=False)
     experiments = []
     specifications = [(n, seed, offset, 8) for n in (1, 4, 11, 12, 16, 32)
@@ -132,13 +130,13 @@ def capture(output):
     specifications += [(11, 20261008, 4124, 1), (11, 20261008, 4372, 1),
                        (4, 2**64 - 123, 2**64 - 8, 8)]
     for n, seed, offset, count in specifications:
-        config = gpu.Config(n=n, seed=seed, max_sweeps=480)
+        config = module.Config(n=n, seed=seed, max_sweeps=480)
         name = f"n{n}-seed{seed}-id{offset}"
-        batch = gpu.Batch(config, count)
+        batch = module.Batch(config, count, device=device)
         clear_scratch(batch)
         results, timing = batch.run(count, offset)
         poses, _ = batch.get_poses(list(range(count)))
-        initial = gpu.Batch(replace(config, max_attempts=0), count)
+        initial = module.Batch(replace(config, max_attempts=0), count, device=device)
         clear_scratch(initial)
         initial_results, _ = initial.run(count, offset)
         initial_poses, _ = initial.get_poses(list(range(count)))
@@ -150,24 +148,24 @@ def capture(output):
         experiments.append(entry)
         print(f"captured {name}: {count} trials", flush=True)
     p, q = contact_inputs()
-    pair_p, pair_q, pair_values = diagnostic(gpu, p, q, 0)
-    wall_p, wall_q, wall_values = diagnostic(gpu, p, q, 1)
+    pair_p, pair_q, pair_values = diagnostic(module, p, q, 0, device)
+    wall_p, wall_q, wall_values = diagnostic(module, p, q, 1, device)
     np.savez_compressed(output / "contacts.npz", input_p=p, input_q=q, pair_p=pair_p, pair_q=pair_q,
                         pair_values=pair_values, wall_p=wall_p, wall_q=wall_q, wall_values=wall_values)
-    save_json(output / "corpus.json", {"environment": environment(), "experiments": experiments,
+    save_json(output / "corpus.json", {"environment": environment(), "device": str(device), "device_uuid": wp.get_device(device).uuid, "source_sha256": digest(module.__file__), "experiments": experiments,
               "contact_count": len(p), "contacts_sha256": digest(output / "contacts.npz")})
 
 
-def compare(module, reference):
-    manifest = json.loads((reference / "corpus.json").read_text())
+def compare(module, reference, device):
+    manifest = read_json(reference / "corpus.json")
     validation = {}
     for entry in manifest["experiments"]:
         config = module.Config(**entry["config"])
-        batch = module.Batch(config, entry["count"])
+        batch = module.Batch(config, entry["count"], device=device)
         clear_scratch(batch)
         results, _ = batch.run(entry["count"], entry["offset"])
         poses, _ = batch.get_poses(list(range(entry["count"])))
-        initial = module.Batch(replace(config, max_attempts=0), entry["count"])
+        initial = module.Batch(replace(config, max_attempts=0), entry["count"], device=device)
         clear_scratch(initial)
         initial_results, _ = initial.run(entry["count"], entry["offset"])
         initial_poses, _ = initial.get_poses(list(range(entry["count"])))
@@ -184,35 +182,39 @@ def compare(module, reference):
         print(f"exact {entry['name']}", flush=True)
     with np.load(reference / "contacts.npz") as contacts:
         for mode, prefix in ((0, "pair"), (1, "wall")):
-            outputs = diagnostic(module, contacts["input_p"], contacts["input_q"], mode)
+            outputs = diagnostic(module, contacts["input_p"], contacts["input_q"], mode, device)
             for suffix, actual in zip(("p", "q", "values"), outputs):
                 exact(actual, contacts[f"{prefix}_{suffix}"], f"contacts {prefix}_{suffix}")
-    return {"exact": True, "validation": validation, "contact_count": manifest["contact_count"]}
+    return {"exact": True, "validation": validation, "contact_count": manifest["contact_count"], "device": str(device), "device_uuid": wp.get_device(device).uuid}
 
 
 def benchmark(args):
-    current_hash = CURRENT_SOURCE_HASH
+    current_source = args.candidate_source or ROOT / "src/asquerix/gpu.py"
+    current_hash = digest(current_source)
     baseline_hash = digest(args.baseline_source)
-    assert digest(ROOT / "src/asquerix/gpu.py") == current_hash, "Current source changed after import"
-    reference = load_source(args.baseline_source)
-    modules = {"baseline": reference, "optimized": gpu}
+    if not args.candidate_source:
+        assert current_hash == CURRENT_SOURCE_HASH, "Current source changed after import"
+    reference = load_source(args.baseline_source, "asquerix_perf_reference")
+    candidate = load_source(args.candidate_source, "asquerix_perf_candidate") if args.candidate_source else gpu
+    modules = {"baseline": reference, "optimized": candidate}
     variants = args.variants.split(",")
     if variants not in (["baseline"], ["baseline", "optimized"]):
         raise ValueError("variants must be baseline or baseline,optimized; baseline is always the reference")
     entries = []
     for n in args.n:
         config = gpu.Config(n=n, max_sweeps=480)
-        batches = {variant: modules[variant].Batch(modules[variant].Config(**asdict(config)), args.count)
+        batches = {variant: modules[variant].Batch(modules[variant].Config(**asdict(config)), args.count, device=args.device)
                    for variant in variants}
         for variant, batch in batches.items():
             batch.run(min(args.count, 32), args.offset)
         profiles = {variant: occupancy(modules[variant], batch.device) for variant, batch in batches.items()}
-        initial = reference.Batch(reference.Config(**asdict(replace(config, max_attempts=0))), args.count)
+        initial = reference.Batch(reference.Config(**asdict(replace(config, max_attempts=0))), args.count, device=args.device)
         clear_scratch(initial)
         initial_results, _ = initial.run(args.count, args.offset)
         initial_poses, _ = initial.get_poses(np.arange(args.count, dtype=np.int32))
         if "optimized" in variants:
-            current_initial = gpu.Batch(replace(config, max_attempts=0), args.count)
+            current_initial = candidate.Batch(candidate.Config(**asdict(replace(config, max_attempts=0))),
+                                              args.count, device=args.device)
             clear_scratch(current_initial)
             current_initial_results, _ = current_initial.run(args.count, args.offset)
             current_initial_poses, _ = current_initial.get_poses(np.arange(args.count, dtype=np.int32))
@@ -224,7 +226,7 @@ def benchmark(args):
             for variant in order:
                 batch = batches[variant]
                 assert digest(args.baseline_source) == baseline_hash, "Baseline source changed"
-                assert digest(ROOT / "src/asquerix/gpu.py") == current_hash, "Current source changed"
+                assert digest(current_source) == current_hash, "Current source changed"
                 clear_scratch(batch)
                 wp.synchronize_device(batch.device)
                 gpu_processes_before = subprocess.check_output([
@@ -257,6 +259,7 @@ def benchmark(args):
                 assert all(s in ("NUMERICALLY_VALIDATED", "INIT_FAILED_NO_COMPLETE_GEOMETRY")
                            for s in statuses), statuses
                 entry = {"n": n, "variant": variant, "repeat": repeat, "count": args.count,
+                         "device": str(batch.device), "device_uuid": batch.device.uuid,
                          "started_utc": started_utc,
                          "gpu_processes_before": gpu_processes_before,
                          "offset": args.offset, "config": asdict(config), "timing": timing,
@@ -283,7 +286,7 @@ def benchmark(args):
                     "--format=csv"], text=True)
                 entries.append(entry)
                 assert digest(args.baseline_source) == baseline_hash, "Baseline source changed during measurement"
-                assert digest(ROOT / "src/asquerix/gpu.py") == current_hash, "Current source changed during measurement"
+                assert digest(current_source) == current_hash, "Current source changed during measurement"
                 save_json(args.output / "measurements.json", {"environment": environment(), "measurements": entries,
                           "baseline_source_sha256": baseline_hash, "current_source_sha256": current_hash})
                 print(f"n={n} {variant} repeat={repeat}: {entry['trials_per_second']:.3f} trials/s, "
@@ -294,15 +297,16 @@ def benchmark(args):
                   "arrays": ["results", "poses", "initial_results", "initial_poses"]})
 
 
-def check_initial(benchmark_directory, output):
-    """Check current RNG initialization against complete benchmark archives."""
+def check_initial(benchmark_directory, output, device, module):
+    """Check the selected source's RNG against complete benchmark archives."""
+    source_hash = digest(module.__file__)
     entries = []
-    for path in sorted(benchmark_directory.glob("n*-manifest.json")):
-        manifest = json.loads(path.read_text())
+    for path in sorted(set(benchmark_directory.glob("n*-manifest.json")) | set(benchmark_directory.glob("n*-manifest.json.gz"))):
+        manifest = read_json(path)
         archive = benchmark_directory / manifest["file"]
         assert digest(archive) == manifest["sha256"], f"Archive changed: {archive}"
-        config = replace(gpu.Config(**manifest["config"]), max_attempts=0)
-        batch = gpu.Batch(config, manifest["count"])
+        config = replace(module.Config(**manifest["config"]), max_attempts=0)
+        batch = module.Batch(config, manifest["count"], device=device)
         clear_scratch(batch)
         results, _ = batch.run(manifest["count"], manifest["offset"])
         poses, _ = batch.get_poses(np.arange(manifest["count"], dtype=np.int32))
@@ -312,44 +316,51 @@ def check_initial(benchmark_directory, output):
         entries.append({"n": config.n, "count": manifest["count"], "offset": manifest["offset"],
                         "archive_sha256": manifest["sha256"], "exact": True})
     assert entries, "No benchmark manifests found"
-    assert digest(ROOT / "src/asquerix/gpu.py") == CURRENT_SOURCE_HASH, "Source changed"
-    save_json(output, {"source_sha256": CURRENT_SOURCE_HASH, "experiments": entries})
+    assert digest(module.__file__) == source_hash, "Source changed"
+    save_json(output, {"source_sha256": source_hash, "experiments": entries,
+                       "device": str(device), "device_uuid": wp.get_device(device).uuid})
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     freeze = sub.add_parser("capture")
-    freeze.add_argument("--output", type=Path, default=ARTIFACT / "corpus")
+    freeze.add_argument("--output", type=Path, required=True)
+    freeze.add_argument("--source", type=Path, required=True)
     check = sub.add_parser("compare")
-    check.add_argument("--reference", type=Path, default=ARTIFACT / "corpus")
+    check.add_argument("--reference", type=Path, required=True)
     check.add_argument("--source", type=Path)
     check.add_argument("--output", type=Path, required=True)
     initial = sub.add_parser("check-initial")
     initial.add_argument("--benchmark-directory", type=Path, required=True)
     initial.add_argument("--output", type=Path, required=True)
+    initial.add_argument("--source", type=Path, required=True)
     bench = sub.add_parser("benchmark")
-    bench.add_argument("--baseline-source", type=Path, default=ARTIFACT / "baseline/gpu.py")
+    bench.add_argument("--baseline-source", type=Path, required=True)
+    bench.add_argument("--candidate-source", type=Path)
     bench.add_argument("--variants", default="baseline,optimized")
     bench.add_argument("--count", type=int, default=131072)
     bench.add_argument("--offset", type=int, default=0)
     bench.add_argument("--n", type=int, nargs="+", default=[16, 12])
     bench.add_argument("--repeats", type=int, default=3)
     bench.add_argument("--output", type=Path, required=True)
+    for command in (freeze, check, initial, bench):
+        command.add_argument("--device", required=True)
     args = parser.parse_args()
     wp.init()
-    assert wp.get_device("cuda:0").is_cuda, "Real CUDA is required"
+    assert wp.get_device(args.device).is_cuda, "Real CUDA is required"
     if args.command == "capture":
-        capture(args.output)
+        capture(args.output, load_source(args.source), args.device)
     elif args.command == "compare":
         source_hash = digest(args.source) if args.source else CURRENT_SOURCE_HASH
         module = load_source(args.source) if args.source else gpu
-        report = compare(module, args.reference)
+        report = compare(module, args.reference, args.device)
         assert digest(args.source or ROOT / "src/asquerix/gpu.py") == source_hash, "Source changed during comparison"
         report["source_sha256"] = source_hash
         save_json(args.output, report)
     elif args.command == "check-initial":
-        check_initial(args.benchmark_directory, args.output)
+        check_initial(args.benchmark_directory, args.output, args.device,
+                      load_source(args.source, "asquerix_initial_reference"))
     else:
         if args.count < 1 or args.repeats < 1:
             parser.error("count and repeats must be positive")
