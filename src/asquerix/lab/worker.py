@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
+import gzip
 import json
 import os
 from pathlib import Path
@@ -14,7 +15,7 @@ import traceback
 import numpy as np
 
 from ..persistence import open_jsonl_writer, read_json, read_jsonl, write_json
-from .config import Campaign, digest
+from .config import RETAINED_PER_METHOD, Campaign, digest
 from .evaluation import result_row, score
 from .search import Controller, initial_pool
 from .storage import check_quota, environment, executable_identity, load_banks, load_npz, prepare_banks, sha256, write_npz
@@ -134,109 +135,236 @@ class CampaignWorker:
                            "state": "PENDING", "score": {}})
         return result
 
+    def retained(self, candidates: list[dict], scores: dict, bank_name: str) -> set[str]:
+        """Programs whose exact poses and episode rows are kept permanently in the group's files.
+
+        With "important" evidence these are controls, fixed programs and every program that improved its
+        method's best; the current top programs of each method are kept separately in a replaceable file.
+        """
+        if self.campaign.pose_evidence == "all" or bank_name != "training":
+            return {candidate["id"] for candidate in candidates}
+        keep, best = set(), self.state.setdefault("arm_best", {})
+        for candidate in candidates:
+            score = scores[candidate["id"]]
+            if candidate["arm"] in ("controls", "fixed"):
+                keep.add(candidate["id"])
+            elif score.get("eligible") and (candidate["arm"] not in best or tuple(score["ranking_tuple"]) < tuple(best[candidate["arm"]])):
+                best[candidate["arm"]] = score["ranking_tuple"]
+                keep.add(candidate["id"])
+        return keep
+
+    def update_top(self, candidates: list[dict], scores: dict, rows: list[dict], arrays: dict):
+        """Rewrite each method's top-RETAINED_PER_METHOD evidence when the group changes it.
+
+        The files on disk are the source of truth, so a resumed campaign continues from what was written.
+        """
+        if self.campaign.pose_evidence != "important":
+            return
+        for arm in {candidate["arm"] for candidate in candidates} - {"controls", "fixed"}:
+            stem = self.directory / "evaluations" / f"top-{arm}"
+            current_rows = list(read_jsonl(stem.with_suffix(".jsonl.gz"))) if stem.with_suffix(".jsonl.gz").exists() else []
+            current = load_npz(stem.with_suffix(".npz")) if current_rows else None
+            entries = {}
+            for index, row in enumerate(current_rows):
+                entries.setdefault(row["candidate_id"], {"rank": tuple(row["ranking_tuple"]), "rows": [], "indices": [], "source": "old"})
+                entries[row["candidate_id"]]["rows"].append(row)
+                entries[row["candidate_id"]]["indices"].append(index)
+            for index, row in enumerate(rows):
+                score = scores.get(row["candidate_id"])
+                if row["arm"] != arm or not score or not score.get("eligible") or row["candidate_id"] in entries and entries[row["candidate_id"]]["source"] == "old":
+                    continue
+                entries.setdefault(row["candidate_id"], {"rank": tuple(score["ranking_tuple"]), "rows": [], "indices": [], "source": "new"})
+                entries[row["candidate_id"]]["rows"].append({**row, "ranking_tuple": score["ranking_tuple"]})
+                entries[row["candidate_id"]]["indices"].append(index)
+            chosen = sorted(entries.items(), key=lambda item: item[1]["rank"])[:RETAINED_PER_METHOD]
+            if [identifier for identifier, _ in chosen] == list(dict.fromkeys(row["candidate_id"] for row in current_rows)):
+                continue
+            names = list(arrays) if arrays else list(current)
+            kept = {name: np.concatenate([(current if entry["source"] == "old" else arrays)[name][entry["indices"]] for _, entry in chosen])
+                    for name in names}
+            kept_rows = []
+            for _, entry in chosen:
+                for row in entry["rows"]:
+                    kept_rows.append({**row, "numeric_path": f"evaluations/top-{arm}.npz", "numeric_index": len(kept_rows)})
+            check_quota(self.campaign, self.directory, reserve=len(kept_rows) * (24 * self.campaign.n + 2048))
+            numeric = write_npz(stem.with_suffix(".npz"), kept)
+            with open_jsonl_writer(stem.with_suffix(".jsonl.gz")) as stream:
+                for row in kept_rows:
+                    stream.write(json.dumps(row, allow_nan=False, separators=(",", ":")) + "\n")
+            write_json(stem.with_suffix(".done.json.gz"), {"schema": "asquerix-lab-top-evidence-v1", "arm": arm,
+                       "numeric_path": f"evaluations/top-{arm}.npz", "records_path": f"evaluations/top-{arm}.jsonl.gz",
+                       "numeric_sha256": sha256(numeric), "records_sha256": sha256(stem.with_suffix(".jsonl.gz")),
+                       "programs": [identifier for identifier, _ in chosen], "count": len(kept_rows)})
+
     def evaluate(self, candidates: list[dict], bank_name: str) -> list[dict]:
+        """Evaluate one group on the GPU, validate every episode and keep evidence by the campaign policy.
+
+        A group's results are admitted atomically: its first part's receipt, written last, records every
+        program's score, so a resumed campaign never evaluates a finished group again.
+        """
         from .gpu import StrategyBatch, defined_fields
         bank = self.banks[bank_name]
         episodes_per_candidate = len(bank["ids"]) * self.campaign.operator_replicates
         total = len(candidates) * episodes_per_candidate
         group_hash = digest({"candidates": [candidate["id"] for candidate in candidates], "bank": bank_name})[:16]
-        programs = [compile_program(candidate["program"]["authored"]) for candidate in candidates]
-        records_by_candidate = {candidate["id"]: [] for candidate in candidates}
-        chunk_size = min(self.campaign.batch_capacity, 4096)
-        for first in range(0, total, chunk_size):
-            count = min(chunk_size, total - first)
-            stem = f"part-{group_hash}-{first // chunk_size:04d}"
-            numeric_relative = f"evaluations/{stem}.npz"
-            json_relative = f"evaluations/{stem}.jsonl.gz"
-            receipt_path = self.directory / "evaluations" / (stem + ".done.json.gz")
-            if receipt_path.exists():
-                receipt = read_json(receipt_path)
-                if sha256(self.directory / numeric_relative) != receipt["numeric_sha256"] or sha256(self.directory / json_relative) != receipt["records_sha256"]:
+        head = self.directory / "evaluations" / f"part-{group_hash}-0000.done.json.gz"
+        if head.exists():
+            receipt = read_json(head)
+            parts = [receipt] + [read_json(self.directory / "evaluations" / f"part-{group_hash}-{index:04d}.done.json.gz")
+                                 for index in range(1, receipt.get("group_parts", 1))]
+            for part in parts:
+                if sha256(self.directory / part["numeric_path"]) != part["numeric_sha256"] or sha256(self.directory / part["records_path"]) != part["records_sha256"]:
                     raise ValueError("Finalized result chunk checksum mismatch during reconciliation")
-                rows = list(read_jsonl(self.directory / json_relative))
-                self.emit({"type": "chunk", "campaign_id": self.identifier, "records": json_relative})
-            else:
+            keep = set(receipt.get("retained_candidates", [candidate["id"] for candidate in candidates]))
+            scores = receipt.get("candidate_scores")
+            if scores is None:  # receipts that keep every episode carry no separate scores
+                rows = [row for part in parts for row in read_jsonl(self.directory / part["records_path"])]
+                scores = self.scores(candidates, rows, episodes_per_candidate)
+            for part in parts:
+                self.emit({"type": "chunk", "campaign_id": self.identifier, "records": part["records_path"]})
+                self.remember_chunk(part)
+        else:
+            rows, arrays = [], []
+            chunk_size = min(self.campaign.batch_capacity, 32768)
+            programs = [compile_program(candidate["program"]["authored"]) for candidate in candidates]
+            attempt = self.state["group_attempts"].get(group_hash, 0) + 1
+            self.state["group_attempts"][group_hash] = attempt
+            timing = {"validation_seconds": 0.0, "simulation_seconds": 0.0, "device_seconds": 0.0, "transfer_seconds": 0.0}
+            self.event("TASK_GROUP_STARTED", {"group": group_hash, "bank": bank_name, "episodes": total, "attempt": attempt,
+                                              "candidate_ids": [candidate["id"] for candidate in candidates]})
+            self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=total)
+            for first in range(0, total, chunk_size):
                 if self.stopped():
                     break
                 if digest(executable_identity()) != self.state["executable_hash"]:
                     raise InterruptedError("Executable changed before task admission")
-                check_quota(self.campaign, self.directory, reserve=count * (24 * self.campaign.n + 2048))
+                count = min(chunk_size, total - first)
                 indices = np.arange(first, first + count, dtype=np.int64)
                 pids = (indices // episodes_per_candidate).astype(np.int32)
                 local = indices % episodes_per_candidate
                 initial_slots = (local // self.campaign.operator_replicates).astype(np.int32)
                 replicates = (local % self.campaign.operator_replicates).astype(np.uint64)
-                attempt = self.state["group_attempts"].get(stem, 0) + 1
-                self.state["group_attempts"][stem] = attempt
                 self.state["submitted_episode_attempts"] += count
-                self.event("TASK_GROUP_STARTED", {"group": stem, "bank": bank_name, "episodes": count, "attempt": attempt,
-                                                  "candidate_ids": [candidate["id"] for candidate in candidates]})
-                self.checkpoint()
-                self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=count)
                 batch = StrategyBatch(self.campaign, programs, bank["poses"][initial_slots],
                                       bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
                 while not batch.advance(cancel=self.stopped()):
                     self.activity(active_episodes=count)
                 states, best, current = batch.collect()
+                for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
+                    timing[key] += batch.timings.get(key, 0.0)
                 validation_start = time.monotonic()
-                rows = []
                 validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
                                                bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
                                               for index in range(count)])
+                timing["validation_seconds"] += time.monotonic() - validation_start
                 for index, row in enumerate(validated):
                     candidate = candidates[int(pids[index])]
                     row.update({"candidate_id": candidate["id"], "bank": bank_name, "arm": candidate["arm"],
                                 "task_id": digest({"campaign": self.identifier, "candidate": candidate["id"], "episode": row["episode_key"]}),
-                                "execution_attempt": attempt, "numeric_path": numeric_relative, "numeric_index": index,
+                                "execution_attempt": attempt,
                                 "timing_scope": "Shared strategy batch; GPU time is not an isolated per-program measurement"})
-                    rows.append(row)
-                validation_seconds = time.monotonic() - validation_start
-                arrays = {"best_poses": best, "current_poses": current,
-                          "initial_ids": bank["ids"][initial_slots], "replicates": replicates,
-                          "program_indices": pids}
-                arrays.update({"state_" + name: array for name, array in defined_fields(states).items()})
+                rows.extend(validated)
+                fields = defined_fields(states)
+                arrays.append({"best_poses": best, "current_poses": current, "initial_ids": bank["ids"][initial_slots],
+                               "replicates": replicates, "program_indices": pids,
+                               **{"state_" + name: array for name, array in fields.items()}})
+            executed = sum(row["termination"] != "CANCELLED" for row in rows)
+            self.state["completed_episode_executions"] += executed
+            scores = self.scores(candidates, rows, episodes_per_candidate)
+            keep = set()
+            if len(rows) == total:  # a group cut short by a stop is not admitted; a resume repeats it
+                keep = self.retained(candidates, scores, bank_name)
                 persist_start = time.monotonic()
-                numeric = write_npz(self.directory / numeric_relative, arrays)
-                with open_jsonl_writer(self.directory / json_relative) as stream:
-                    for row in rows:
-                        stream.write(json.dumps(row, allow_nan=False, separators=(",", ":")) + "\n")
-                timing = {**batch.timings, "validation_seconds": validation_seconds,
-                          "persistence_seconds": time.monotonic() - persist_start}
-                receipt = {"schema": "asquerix-lab-result-chunk-v1", "group": stem, "count": count,
-                           "numeric_path": numeric_relative, "records_path": json_relative,
-                           "numeric_sha256": sha256(numeric), "records_sha256": sha256(self.directory / json_relative),
-                           "timings": timing, "attempt": attempt, "completed_at": time.time(),
-                           "execution_elapsed_seconds": self.elapsed(),
-                           "completed_episode_executions": sum(row["termination"] != "CANCELLED" for row in rows)}
-                write_json(receipt_path, receipt)
-                self.state["completed_episode_executions"] += receipt["completed_episode_executions"]
-                self.emit({"type": "chunk", "campaign_id": self.identifier, "records": json_relative})
-                self.event("TASK_GROUP_COMPLETED", receipt)
-            if receipt not in self.state["chunks"]:
-                self.state["chunks"].append(receipt)
-            for row in rows:
-                records_by_candidate[row["candidate_id"]].append(row)
-            self.checkpoint()
-            if self.stopped():
-                break
+                merged = {name: np.concatenate([part[name] for part in arrays]) for name in arrays[0]}
+                mask = np.asarray([row["candidate_id"] in keep for row in rows])
+                kept_rows = [row for row, flag in zip(rows, mask) if flag]
+                kept = {name: array[mask] for name, array in merged.items()}
+                part_size = 16384
+                count_parts = max(1, -(-len(kept_rows) // part_size))
+                receipts = []
+                for index in reversed(range(count_parts)):  # the head part, written last, admits the group
+                    stem = f"part-{group_hash}-{index:04d}"
+                    numeric_relative, json_relative = f"evaluations/{stem}.npz", f"evaluations/{stem}.jsonl.gz"
+                    window = slice(index * part_size, (index + 1) * part_size)
+                    part_rows = kept_rows[window]
+                    for offset, row in enumerate(part_rows):
+                        row.update({"numeric_path": numeric_relative, "numeric_index": offset})
+                    check_quota(self.campaign, self.directory, reserve=len(part_rows) * (24 * self.campaign.n + 2048))
+                    numeric = write_npz(self.directory / numeric_relative, {name: array[window] for name, array in kept.items()})
+                    with open_jsonl_writer(self.directory / json_relative) as stream:
+                        for row in part_rows:
+                            stream.write(json.dumps(row, allow_nan=False, separators=(",", ":")) + "\n")
+                    receipt = {"schema": "asquerix-lab-result-chunk-v1", "group": stem, "count": len(part_rows),
+                               "numeric_path": numeric_relative, "records_path": json_relative,
+                               "numeric_sha256": sha256(numeric), "records_sha256": sha256(self.directory / json_relative),
+                               "attempt": attempt, "completed_at": time.time(), "execution_elapsed_seconds": self.elapsed(),
+                               "completed_episode_executions": sum(row["termination"] != "CANCELLED" for row in part_rows)}
+                    if index == 0:
+                        timing["persistence_seconds"] = time.monotonic() - persist_start
+                        receipt.update({"group_parts": count_parts, "group_episode_executions": executed, "timings": timing,
+                                        "retained_candidates": sorted(keep), "candidate_scores": scores})
+                    write_json(self.directory / "evaluations" / (stem + ".done.json.gz"), receipt)
+                    receipts.append(receipt)
+                for receipt in reversed(receipts):
+                    self.emit({"type": "chunk", "campaign_id": self.identifier, "records": receipt["records_path"]})
+                    self.remember_chunk(receipt)
+                if bank_name == "training":
+                    self.update_top(candidates, scores, rows, merged)
+                self.event("TASK_GROUP_COMPLETED", {"group": group_hash, "bank": bank_name, "episodes": total,
+                                                    "retained_programs": len(keep), "timings": timing})
         evaluated = []
         for candidate in candidates:
-            rows = records_by_candidate[candidate["id"]]
+            result = {**candidate, "state": "EVALUATED" if scores[candidate["id"]]["complete"] else "INCOMPLETE",
+                      "score" if bank_name == "training" else "holdout_score": scores[candidate["id"]],
+                      "completed_at": time.time(), "execution_elapsed_seconds": self.elapsed()}
+            result["arm_execution_elapsed_seconds"] = self.elapsed() - self.state["arm_start_elapsed"].get(candidate["arm"], 0.0)
+            self.state.setdefault("arm_elapsed", {})[candidate["arm"]] = result["arm_execution_elapsed_seconds"]
+            evaluated.append(result)
+            self.emit({"type": "candidate", "campaign_id": self.identifier, "candidate": result})
+            summary = result.get("score") or result.get("holdout_score")
+            self.event("CANDIDATE_RESULT" if bank_name == "training" else "HOLDOUT_RESULT",
+                       {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name,
+                        "score": {key: summary.get(key) for key in ("complete", "eligible", "mean_best_L", "best_L", "ranking_tuple")},
+                        "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()})
+        self.remember(evaluated, keep)
+        self.checkpoint()
+        return evaluated
+
+    def scores(self, candidates: list[dict], rows: list[dict], episodes_per_candidate: int) -> dict:
+        by_candidate = {candidate["id"]: [] for candidate in candidates}
+        for row in rows:
+            by_candidate[row["candidate_id"]].append(row)
+        result = {}
+        for candidate in candidates:
             started = time.monotonic()
-            summary = score(rows, expected_count=episodes_per_candidate,
+            summary = score(by_candidate[candidate["id"]], expected_count=episodes_per_candidate,
                             instruction_count=candidate["program"]["instruction_count"],
                             program_hash=candidate["program"]["hash"], thresholds=self.campaign.thresholds)
             summary["scoring_seconds"] = time.monotonic() - started
-            result = {**candidate, "state": "EVALUATED" if summary["complete"] else "INCOMPLETE",
-                      "score" if bank_name == "training" else "holdout_score": summary,
-                      "completed_at": time.time(), "execution_elapsed_seconds": self.elapsed()}
-            result["arm_execution_elapsed_seconds"] = self.elapsed() - self.state["arm_start_elapsed"].get(candidate["arm"], 0.0)
-            evaluated.append(result)
-            self.emit({"type": "candidate", "campaign_id": self.identifier, "candidate": result})
-            self.event("CANDIDATE_RESULT" if bank_name == "training" else "HOLDOUT_RESULT",
-                       {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name, "score": summary,
-                        "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()})
-        return evaluated
+            result[candidate["id"]] = summary
+        return result
+
+    def remember_chunk(self, receipt: dict):
+        """Keep a small chunk index in the checkpoint; program scores stay in the receipt on disk."""
+        entry = {key: value for key, value in receipt.items() if key not in ("candidate_scores", "retained_candidates")}
+        if entry not in self.state["chunks"]:
+            self.state["chunks"].append(entry)
+
+    def remember(self, evaluated: list[dict], keep: set[str]):
+        """Keep full records of programs with retained evidence; log every evaluated program."""
+        log = self.directory / "candidates.jsonl.gz"
+        with gzip.open(log, "at", encoding="utf-8") as stream:  # append-only; readers keep the last record per id
+            for candidate in evaluated:
+                stream.write(json.dumps(candidate, allow_nan=False, separators=(",", ":")) + "\n")
+        permanent = self.state.setdefault("retained_ids", [])
+        permanent.extend(sorted(keep - set(permanent)))
+        wanted = set(permanent) | self.top_programs() | {candidate["id"] for candidate in self.state["frozen_winners"]}
+        known = {candidate["id"]: candidate for candidate in self.state["candidates"]}
+        for candidate in evaluated:
+            if candidate["id"] in wanted:
+                known[candidate["id"]] = {**known.get(candidate["id"], {}), **candidate}
+        # Records stay for programs with evidence: permanent ones, the current best per method and winners.
+        self.state["candidates"] = [candidate for identifier, candidate in known.items() if identifier in wanted]
 
     def result_rows(self, items: list[tuple]) -> list[dict]:
         """Independent CPU validation of every returned pose, spread over a process pool.
@@ -256,10 +384,19 @@ class CampaignWorker:
             self.pool.shutdown()
             self.pool = None
 
+    def top_files(self) -> list[dict]:
+        return [read_json(path) for path in sorted((self.directory / "evaluations").glob("top-*.done.json.gz"))]
+
+    def top_programs(self) -> set[str]:
+        return {identifier for receipt in self.top_files() for identifier in receipt["programs"]}
+
     def all_rows(self) -> list[dict]:
-        rows = []
-        for chunk in self.state["chunks"]:
-            rows.extend(read_jsonl(self.directory / chunk["records_path"]))
+        rows, seen = [], set()
+        for chunk in self.state["chunks"] + self.top_files():
+            for row in read_jsonl(self.directory / chunk["records_path"]):
+                if (row["candidate_id"], row["episode_key"]) not in seen:
+                    seen.add((row["candidate_id"], row["episode_key"]))
+                    rows.append(row)
         return rows
 
     def automatic_replays(self):
@@ -271,9 +408,10 @@ class CampaignWorker:
         selected = [candidate for candidate in self.state["candidates"] if candidate["arm"] in ("controls", "fixed")]
         selected += self.state["frozen_winners"]
         selections = []
-        for method, state in self.state["controllers"].items():
-            by_id = {candidate["id"]: candidate for candidate in state["candidates"]}
-            replacement = next((candidate for candidate in reversed(state["candidates"])
+        for method in self.state["controllers"]:
+            arm = [candidate for candidate in self.state["candidates"] if candidate["arm"] == method]
+            by_id = {candidate["id"]: candidate for candidate in arm}
+            replacement = next((candidate for candidate in reversed(arm)
                                 if candidate["parent_id"] and candidate.get("score", {}).get("eligible")
                                 and candidate["parent_id"] in by_id
                                 and tuple(candidate["score"]["ranking_tuple"]) < tuple(by_id[candidate["parent_id"]]["score"]["ranking_tuple"])), None)
@@ -367,7 +505,10 @@ class CampaignWorker:
             for candidate in controls:
                 self.emit({"type": "candidate", "campaign_id": self.identifier, "candidate": candidate})
                 self.event("CANDIDATE_GENERATED", candidate)
-            self.state["candidates"] = self.evaluate(controls, "training") if controls else []
+            if controls:
+                evaluated = self.evaluate(controls, "training")
+                if not all(candidate["score"]["complete"] for candidate in evaluated):
+                    return self.finish("PARTIAL")
             self.state["phase"] = "SEARCH"
             boundary = self.safe_boundary()
             if boundary:
@@ -376,25 +517,33 @@ class CampaignWorker:
             if self.campaign.search.methods and self.state["shared_pool"] is None:
                 self.state["shared_pool"] = initial_pool(self.campaign, event=self.event)
                 self.checkpoint()
+            budget = self.campaign.search.time_budget_seconds
+            share = budget / len(self.campaign.search.methods) if budget else None
             for method in self.campaign.search.methods:
                 # A continuation resumes each method's clock where the parent left it.
                 self.state["arm_start_elapsed"].setdefault(method, self.elapsed() - self.state.get("arm_prior_elapsed", {}).get(method, 0.0))
+                # The time budget counts only this campaign's own search time for the method.
+                clock = self.state.setdefault("arm_clock", {}).setdefault(method, self.elapsed())
                 controller = Controller(self.campaign, method, self.state["shared_pool"], self.identifier,
                                         state=self.state["controllers"].get(method), event=self.event)
                 while True:
                     if self.stopped():
                         return self.finish("PARTIAL")
+                    if share is not None and not controller.pending and self.elapsed() - clock >= share:
+                        controller.outcome = "TIME_BUDGET_REACHED"
+                        self.event("TIME_BUDGET_REACHED", {"arm": method, "seconds": self.elapsed() - clock,
+                                                           "completed_candidates": controller.completed})
+                        break
                     group = controller.ask()
                     if not group:
                         break
                     self.state["controllers"][method] = controller.checkpoint()
                     self.checkpoint()
                     evaluated = self.evaluate(group, "training")
+                    if self.stopped() and not all(candidate["score"]["complete"] for candidate in evaluated):
+                        return self.finish("PARTIAL")  # the interrupted group stays pending and is repeated later
                     controller.tell(evaluated)
                     self.state["controllers"][method] = controller.checkpoint()
-                    by_id = {candidate["id"]: candidate for candidate in self.state["candidates"]}
-                    by_id.update({candidate["id"]: candidate for candidate in controller.candidates})
-                    self.state["candidates"] = list(by_id.values())
                     self.activity(phase="SEARCH", arm=method, generation=controller.generation,
                                   completed_candidates=sum(state["completed"] for state in self.state["controllers"].values()),
                                   training_incumbent=controller.winner()["score"] if controller.winner() else None)
@@ -417,10 +566,8 @@ class CampaignWorker:
             latest = {candidate["id"]: candidate for candidate in self.state["candidates"]}
             selected = [latest.get(candidate["id"], candidate) for candidate in selected]
             selected = [candidate for candidate in selected if not candidate.get("holdout_score")]
-            evaluated = self.evaluate(selected, "holdout") if selected else []
-            by_id = {candidate["id"]: candidate for candidate in self.state["candidates"]}
-            by_id.update({candidate["id"]: candidate for candidate in evaluated})
-            self.state["candidates"] = list(by_id.values())
+            if selected:
+                self.evaluate(selected, "holdout")
             self.state["phase"] = "REPLAYS"
             boundary = self.safe_boundary()
             if boundary:
@@ -441,7 +588,11 @@ class CampaignWorker:
             with open_jsonl_writer(self.directory / (name + ".jsonl.gz")) as stream:
                 for value in values:
                     stream.write(json.dumps(value, allow_nan=False, separators=(",", ":")) + "\n")
+        tops = self.top_files()
+        for receipt in tops:  # final top programs become browsable; earlier versions were replaced on disk
+            self.emit({"type": "chunk", "campaign_id": self.identifier, "records": receipt["records_path"]})
         summary = {"schema": "asquerix-lab-summary-v1", "id": self.identifier, "state": status,
+                   "top_evidence": tops,
                    "stop_reason": "EXECUTION_DEADLINE" if self.deadline_reached else "USER_STOP" if self.signal.value >= 2 else None,
                    "elapsed_execution_seconds": self.elapsed(), "datasets": getattr(self, "metadata", {}),
                    "profile_hash": digest(self.campaign.profile()), "executable_hash": self.state["executable_hash"],
@@ -459,6 +610,9 @@ class CampaignWorker:
                    "chunks": self.state["chunks"], "timings": self.state["timings"], "pause_drains": self.state["pause_drains"],
                    "stop_drain_seconds": max(0, time.time() - self.signal_since.value) if self.signal.value >= 2 else None,
                    "continuation": self.state.get("continuation"),
+                   "pose_evidence": self.campaign.pose_evidence, "time_budget_seconds": self.campaign.search.time_budget_seconds,
+                   "evaluated_programs": sum(state["count"] for state in self.state["controllers"].values()),
+                   "retained_programs": len(self.state["candidates"]),
                    "scientific_caveat": "Functional pilot; no claim of optimality or statistically established method superiority."}
         write_json(self.directory / "summaries.json.gz", summary)
         self.event("COMPUTATION_FINALIZED", {"state": status, "completed_candidates": summary["completed_candidates"],

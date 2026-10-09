@@ -19,8 +19,8 @@ from .storage import executable_identity
 # Sources that determine episode results, rankings and the proposed programs; they must match.
 KERNEL_FILES = ("gpu.py", "geometry.py", "lab/gpu.py", "lab/strategy.py", "lab/evaluation.py", "lab/search.py")
 EDITABLE = ("name", "description", "device", "batch_capacity", "slice_sweeps", "slice_dispatches",
-            "recording", "limits", "publication")
-INHERITED_PATHS = ("initial-bank.npz", "datasets.json.gz", "evaluations", "trajectories")
+            "recording", "limits", "publication", "time_budget_seconds")
+INHERITED_PATHS = ("initial-bank.npz", "datasets.json.gz", "evaluations", "trajectories", "candidates.jsonl.gz")
 
 
 def continuation_spec(parent: dict, additional: int, overrides: dict) -> Campaign:
@@ -30,11 +30,16 @@ def continuation_spec(parent: dict, additional: int, overrides: dict) -> Campaig
     spec = copy.deepcopy(parent["spec"])
     if not spec["search"]["methods"]:
         raise ValueError("This campaign has no search method to continue")
-    if not 1 <= additional <= 1024:
-        raise ValueError("Additional candidates per method must be between 1 and 1024")
+    if not 1 <= additional <= 1_000_000:
+        raise ValueError("Additional candidates per method must be between 1 and 1,000,000")
+    time_budget = overrides.pop("time_budget_seconds", None)
     for key, value in overrides.items():
         spec[key] = {**spec[key], **value} if isinstance(spec.get(key), dict) else value
-    spec["search"]["candidate_budget_per_method"] += additional
+    spec["search"]["candidate_budget_per_method"] = min(1_000_000, spec["search"]["candidate_budget_per_method"] + additional)
+    # A stopping rule, not a comparability setting: the continuation may search for a time instead.
+    spec["search"]["time_budget_seconds"] = time_budget
+    if time_budget:
+        spec["limits"]["max_seconds"] = max(spec["limits"]["max_seconds"], time_budget + 600)
     spec["continuation_of"] = parent["id"]
     return Campaign.model_validate(spec)
 
@@ -69,12 +74,10 @@ def inherit(campaign: Campaign, directory: Path, parent_directory: Path, parent_
             shutil.copy2(source, directory / name)
     state = read_json(parent_checkpoint)
     for controller in state["controllers"].values():
-        if controller["outcome"] == "CANDIDATE_BUDGET_REACHED":  # the larger budget lets the same search go on
+        if controller["outcome"] in ("CANDIDATE_BUDGET_REACHED", "TIME_BUDGET_REACHED"):  # a new budget lets the same search go on
             controller["outcome"] = "RUNNING"
-    prior = {}
-    for candidate in state["candidates"]:
-        if candidate.get("arm_execution_elapsed_seconds") is not None:
-            prior[candidate["arm"]] = max(prior.get(candidate["arm"], 0.0), candidate["arm_execution_elapsed_seconds"])
+    prior = dict(state.get("arm_elapsed", {}))
+    state.pop("arm_clock", None)  # a time budget counts the continuation's own search time
     state["continuation"] = {"parent_id": campaign.continuation_of, **provenance,
                              "inherited_candidates": sum(item["completed"] for item in state["controllers"].values()),
                              "inherited_episode_executions": state["completed_episode_executions"],

@@ -63,13 +63,19 @@ class Datasets(Model):
         return self
 
 
+RETAINED_PER_METHOD = 50
+
+
 class Search(Model):
     methods: list[Literal["random_program_search", "one_plus_lambda"]] = ["random_program_search", "one_plus_lambda"]
     seed: str = "8001"
-    candidate_budget_per_method: Annotated[StrictInt, Field(ge=1, le=4096)] = 32
+    candidate_budget_per_method: Annotated[StrictInt, Field(ge=1, le=1_000_000)] = 32
     initial_pool: Annotated[StrictInt, Field(ge=1, le=128)] = 8
-    lambda_: Annotated[StrictInt, Field(ge=1, le=128)] = Field(default=8, alias="lambda")
+    # 0 sizes each (1 + lambda) generation to fill the batch capacity (lambda = capacity // episodes per program).
+    lambda_: Annotated[StrictInt, Field(ge=0, le=4096)] = Field(default=8, alias="lambda")
     shared_initial_pool: Literal[True] = True
+    # Search for this many seconds in total, split equally between methods; the candidate budget is then only a cap.
+    time_budget_seconds: Annotated[float, Field(gt=0, le=86400)] | None = None
     _seed = field_validator("seed")(uint64)
 
     @model_validator(mode="after")
@@ -179,7 +185,7 @@ class Campaign(Model):
     initial_side: Annotated[float, Field(gt=math.sqrt(2) + 0.00004, le=100)] = 10.0
     device: Annotated[str, Field(pattern=r"^cuda:[0-9]{1,2}$")] = "cuda:0"
     batch_capacity: Annotated[StrictInt, Field(ge=1, le=65536)] = 4096
-    slice_sweeps: Annotated[StrictInt, Field(ge=1, le=128)] = 16
+    slice_sweeps: Annotated[StrictInt, Field(ge=1, le=128)] = 128
     slice_dispatches: Annotated[StrictInt, Field(ge=1, le=256)] = 32
     datasets: Datasets = Datasets()
     operator_seed: str = "20261009"
@@ -194,6 +200,9 @@ class Campaign(Model):
     publication: Publication = Publication()
     fixed_programs: Annotated[list[dict], Field(max_length=8)] = []
     thresholds: Annotated[list[float], Field(max_length=16)] = []
+    # "important": exact poses and per-episode rows only for controls, fixed programs and the best
+    # RETAINED_PER_METHOD programs of each method; every episode is still CPU-validated and every program scored.
+    pose_evidence: Literal["all", "important"] = "all"
     # Parent campaign whose datasets, results and search state this campaign continues.
     continuation_of: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")] | None = None
     _seed = field_validator("operator_seed")(uint64)
@@ -208,15 +217,32 @@ class Campaign(Model):
             compile_program(program)
         if any(not 0 < threshold <= self.initial_side for threshold in self.thresholds):
             raise ValueError("thresholds must be finite, positive, and no larger than initial side")
+        if self.search.time_budget_seconds and self.limits.max_seconds < self.search.time_budget_seconds:
+            raise ValueError("the hard time limit must not be shorter than the search time budget")
         if self.plan()["estimated_native_bytes"] > self.limits.max_artifact_mib * 1024**2:
             raise ValueError("estimated native evidence exceeds artifact quota; reduce the declared campaign")
         return self
 
     def document(self) -> dict:
         document = self.model_dump(by_alias=True)
-        if document["continuation_of"] is None:  # keeps manifests of ordinary campaigns unchanged
+        # Fields at their original meaning are omitted so manifests of earlier campaigns stay unchanged.
+        if document["continuation_of"] is None:
             del document["continuation_of"]
+        if document["pose_evidence"] == "all":
+            del document["pose_evidence"]
+        if document["search"]["time_budget_seconds"] is None:
+            del document["search"]["time_budget_seconds"]
         return document
+
+    def episodes_per_program(self) -> int:
+        return self.datasets.training.valid_count * self.operator_replicates
+
+    def effective_lambda(self) -> int:
+        return self.search.lambda_ or max(1, min(4096, self.batch_capacity // self.episodes_per_program()))
+
+    def random_group_size(self) -> int:
+        """Independent programs are evaluated together until they fill the batch capacity."""
+        return max(self.effective_lambda(), self.batch_capacity // self.episodes_per_program())
 
     def profile(self) -> dict:
         return {"name": self.evaluation_profile, "n": self.n, "initial_side": self.initial_side,
@@ -238,11 +264,19 @@ class Campaign(Model):
         training = (candidates + fixed) * self.datasets.training.valid_count * self.operator_replicates
         holdout = (len(self.search.methods) + fixed) * self.datasets.holdout.valid_count * self.operator_replicates
         # Measured ~0.55 KB per n=11 episode (best/current FP32 poses, VM fields, gzip JSONL row); 24n + 512 keeps a margin.
-        native = (training + holdout) * (24 * self.n + 512) + (self.datasets.training.valid_count + self.datasets.holdout.valid_count) * (12 * self.n + 16)
+        per_episode = 24 * self.n + 512
+        banks = (self.datasets.training.valid_count + self.datasets.holdout.valid_count) * (12 * self.n + 16)
+        if self.pose_evidence == "important":
+            # Retained programs keep episodes; every program keeps a score and its program text (~1.5 KB).
+            retained = (len(self.search.methods) * RETAINED_PER_METHOD + fixed) * self.datasets.training.valid_count * self.operator_replicates
+            scored = 0 if self.search.time_budget_seconds else candidates * 1536
+            native = (min(training, retained) + holdout) * per_episode + scored + banks
+        else:
+            native = (training + holdout) * per_episode + banks
         return {"candidate_evaluations": candidates, "training_episodes": training,
                 "holdout_episodes_before_deduplication": holdout,
                 "estimated_native_bytes": native,
-                "estimated_device_bytes": self.batch_capacity * (52 * self.n + 512) + 128 * 32 * max(1, self.search.initial_pool, self.search.lambda_) + self.recording.max_frames_per_trace * (12 * self.n + 96) + 1024 * 96,
+                "estimated_device_bytes": self.batch_capacity * (52 * self.n + 512) + 128 * 32 * max(1, self.search.initial_pool, self.effective_lambda()) + self.recording.max_frames_per_trace * (12 * self.n + 96) + 1024 * 96,
                 "maximum_seconds": self.limits.max_seconds,
                 "automatic_replay_cap": self.recording.max_traces if self.recording.automatic else 0,
                 "timing_forecast": None}
@@ -254,7 +288,10 @@ def capabilities() -> dict:
             "selectors": [selector.name for selector in Selector],
             "methods": ["random_program_search", "one_plus_lambda"],
             "profiles": ["rigid-square-lab-v1"], "square_count": [1, 32],
-            "defaults": Campaign(name="New campaign").document(),
+            # New campaigns fill the GPU, keep exact poses for important programs and search for a time budget.
+            "defaults": Campaign(name="New campaign", pose_evidence="important", batch_capacity=8192,
+                                 search={"lambda": 0, "time_budget_seconds": 300, "candidate_budget_per_method": 1_000_000},
+                                 limits={"max_seconds": 1200}).document(),
             "controls": {name: control_program(name) for name in ("legacy_compress", "pulse_rotate")},
             "help": {"fraction": "Fractions multiply the side measured at operation entry; centers do not scale.",
                      "WALL_K": "Nearest squares to any wall, with ID tie breaks; exact contact is not required.",

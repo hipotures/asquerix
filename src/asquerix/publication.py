@@ -38,7 +38,7 @@ _TRACE_OPERATION_SCHEMA = "asquerix-trace-operation-v1"
 _TRACE_COLLECTION_KIND = "trajectory-replay"
 _TRACE_OPERATION_ID = re.compile(r"^trace-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _TRAJECTORY_PATH = re.compile(r"^trajectories/trial-([0-9]+)\.(npz|html)$")
-_LAB_NATIVE_PATH = re.compile(r"^(?:initial-bank\.npz|evaluations/part-[0-9a-f]{16}-[0-9]{4}\.npz|(?:collections/[0-9a-f]{32}/)?trajectories/episode-[0-9a-f]{64}\.(?:npz|html)|report\.html)$")
+_LAB_NATIVE_PATH = re.compile(r"^(?:initial-bank\.npz|evaluations/part-[0-9a-f]{16}-[0-9]{4}\.npz|evaluations/top-(?:random_program_search|one_plus_lambda)\.npz|(?:collections/[0-9a-f]{32}/)?trajectories/episode-[0-9a-f]{64}\.(?:npz|html)|report\.html)$")
 _UINT64_MAX = (1 << 64) - 1
 # Trace creation leaves this amount unconsumed for publication.  The receipt
 # itself is much smaller in normal operation; reserve a separate conservative

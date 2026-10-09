@@ -48,13 +48,15 @@ function spec(){
   const result=structuredClone(defaults);
   result.name=value('name');result.description=value('description');result.n=numeric('n');result.initial_side=numeric('initial_side');result.device=value('device');result.batch_capacity=numeric('batch_capacity');
   result.search.methods=value('method')==='both'?capabilities.methods:value('method')==='fixed'?[]:[value('method')];
-  result.search.seed=value('search_seed');result.search.candidate_budget_per_method=numeric('candidate_budget');result.search.initial_pool=numeric('initial_pool');result.search.lambda=numeric('lambda');
+  result.search.seed=value('search_seed');const byTime=value('stop_rule')==='time';
+  result.search.time_budget_seconds=byTime?numeric('time_budget'):null;result.search.candidate_budget_per_method=byTime?1000000:numeric('candidate_budget');result.search.initial_pool=numeric('initial_pool');result.search.lambda=numeric('lambda');
   result.datasets.initializer_seed=value('initializer_seed');result.datasets.training={first_id:value('training_first_id'),valid_count:numeric('training_count')};result.datasets.holdout={first_id:value('holdout_first_id'),valid_count:numeric('holdout_count')};result.operator_seed=value('operator_seed');result.operator_replicates=numeric('replicates');
   result.controls=[...(checked('legacy_control')?['legacy_compress']:[]),...(checked('pulse_control')?['pulse_rotate']:[])];
   result.fixed_programs=value('method')==='fixed'?[fixedDraft||capabilities.controls[value('fixed_control')]]:[];
   result.work_limits={dispatches:numeric('dispatches'),compression_attempts:numeric('attempts'),contact_sweeps:numeric('sweeps'),constraint_visits:value('visits')?numeric('visits'):null};
   result.recording={...result.recording,automatic:checked('automatic_replays'),mode:value('recording_mode'),max_traces:numeric('max_traces'),max_frames_per_trace:numeric('max_frames'),max_trace_mib:numeric('trace_mib')};
-  result.limits={max_seconds:numeric('max_seconds'),max_artifact_mib:numeric('artifact_mib')};result.publication.enabled=checked('publication');result.slice_sweeps=numeric('slice_sweeps');result.slice_dispatches=numeric('slice_dispatches');
+  result.pose_evidence=value('pose_evidence');
+  result.limits={max_seconds:byTime?Math.max(numeric('max_seconds'),numeric('time_budget')+600):numeric('max_seconds'),max_artifact_mib:numeric('artifact_mib')};result.publication.enabled=checked('publication');result.slice_sweeps=numeric('slice_sweeps');result.slice_dispatches=numeric('slice_dispatches');
   result.thresholds=value('thresholds').trim()?value('thresholds').split(',').map(Number):[];
   for(const name of ['min_nodes','max_nodes','repeat_probability','condition_probability','attempt_min','attempt_max','sweep_min','sweep_max'])result.generation[name]=numeric(name);
   for(const op of Object.keys(result.generation.weights))result.generation.weights[op]=numeric('weight_'+op);
@@ -64,11 +66,10 @@ function spec(){
   return result;
 }
 function plan(){
-  const data=spec(),candidateCount=data.search.methods.length*data.search.candidate_budget_per_method,fixed=data.controls.length+data.fixed_programs.length;
-  const episodes=(candidateCount+fixed)*data.datasets.training.valid_count*data.operator_replicates;
-  const holdout=(data.search.methods.length+fixed)*data.datasets.holdout.valid_count*data.operator_replicates;
-  const bytes=(episodes+holdout)*(24*data.n+512);
-  document.getElementById('plan-summary').textContent=`${candidateCount} new candidate evaluations; ${episodes} logical training episodes; up to ${holdout} holdout episodes after winners are frozen. Approximate native evidence ${(bytes/1048576).toFixed(2)} MiB, plus reports/replays within declared quotas. Maximum ${data.limits.max_seconds} execution seconds. Automatic replay cap ${data.recording.automatic?data.recording.max_traces:0}. No unmeasured time forecast.`;
+  const data=spec(),fixed=data.controls.length+data.fixed_programs.length,methods=data.search.methods.length;
+  const perProgram=data.datasets.training.valid_count*data.operator_replicates,lambda=data.search.lambda||Math.max(1,Math.floor(data.batch_capacity/perProgram));
+  const stop=data.search.time_budget_seconds?`Search for ${duration(data.search.time_budget_seconds)} (${methods>1?`${duration(data.search.time_budget_seconds/methods)} per method`:'one method'})`:`Search until ${data.search.candidate_budget_per_method} programs per method`;
+  document.getElementById('plan-summary').textContent=`${stop}, then holdout on ${data.datasets.holdout.valid_count} untouched starts. Each program runs on ${perProgram} training starts; (1 + λ) uses λ = ${lambda}, random search evaluates up to ${Math.max(lambda,Math.floor(data.batch_capacity/perProgram))} programs per GPU batch. ${fixed} fixed control(s). Hard stop after ${duration(data.limits.max_seconds)}. Exact poses: ${data.pose_evidence==='important'?'controls, improvements and the best 50 per method':'every program'}.`;
   return data;
 }
 async function catalog(){
@@ -96,6 +97,7 @@ async function inspect(candidate){
     const cell=element('td'),button=element('button','Replay');button.title='Queue a recorded geometric replay of this episode';
     button.addEventListener('click',async()=>{try{const queued=await api(`/campaigns/${selectedId}/replays`,{method:'POST',body:{candidate_id:candidate.id,episode_key:episode.episode_key,mode:'accepted',max_frames:256,max_mib:10}});button.textContent=queued.state==='QUEUED'?'Queued':queued.state.toLowerCase();button.disabled=true;}catch(e){fail(e.message);}});
     cell.append(button);row.append(start,element('td',number(episode.best_L),'num'),element('td',number(episode.current_L),'num'),status,cell);body.append(row);}
+  if(!episodes.items.length){target.append(element('p','Exact poses were not kept for this program: only controls, improvements and the best 50 programs per method keep them. Its score still covers every episode, each validated on the CPU.','muted'));return;}
   target.append(table);
   if(episodes.total>episodes.items.length)target.append(element('p',`Showing ${episodes.items.length} of ${episodes.total} episodes.`,'muted'));
 }
@@ -116,17 +118,18 @@ async function programs(){
   document.getElementById('program-page').textContent=page.total?`${programOffset+1}–${Math.min(programOffset+PAGE,page.total)} of ${page.total}`:'none yet';
   for(const button of document.querySelectorAll('.pager button'))button.disabled=Number(button.dataset.pages)<0||button.id==='program-first'?programOffset===0:programOffset>=last;
   const comparison=await api(`/campaigns/${selectedId}/comparison`),key=document.getElementById('live-curve-axis').value;
-  const points=[],counts={},work={},incumbent={};
-  const ordered=[...comparison.candidates].sort((a,b)=>(a.completed_at??Infinity)-(b.completed_at??Infinity));
-  for(const candidate of ordered){if(['controls','fixed'].includes(candidate.arm))continue;counts[candidate.arm]=(counts[candidate.arm]||0)+(candidate.score.complete?1:0);work[candidate.arm]=(work[candidate.arm]||0)+(candidate.score.total_charged_work||0);if(candidate.score.eligible){incumbent[candidate.arm]=Math.min(incumbent[candidate.arm]??Infinity,candidate.score.mean_best_L);points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?counts[candidate.arm]:key==='work'?work[candidate.arm]:candidate.arm_execution_elapsed_seconds,y:incumbent[candidate.arm]});}}
-  const names=Object.fromEntries(currentCandidates.map(item=>[item.id,item.program?.authored?.name]));
+  // The server returns only improvements with their positions, plus per-method totals for the axis length.
+  const points=[];
+  for(const candidate of comparison.candidates){if(['controls','fixed'].includes(candidate.arm))continue;
+    points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?candidate.x_evaluations:key==='work'?candidate.x_work:candidate.x_time,y:candidate.score.mean_best_L});}
+  const xTotal=Math.max(1,...Object.values(comparison.totals||{}).map(total=>key==='evaluations'?total.evaluations:key==='work'?total.work:total.time));
   const known=bestKnown?.entries.find(entry=>entry.n===selectedCampaign.spec.n),source=bestKnown?.source;
   const note=document.getElementById('best-known-source');note.textContent=known?`Best known upper bound s(${known.n}) ≤ ${known.printed}${known.author?` — ${known.author}`:''}${known.optimal_in_source?' (proved optimal there)':''}. Source: ${source.author}, “${source.title}”, ${source.citation}, Table 1. Display only; never used by the search.`:'';
-  const references=comparison.candidates.filter(item=>['controls','fixed'].includes(item.arm)&&item.score?.eligible).map(item=>({label:(names[item.id]||`${item.arm} #${item.position}`).replaceAll('_',' '),value:item.score.mean_best_L}));
+  const references=comparison.candidates.filter(item=>['controls','fixed'].includes(item.arm)&&item.score?.eligible).map(item=>({label:(item.name||`${item.arm} #${item.position}`).replaceAll('_',' '),value:item.score.mean_best_L}));
   if(known)references.push({label:`best known (${source.revision_year})`,value:known.upper_bound,kind:'best-known'});
   const inherited=summary=>summary?.continuation?.inherited_candidates;
   const marker=key==='evaluations'&&inherited(selectedCampaign.summary)?{x:inherited(selectedCampaign.summary)/selectedCampaign.spec.search.methods.length,label:'continuation starts'}:null;
-  chartArgs=[points,{marker,xLabel:key==='evaluations'?'Completed candidates per method':key==='work'?'Charged work per method':'Method execution time (s)',references,onSelect:async point=>inspect(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(point.candidate_id)}`))}];
+  chartArgs=[points,{xMax:xTotal,marker,xLabel:key==='evaluations'?'Completed candidates per method':key==='work'?'Charged work per method':'Method execution time (s)',references,onSelect:async point=>inspect(await api(`/campaigns/${selectedId}/candidate/${encodeURIComponent(point.candidate_id)}`))}];
   curve(document.getElementById('live-curve'),...chartArgs);
 }
 async function history(){
@@ -160,7 +163,7 @@ async function refresh(){
   if(spec.continuation_of){const link=element('a','the previous campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
   const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
-  for(const [label,text] of [['Programs tried / candidate budget',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)],['Speed',speed(spec,summary)]]){const box=element('div',undefined,'metric'),[main,...detail]=text.split('\n');box.append(element('small',label),element('strong',main));if(detail.length)box.append(element('small',detail.join(' ')));metrics.append(box);}
+  for(const [label,text] of [[spec.search.time_budget_seconds?'Programs tried':'Programs tried / candidate budget',spec.search.time_budget_seconds?String(summary.completed_candidates||0):`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)],['Speed',speed(spec,summary)]]){const box=element('div',undefined,'metric'),[main,...detail]=text.split('\n');box.append(element('small',label),element('strong',main));if(detail.length)box.append(element('small',detail.join(' ')));metrics.append(box);}
   const active=ACTIVE.includes(state),plan=plannedEpisodes(spec),done=summary.completed_episode_executions||0;
   const activity=document.getElementById('campaign-activity');activity.dataset.active=String(active);
   const searching=spec.search.methods.includes(summary.arm);
@@ -169,10 +172,11 @@ async function refresh(){
     :state==='PARTIAL'?`Stopped before completion (${{USER_STOP:'stopped by user',EXECUTION_DEADLINE:'execution time limit reached'}[summary.stop_reason]||'stopped'}); completed results are kept`
     :state==='PAUSED'?'Paused; Resume continues from the last finished group'
     :`${state==='FAILED'?'Failed':'Interrupted'}${summary.error?': '+summary.error:''}`;
-  const fraction=state==='COMPLETED'?1:Math.min(1,done/Math.max(1,plan));
+  const timed=spec.search.time_budget_seconds,seconds=summary.elapsed_execution_seconds||0;
+  const fraction=state==='COMPLETED'?1:timed?Math.min(1,seconds/timed):Math.min(1,done/Math.max(1,plan));
   document.getElementById('campaign-progress-bar').style.width=`${(fraction*100).toFixed(1)}%`;
   document.querySelector('.activity .progress').setAttribute('aria-valuenow',String(Math.round(fraction*100)));
-  document.getElementById('campaign-progress-label').textContent=`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
+  document.getElementById('campaign-progress-label').textContent=timed&&state!=='COMPLETED'?`${duration(Math.min(seconds,timed))} of ${duration(timed)} search time · ${done} scientific episodes${seconds>=timed?' · holdout and replays':''}`:`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
   lastUpdate=Date.now();freshness();
   const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
   const line=document.getElementById('campaign-provenance');
@@ -196,7 +200,9 @@ async function openCampaign(identifier){
   stream.addEventListener('progress',event=>{const id=BigInt(event.lastEventId||'0');if(id<=last)return;last=id;if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;refresh().catch(e=>fail(e.message));},700);});
   stream.addEventListener('reset',()=>{last=0n;refresh().catch(e=>fail(e.message));});
 }
-function create(){if(stream)stream.close();selectedId=null;location.hash='';view('create');for(const input of form.querySelectorAll('input[data-step]'))stepperState(input);plan();}
+function stopRule(){for(const label of form.querySelectorAll('[data-stop]'))label.hidden=label.dataset.stop!==value('stop_rule');}
+field('stop_rule').addEventListener('change',()=>{stopRule();plan();});
+function create(){stopRule();if(stream)stream.close();selectedId=null;location.hash='';view('create');for(const input of form.querySelectorAll('input[data-step]'))stepperState(input);plan();}
 for(const name of ['pause','resume','stop'])document.getElementById(name+'-campaign').addEventListener('click',async()=>{try{await api(`/campaigns/${selectedId}/${name}`,{method:'POST'});await refresh();}catch(e){fail(e.message);}});
 document.getElementById('new-campaign').addEventListener('click',create);document.getElementById('cancel-create').addEventListener('click',()=>{view('catalog');catalog();});document.getElementById('back-catalog').addEventListener('click',()=>{if(stream)stream.close();selectedId=null;location.hash='';view('catalog');catalog();});
 document.getElementById('review-plan').addEventListener('click',()=>{try{plan();}catch(e){fail(e.message);}});
@@ -242,9 +248,11 @@ document.addEventListener('input',event=>{
   else input.dataset.previous=input.value;
 });
 const continueForm=document.getElementById('continue-form');
+function continueRule(){const rule=continueForm.elements.namedItem('continue_rule').value;for(const label of continueForm.querySelectorAll('[data-continue]'))label.hidden=label.dataset.continue!==rule;}
+continueForm.elements.namedItem('continue_rule').addEventListener('change',continueRule);
 document.getElementById('continue-campaign').addEventListener('click',()=>{
   const {spec}=selectedCampaign,f=continueForm.elements;
-  f.namedItem('additional').value=String(spec.search.candidate_budget_per_method);const {base,depth}=lineage(spec.name);f.namedItem('name').value=`${base.slice(0,130)} · continuation ${depth+1}`;
+  f.namedItem('additional').value='1000';f.namedItem('continue_rule').value='time';f.namedItem('continue_time').value=String(spec.search.time_budget_seconds||300);continueRule();const {base,depth}=lineage(spec.name);f.namedItem('name').value=`${base.slice(0,130)} · continuation ${depth+1}`;
   f.namedItem('device').replaceChildren(...inventory.items.map(item=>{const option=element('option',`${item.name} · ${item.device}`);option.value=item.device;return option;}));f.namedItem('device').value=spec.device;
   f.namedItem('batch_capacity').value=String(spec.batch_capacity);f.namedItem('max_seconds').value=String(spec.limits.max_seconds);f.namedItem('max_artifact_mib').value=String(spec.limits.max_artifact_mib);
   f.namedItem('automatic_replays').checked=spec.recording.automatic;f.namedItem('publication').checked=spec.publication.enabled;
@@ -253,7 +261,7 @@ document.getElementById('continue-campaign').addEventListener('click',()=>{
   continueForm.hidden=false;f.namedItem('additional').focus();});
 document.getElementById('cancel-continue').addEventListener('click',()=>{continueForm.hidden=true;});
 continueForm.addEventListener('submit',async event=>{event.preventDefault();const f=continueForm.elements,button=continueForm.querySelector('[type=submit]');button.disabled=true;
-  try{const created=await api(`/campaigns/${selectedId}/continue`,{method:'POST',body:{additional_candidates_per_method:Number(f.namedItem('additional').value),name:f.namedItem('name').value,device:f.namedItem('device').value,batch_capacity:Number(f.namedItem('batch_capacity').value),max_seconds:Number(f.namedItem('max_seconds').value),max_artifact_mib:Number(f.namedItem('max_artifact_mib').value),automatic_replays:f.namedItem('automatic_replays').checked,publication:f.namedItem('publication').checked}});
+  try{const created=await api(`/campaigns/${selectedId}/continue`,{method:'POST',body:{...(f.namedItem('continue_rule').value==='time'?{additional_candidates_per_method:1000000,time_budget_seconds:Number(f.namedItem('continue_time').value)}:{additional_candidates_per_method:Number(f.namedItem('additional').value)}),name:f.namedItem('name').value,device:f.namedItem('device').value,batch_capacity:Number(f.namedItem('batch_capacity').value),max_seconds:Number(f.namedItem('max_seconds').value),max_artifact_mib:Number(f.namedItem('max_artifact_mib').value),automatic_replays:f.namedItem('automatic_replays').checked,publication:f.namedItem('publication').checked}});
     continueForm.hidden=true;await openCampaign(created.id);}catch(e){fail(e.message);}finally{button.disabled=false;}});
 document.getElementById('clone-program').addEventListener('click',()=>{fixedDraft=structuredClone(selectedProgram.program.authored);field('method').value='fixed';field('name').value=(fixedDraft.name||'Inspected strategy')+' evaluation';field('fixed_control').querySelector('[value=cloned]').disabled=false;field('fixed_control').value='cloned';field('legacy_control').checked=false;field('pulse_control').checked=false;create();});
 field('fixed_control').addEventListener('change',()=>{fixedDraft=null;});

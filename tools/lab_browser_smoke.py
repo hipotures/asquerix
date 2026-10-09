@@ -157,6 +157,7 @@ def run(url, output, screenshots, old_trajectory, old_npz):
                 cdp.evaluate("""(() => { const f=document.getElementById('campaign-form');
                     for (const [name,value] of Object.entries(""" + json.dumps(settings) + """)) f.elements.namedItem(name).value=String(value);
                     f.elements.namedItem('method').value='both';
+                    f.elements.namedItem('stop_rule').value='programs';f.elements.namedItem('stop_rule').dispatchEvent(new Event('change'));
                     f.elements.namedItem('publication').checked=false;
                     f.elements.namedItem('legacy_control').checked=true;
                     f.elements.namedItem('pulse_control').checked=true;

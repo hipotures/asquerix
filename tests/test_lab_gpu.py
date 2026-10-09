@@ -279,13 +279,20 @@ def test_continuation_reproduces_a_single_campaign_with_the_larger_budget(cuda_d
     assert summary["state"] == "COMPLETED"
     assert summary["continuation"]["parent_id"] == "a" * 32
     assert summary["continuation"]["inherited_episode_executions"] == parent_summary["completed_episode_executions"]
+    def programs(identifier, method):
+        records = {}
+        for record in read_jsonl_all(tmp_path / "campaigns" / identifier / "candidates.jsonl.gz"):
+            if record["arm"] == method and "score" in record and record["score"]:
+                records[record["id"]] = record
+        return sorted(records.values(), key=lambda record: record["position"])
     for method in ("random_program_search", "one_plus_lambda"):
         continued, reference = state["controllers"][method], single["controllers"][method]
         assert continued["completed"] == reference["completed"] == 4
-        assert [c["program"]["hash"] for c in continued["candidates"]] == [c["program"]["hash"] for c in reference["candidates"]]
-        assert [c["score"]["ranking_tuple"] for c in continued["candidates"]] == [c["score"]["ranking_tuple"] for c in reference["candidates"]]
+        child, alone = programs("b" * 32, method), programs("c" * 32, method)
+        assert [c["program"]["hash"] for c in child] == [c["program"]["hash"] for c in alone]
+        assert [c["score"]["ranking_tuple"] for c in child] == [c["score"]["ranking_tuple"] for c in alone]
         assert continued["rng_state"] == reference["rng_state"]
-        assert continued["candidates"][0]["id"].startswith("a" * 32) and continued["candidates"][-1]["id"].startswith("b" * 32)
+        assert child[0]["id"].startswith("a" * 32) and child[-1]["id"].startswith("b" * 32)
     # Only new episodes are executed; the inherited control holdout is not repeated.
     new_episodes = summary["completed_episode_executions"] - summary["continuation"]["inherited_episode_executions"]
     holdout_runs = sum(1 for message in messages if message["type"] == "candidate" and "holdout_score" in message["candidate"]
@@ -323,3 +330,60 @@ def test_parallel_validation_returns_the_serial_rows_and_holdout_is_not_repeated
     keys = [(row["candidate_id"], row["episode_key"]) for chunk in state["chunks"]
             for row in __import__("asquerix.persistence", fromlist=["read_jsonl"]).read_jsonl(tmp_path / "campaigns" / ("e" * 32) / chunk["records_path"])]
     assert len(keys) == len(set(keys)), "an episode was evaluated twice"
+
+
+@pytest.mark.parametrize("evidence", ["all", "important"])
+def test_search_reproduces_the_recorded_golden_programs_and_scores(cuda_device, tmp_path, evidence):
+    """Grouping and storage changes must not change which programs are tried or how they score."""
+    import json
+    golden = json.loads((Path(__file__).parent / "data" / "lab_search_golden.json").read_text())
+    spec = Campaign.model_validate({**golden["spec"], "pose_evidence": evidence})
+    _, state, _ = _run_worker(tmp_path, "f" * 32, spec)
+    log = {}
+    for record in read_jsonl_all(tmp_path / "campaigns" / ("f" * 32) / "candidates.jsonl.gz"):
+        log.setdefault(record["id"], {}).update(record)
+    for method in ("random_program_search", "one_plus_lambda"):
+        records = sorted((record for record in log.values() if record["arm"] == method), key=lambda record: record["position"])
+        assert [(r["position"], r["program"]["hash"], r["score"]["ranking_tuple"], r["score"]["mean_best_L"]) for r in records] == \
+               [(g["position"], g["program_hash"], g["ranking_tuple"], g["mean_best_L"]) for g in golden[method]]
+    winners = sorted((w["arm"], w["program"]["hash"], w["score"]["ranking_tuple"]) for w in state["frozen_winners"])
+    assert [list(w) for w in winners] == golden["winners"]
+    holdout = sorted((c["id"].split(":", 1)[1], c["holdout_score"]["mean_best_L"]) for c in state["candidates"] if c.get("holdout_score"))
+    assert [list(h) for h in holdout] == golden["holdout"]
+
+
+def read_jsonl_all(path):
+    from asquerix.persistence import read_jsonl
+    return list(read_jsonl(path))
+
+
+def test_time_budget_fills_the_gpu_keeps_important_evidence_and_still_runs_holdout(cuda_device, tmp_path):
+    from asquerix.lab.config import RETAINED_PER_METHOD
+    spec = Campaign(name="Timed", n=4, batch_capacity=256, controls=["legacy_compress"], pose_evidence="important",
+                    search={"candidate_budget_per_method": 1_000_000, "initial_pool": 2, "lambda": 0, "time_budget_seconds": 8},
+                    datasets={"training": {"first_id": "100", "valid_count": 4}, "holdout": {"first_id": "200", "valid_count": 2}},
+                    generation={"min_nodes": 2, "max_nodes": 4}, recording={"automatic": False}, publication={"enabled": False},
+                    limits={"max_seconds": 120})
+    assert spec.effective_lambda() == 64 and spec.random_group_size() == 64
+    summary, state, messages = _run_worker(tmp_path, "9" * 32, spec)
+    assert summary["state"] == "COMPLETED" and summary["stop_reason"] is None
+    assert {state["outcome"] for state in summary["controllers"].values()} == {"TIME_BUDGET_REACHED"}
+    events = [message["payload"] for message in messages if message["type"] == "event" and message["kind"] == "TIME_BUDGET_REACHED"]
+    assert len(events) == 2 and all(4 <= event["seconds"] < 30 for event in events)
+    log = {}
+    for record in read_jsonl_all(tmp_path / "campaigns" / ("9" * 32) / "candidates.jsonl.gz"):
+        log.setdefault(record["id"], {}).update(record)
+    searched = [record for record in log.values() if record["arm"] != "controls"]
+    assert summary["evaluated_programs"] == len(searched) > 2 * 2 * RETAINED_PER_METHOD
+    assert all(record["score"]["complete"] and record["score"]["validation_counts"] for record in searched)
+    tops = summary["top_evidence"]
+    rows = [row for chunk in state["chunks"] + tops for row in read_jsonl_all(tmp_path / "campaigns" / ("9" * 32) / chunk["records_path"])]
+    for top in tops:  # each method's file holds exactly its best programs
+        arm = [record for record in searched if record["arm"] == top["arm"] and record["score"]["eligible"]]
+        best = sorted(arm, key=lambda record: tuple(record["score"]["ranking_tuple"]))[:RETAINED_PER_METHOD]
+        assert top["programs"] == [record["id"] for record in best]
+    with_poses = {row["candidate_id"] for row in rows if row["bank"] == "training"}
+    print("searched", len(searched), "with poses", len(with_poses), {arm: sum(r["arm"] == arm for r in searched) for arm in ("random_program_search", "one_plus_lambda")}, {arm: sum(i.split(":")[1] == arm for i in with_poses) for arm in ("random_program_search", "one_plus_lambda")})
+    assert len(with_poses) < 3 * RETAINED_PER_METHOD < len(searched)
+    winners = {winner["id"] for winner in state["frozen_winners"]}
+    assert winners <= with_poses and all(candidate.get("holdout_score") for candidate in state["candidates"] if candidate["id"] in winners)

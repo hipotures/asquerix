@@ -73,7 +73,13 @@ def generate(directory: Path, events: list[dict], *, campaign=None) -> dict:
         item = dict(replay)
         item["html"] = (directory / next(artifact["path"] for artifact in replay["artifacts"] if artifact["path"].endswith(".html"))).read_text()
         replays.append(item)
-    data = {"campaign": manifest, "summary": summary, "programs": programs, "events": events, "replays": replays, "paired": paired}
+    # The full history is in events.jsonl.gz; the page embeds semantic events and those about kept programs.
+    kept = {program["id"] for program in programs}
+    per_program = {"CANDIDATE_GENERATED", "CANDIDATE_RESULT", "PROPOSAL_REJECTED", "PROPOSAL_DUPLICATE", "TASK_GROUP_STARTED", "TASK_GROUP_COMPLETED", "STATE"}
+    shown = [event for event in events if event["kind"] not in per_program
+             or (event["payload"].get("candidate_id") or event["payload"].get("id")) in kept][-5000:]
+    data = {"campaign": manifest, "summary": summary, "programs": programs, "events": shown, "replays": replays, "paired": paired,
+            "events_total": len(events)}
     name = html.escape(manifest["spec"]["name"])
     payload = _json_for_script(data)
     document = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{name} — Asquerix</title><style>{(STATIC / "style.css").read_text()}</style></head><body>

@@ -71,7 +71,8 @@ class PowerLimit(Model):
 
 
 class ContinueRequest(Model):
-    additional_candidates_per_method: Annotated[int, Field(ge=1, le=1024)]
+    additional_candidates_per_method: Annotated[int, Field(ge=1, le=1_000_000)]
+    time_budget_seconds: Annotated[float, Field(gt=0, le=86400)] | None = None
     name: Annotated[str, Field(min_length=1, max_length=160)] | None = None
     description: Annotated[str, Field(max_length=2000)] | None = None
     device: Annotated[str, Field(pattern=r"^cuda:[0-9]{1,2}$")] | None = None
@@ -234,7 +235,7 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
         values = request.model_dump(exclude_none=True)
         additional = values.pop("additional_candidates_per_method")
         overrides = {key: values.pop(key) for key in ("name", "description", "device", "batch_capacity",
-                                                      "slice_sweeps", "slice_dispatches") if key in values}
+                                                      "slice_sweeps", "slice_dispatches", "time_budget_seconds") if key in values}
         limits = {key: values.pop(key) for key in ("max_seconds", "max_artifact_mib") if key in values}
         if limits:
             overrides["limits"] = limits

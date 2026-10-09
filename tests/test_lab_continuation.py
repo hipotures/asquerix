@@ -31,7 +31,7 @@ def test_comparability_settings_are_locked(field):
 def test_needs_search_methods_and_a_positive_budget():
     with pytest.raises(ValueError, match="no search method"):
         continuation_spec(parent(search={"methods": []}), 1, {})
-    with pytest.raises(ValueError, match="between 1 and 1024"):
+    with pytest.raises(ValueError, match="between 1 and 1,000,000"):
         continuation_spec(parent(), 0, {})
 
 

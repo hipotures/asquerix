@@ -238,46 +238,61 @@ class Catalog:
         return json.loads(row[0])
 
     def comparison(self, campaign_id: str) -> dict:
+        """Search progress for the chart: controls, and each method's improvements with their x positions.
+
+        Only improving candidates are returned, so the page stays light however many programs were tried.
+        """
         self.get(campaign_id)
         with self.lock:
             rows = self.db.execute("SELECT document FROM candidates WHERE campaign_id=?", (campaign_id,)).fetchall()
-        candidates = [json.loads(row[0]) for row in rows]
+        candidates = sorted((json.loads(row[0]) for row in rows), key=lambda item: (item.get("completed_at", 0), item["arm"], item["position"]))
         fields = ("id", "arm", "position", "score", "holdout_score", "completed_at", "execution_elapsed_seconds", "arm_execution_elapsed_seconds")
-        return {"candidates": [{key: candidate.get(key, {} if key.endswith("score") else 0) for key in fields}
-                               for candidate in sorted(candidates, key=lambda item: (item.get("completed_at", 0), item["arm"], item["position"]))],
+        result, totals, best = [], {}, {}
+        for candidate in candidates:
+            arm, score = candidate["arm"], candidate.get("score") or {}
+            slim = {key: candidate.get(key, {} if key.endswith("score") else 0) for key in fields}
+            if arm in ("controls", "fixed"):
+                result.append({**slim, "name": candidate["program"]["authored"].get("name")})
+                continue
+            total = totals.setdefault(arm, {"evaluations": 0, "work": 0, "time": 0.0})
+            total["evaluations"] += 1 if score.get("complete") else 0
+            total["work"] += score.get("total_charged_work") or 0
+            total["time"] = max(total["time"], candidate.get("arm_execution_elapsed_seconds") or 0.0)
+            if score.get("eligible") and (arm not in best or score["mean_best_L"] < best[arm]):
+                best[arm] = score["mean_best_L"]
+                result.append({**slim, "x_evaluations": total["evaluations"], "x_work": total["work"], "x_time": total["time"]})
+        return {"candidates": result, "totals": totals,
                 "warning": "Equal candidate counts do not imply equal work. Mixed batch GPU times are not isolated program costs."}
 
     def history_state(self, campaign_id: str, index: int) -> dict:
+        """The selected event with its program and the search state at that moment, without replaying history."""
         self.get(campaign_id)
         with self.lock:
             selected = self.db.execute("SELECT * FROM events WHERE campaign_id=? ORDER BY id LIMIT 1 OFFSET ?", (campaign_id, index)).fetchone()
             if selected is None:
                 raise KeyError("Unknown history index")
-            cursor = self.db.execute("SELECT * FROM events WHERE campaign_id=? AND id<=? ORDER BY id", (campaign_id, selected["id"]))
-            candidates, parent_id = {}, None
-            while True:
-                page = cursor.fetchmany(100)
-                if not page:
-                    break
-                for row in page:
-                    payload = json.loads(row["payload"])
-                    if row["kind"] == "CANDIDATE_GENERATED":
-                        candidates[payload["id"]] = payload
-                    elif row["kind"] in ("CANDIDATE_RESULT", "HOLDOUT_RESULT") and payload["candidate_id"] in candidates:
-                        candidate = candidates[payload["candidate_id"]]
-                        candidate["score" if payload["bank"] == "training" else "holdout_score"] = payload["score"]
-                        candidate["state"] = "EVALUATED" if payload["score"]["complete"] else "INCOMPLETE"
-                    elif row["kind"] in ("PARENT_SELECTION", "INCUMBENT_SELECTION"):
-                        parent_id = payload["parent_id"]
+            selection = self.db.execute("SELECT payload FROM events WHERE campaign_id=? AND id<=? AND kind IN ('PARENT_SELECTION','INCUMBENT_SELECTION') "
+                                        "ORDER BY id DESC LIMIT 1", (campaign_id, selected["id"])).fetchone()
+            completed = self.db.execute("SELECT count(*) FROM events WHERE campaign_id=? AND id<=? AND kind='CANDIDATE_RESULT' "
+                                        "AND json_extract(payload,'$.score.complete')", (campaign_id, selected["id"])).fetchone()[0]
+        parent_id = json.loads(selection[0])["parent_id"] if selection else None
         event = {"id": str(selected["id"]), "kind": selected["kind"], "created": selected["created"], "payload": json.loads(selected["payload"])}
         payload = event["payload"]
         candidate_id = payload.get("candidate_id") or payload.get("parent_id") or (payload.get("id") if event["kind"] == "CANDIDATE_GENERATED" else parent_id)
-        candidate = candidates.get(candidate_id)
+        lookup = lambda identifier: self._candidate_or_none(campaign_id, identifier)
+        candidate = lookup(candidate_id) if candidate_id else None
         related = [candidate] if candidate else []
-        if candidate and candidate.get("parent_id") in candidates:
-            related.append(candidates[candidate["parent_id"]])
-        return {"event": event, "candidate": candidate, "candidates": related, "parent_id": parent_id,
-                "completed_candidates": sum(bool(item.get("score", {}).get("complete")) for item in candidates.values())}
+        if candidate and candidate.get("parent_id"):
+            parent = lookup(candidate["parent_id"])
+            if parent:
+                related.append(parent)
+        return {"event": event, "candidate": candidate, "candidates": related, "parent_id": parent_id, "completed_candidates": completed}
+
+    def _candidate_or_none(self, campaign_id: str, identifier: str) -> dict | None:
+        try:
+            return self.get_candidate(campaign_id, identifier)
+        except KeyError:
+            return None
 
     # Lower side L is better; incomplete or ineligible candidates sort after the ranked ones.
     CANDIDATE_ORDER = {

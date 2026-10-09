@@ -144,7 +144,12 @@ def initial_pool(campaign: Campaign, *, event=lambda kind, payload: None) -> lis
 
 
 class Controller:
-    """A group barrier prevents GPU completion order from influencing selection."""
+    """A group barrier prevents GPU completion order from influencing selection.
+
+    The controller keeps only what the search needs: the candidate count, the current incumbent or
+    parent, the pending group and the hashes already proposed. Evaluated candidates are stored by the
+    worker, so the checkpoint stays small however many programs a search tries.
+    """
 
     def __init__(self, campaign: Campaign, method: str, shared_pool: list[dict], campaign_id: str,
                  *, state: dict | None = None, event=lambda kind, payload: None):
@@ -154,58 +159,67 @@ class Controller:
         self.event = event
         stream = int.from_bytes(hashlib.sha256(method.encode()).digest()[:8], "little")
         self.rng = random.Random(int(campaign.search.seed) ^ stream)
-        self.candidates, self.pending, self.seen = [], [], set()
-        self.parent_id, self.generation, self.completed, self.cache_hits = None, 0, 0, 0
+        self.count, self.pending, self.seen, self.parent = 0, [], set(), None
+        self.generation, self.completed, self.cache_hits = 0, 0, 0
         self.outcome, self.proposal_count = "RUNNING", 0
         if state is not None:
-            if state["method"] != method:
-                raise ValueError("Controller checkpoint method mismatch")
+            if state["method"] != method or state.get("schema") != "asquerix-search-controller-v2":
+                raise ValueError("Controller checkpoint method or schema mismatch")
             random_state = state["rng_state"]
             self.rng.setstate((random_state[0], tuple(random_state[1]), random_state[2]))
-            self.candidates = copy.deepcopy(state["candidates"])
-            self.pending = list(state["pending"])
+            self.pending = copy.deepcopy(state["pending"])
+            self.parent = copy.deepcopy(state["parent"])
             self.seen = set(state["seen"])
-            for field in ("parent_id", "generation", "completed", "cache_hits", "outcome", "proposal_count"):
+            for field in ("count", "generation", "completed", "cache_hits", "outcome", "proposal_count"):
                 setattr(self, field, state[field])
 
+    @property
+    def parent_id(self) -> str | None:
+        return self.parent["id"] if self.parent else None
+
     def checkpoint(self) -> dict:
-        return {"schema": "asquerix-search-controller-v1", "method": self.method,
-                "rng_state": self.rng.getstate(), "candidates": self.candidates,
-                "pending": self.pending, "seen": sorted(self.seen), "parent_id": self.parent_id,
+        return {"schema": "asquerix-search-controller-v2", "method": self.method,
+                "rng_state": self.rng.getstate(), "count": self.count, "pending": self.pending,
+                "parent": self.parent, "seen": sorted(self.seen), "parent_id": self.parent_id,
                 "generation": self.generation, "completed": self.completed, "cache_hits": self.cache_hits,
                 "outcome": self.outcome, "proposal_count": self.proposal_count}
 
     def _candidate(self, program: dict, *, mutation=None, parent=None, origin="independent_generation") -> dict:
-        position = len(self.candidates)
+        position = self.count
         candidate = {"id": f"{self.campaign_id}:{self.method}:{position}", "arm": self.method,
                      "position": position, "generation": self.generation, "program": program,
                      "parent_id": parent["id"] if parent else None,
                      "parent_hash": parent["program"]["hash"] if parent else None,
                      "mutation": mutation, "origin": origin, "state": "PENDING", "score": {}}
+        self.count += 1
         self.seen.add(program["hash"])
-        self.candidates.append(candidate)
-        self.pending.append(candidate["id"])
-        self.event("CANDIDATE_GENERATED", candidate)
+        self.pending.append(candidate)
+        # The program text is stored with the candidate; the event carries its identity only.
+        self.event("CANDIDATE_GENERATED", {key: candidate[key] for key in ("id", "arm", "position", "generation", "parent_id",
+                                                                             "parent_hash", "mutation", "origin")}
+                   | {"program_hash": program["hash"]})
         return candidate
 
     def ask(self) -> list[dict]:
         if self.pending:
-            return [candidate for candidate in self.candidates if candidate["id"] in self.pending]
-        remaining = self.campaign.search.candidate_budget_per_method - len(self.candidates)
+            return list(self.pending)
+        remaining = self.campaign.search.candidate_budget_per_method - self.count
         if remaining <= 0:
             self.outcome = "CANDIDATE_BUDGET_REACHED"
             return []
         if self.outcome != "RUNNING":
             return []
-        if not self.candidates:
+        if not self.count:
             return [self._candidate(program, origin="shared_initial_pool") for program in self.shared_pool[:remaining]]
         self.generation += 1
-        parent = next((candidate for candidate in self.candidates if candidate["id"] == self.parent_id), None)
+        parent = self.parent
         if self.method == "one_plus_lambda" and parent is None:
             self.outcome = "NO_ELIGIBLE_INITIAL_PARENT"
             return []
+        # Mutation generations have lambda offspring; independent programs fill the batch capacity.
+        size = self.campaign.effective_lambda() if self.method == "one_plus_lambda" else self.campaign.random_group_size()
         group = []
-        for _ in range(min(self.campaign.search.lambda_, remaining)):
+        for _ in range(min(size, remaining)):
             for retry in range(self.campaign.generation.proposal_retries):
                 self.proposal_count += 1
                 mutation = None
@@ -234,18 +248,16 @@ class Controller:
         return group
 
     def tell(self, evaluated: list[dict]) -> dict:
-        if {candidate["id"] for candidate in evaluated} != set(self.pending):
+        if {candidate["id"] for candidate in evaluated} != {candidate["id"] for candidate in self.pending}:
             raise ValueError("Selection requires every scheduled offspring result at its group barrier")
-        previous = next((candidate for candidate in self.candidates if candidate["id"] == self.parent_id), None)
-        updates = {candidate["id"]: candidate for candidate in evaluated}
-        self.candidates = [copy.deepcopy(updates.get(candidate["id"], candidate)) for candidate in self.candidates]
+        previous = self.parent
         self.completed += sum(bool(candidate.get("score", {}).get("complete")) for candidate in evaluated)
         self.pending = []
         choices = evaluated + ([previous] if previous else [])
         winner = best_eligible(choices)
         if previous and self.method == "one_plus_lambda":
             self.cache_hits += 1
-        self.parent_id = winner["id"] if winner else None
+        self.parent = copy.deepcopy(winner) if winner else None
         if self.generation == 0 and self.method == "one_plus_lambda" and winner is None:
             self.outcome = "NO_ELIGIBLE_INITIAL_PARENT"
         if any(not candidate.get("score", {}).get("complete") for candidate in evaluated):
@@ -261,4 +273,4 @@ class Controller:
         return selection
 
     def winner(self) -> dict | None:
-        return next((candidate for candidate in self.candidates if candidate["id"] == self.parent_id), None)
+        return self.parent

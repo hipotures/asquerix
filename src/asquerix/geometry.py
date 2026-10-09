@@ -179,6 +179,34 @@ def _pair_separation(first: np.ndarray, second: np.ndarray) -> float:
     return float(best_gap)
 
 
+def _pair_separations(square_vertices: np.ndarray) -> np.ndarray:
+    """Signed SAT separations of all pairs i < j at once, identical to `_pair_separation` per pair.
+
+    The same operations are applied element-wise: per-square edge normals, projections by batched
+    matmul (bit-identical to `polygon @ axis`), and maxima over the eight candidate axes.
+    """
+
+    count = square_vertices.shape[0]
+    first_index, second_index = np.triu_indices(count, k=1)
+    edges = np.roll(square_vertices, -1, axis=1) - square_vertices
+    normals = np.stack((-edges[..., 1], edges[..., 0]), axis=-1)
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        lengths = np.linalg.norm(normals, axis=2)
+        normalized = normals / lengths[..., None]
+    if not bool(np.isfinite(lengths).all()) or not bool(np.isfinite(normalized).all()) or bool((lengths <= 0.0).any()):
+        raise ValueError("polygon edge normals are not finite or degenerate")
+    axes = np.concatenate((normalized[first_index], normalized[second_index]), axis=1)  # (pairs, 8, 2)
+    with np.errstate(over="ignore", invalid="ignore"):
+        first = np.matmul(square_vertices[first_index][:, None, :, :], axes[:, :, :, None])[..., 0]
+        second = np.matmul(square_vertices[second_index][:, None, :, :], axes[:, :, :, None])[..., 0]
+    if not bool(np.isfinite(first).all()) or not bool(np.isfinite(second).all()):
+        raise ValueError("polygon projections are not finite")
+    gaps = np.maximum(second.min(axis=2) - first.max(axis=2), first.min(axis=2) - second.max(axis=2))
+    if not bool(np.isfinite(gaps).all()):
+        raise ValueError("polygon separation is not finite")
+    return gaps.max(axis=1)
+
+
 def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, Any]:
     """Validate unit-square containment and pairwise separation in float64.
 
@@ -253,14 +281,11 @@ def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, A
     min_wall_clearance = float(wall_clearances.min())
 
     pair_separations: list[float] = []
-    for first_index in range(square_vertices.shape[0] - 1):
-        first = square_vertices[first_index]
-        for second_index in range(first_index + 1, square_vertices.shape[0]):
-            try:
-                separation = _pair_separation(first, square_vertices[second_index])
-            except ValueError:
-                return _invalid_result(tolerance_value, nonfinite=True)
-            pair_separations.append(separation)
+    if square_vertices.shape[0] > 1:
+        try:
+            pair_separations = [float(value) for value in _pair_separations(square_vertices)]
+        except ValueError:
+            return _invalid_result(tolerance_value, nonfinite=True)
 
     if pair_separations:
         min_pair_separation: float | None = float(min(pair_separations))

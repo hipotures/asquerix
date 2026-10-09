@@ -64,7 +64,7 @@ function niceTicks(low, high, count) {
 }
 
 // Best-so-far training mean L per search method as step lines, with fixed controls as reference lines.
-function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = [], marker = null} = {}) {
+function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = [], marker = null, xMax: xLimit = 0} = {}) {
   target.replaceChildren();
   target.classList.add("progress-chart");
   if (!points.length) { target.append(element("p", "No completed, independently validated candidates yet. The curve appears after the first finished group.", "muted empty-chart")); return; }
@@ -81,7 +81,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   if (yMax > focus + (focus - yMin) * 1.5) yMax = focus + (focus - yMin) * 0.25;
   const pad = Math.max((yMax - yMin) * 0.08, 0.002); yMin -= pad; yMax += pad;
   const top = yMax;
-  const xMax = Math.max(1, ...points.map(point => point[xKey]));
+  const xMax = Math.max(1, xLimit, ...points.map(point => point[xKey]));
   const x = value => margin.left + value / xMax * plotW, y = value => margin.top + (top - Math.min(value, top)) / (top - yMin) * plotH;
   const clipped = value => value > top;
   const svg = svgNode("svg", {viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Best training mean side L so far for ${arms.join(" and ")} against ${xLabel}; lower is better`});
