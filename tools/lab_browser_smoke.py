@@ -172,9 +172,9 @@ def run(url, output, screenshots, old_trajectory, old_npz):
                 cdp.command("Page.navigate", {"url": "about:blank"})
                 time.sleep(1)
                 cdp.command("Page.navigate", {"url": url + "#" + identifier})
-                wait(cdp, "['COMPLETED','PARTIAL','FAILED'].includes(document.getElementById('campaign-state')?.textContent)", 300)
+                wait(cdp, "['COMPLETED','PARTIAL','FAILED'].includes(document.getElementById('campaign-state')?.dataset.state)", 300)
                 wait(cdp, "!document.getElementById('open-report').hidden", 120)
-                state = cdp.evaluate("document.getElementById('campaign-state').textContent")
+                state = cdp.evaluate("document.getElementById('campaign-state').dataset.state")
                 evidence["state"] = state
                 if state != "COMPLETED":
                     raise AssertionError(cdp.evaluate("document.getElementById('publication-state').textContent"))
