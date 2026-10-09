@@ -144,10 +144,17 @@ table.episodes td button{padding:4px 10px}
 .legend i.best-known{background:var(--ink)}
 .chart-source{margin:6px 0 0;color:var(--muted);font-size:12px}
 
-/* Size and time fields: explicit − / + steppers instead of the native spinner. */
-.stepper{display:flex;align-items:stretch}
-.stepper input{flex:1;min-width:0;border-radius:0;text-align:right;-moz-appearance:textfield;appearance:textfield}
+/* Size and time fields: one compact control (− value +) sized to the number, not stretched across the column. */
+.stepper{display:inline-flex;align-self:flex-start;align-items:stretch;border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden}
+.stepper:focus-within{outline:3px solid #75a9db;outline-offset:2px}
+.stepper input{width:9ch;border:0;border-radius:0;padding:7px 4px;text-align:center;font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
+.stepper input:focus-visible{outline:none}
 .stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.stepper button{width:34px;padding:0;font:600 16px/1 Cantarell,system-ui,sans-serif}
-.stepper button:first-child{border-radius:5px 0 0 5px;border-right:0}
-.stepper button:last-child{border-radius:0 5px 5px 0;border-left:0}
+.stepper button{width:32px;padding:0;border:0;border-radius:0;background:var(--subtle);color:var(--ink);font:600 15px/1 Cantarell,system-ui,sans-serif}
+.stepper button:hover:enabled{background:var(--selected-row)}
+.stepper button:first-child{border-right:1px solid var(--line)}
+.stepper button:last-child{border-left:1px solid var(--line)}
+.stepper button:disabled{opacity:.35}
+/* Plain numeric fields are as wide as their numbers; uint64 seeds and IDs need up to 20 digits. */
+label > input[type=number]{align-self:flex-start;width:11ch;text-align:right;font-variant-numeric:tabular-nums}
+label > input[inputmode=numeric]{align-self:flex-start;width:22ch;font-variant-numeric:tabular-nums}
