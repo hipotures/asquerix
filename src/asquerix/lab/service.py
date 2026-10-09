@@ -207,7 +207,10 @@ class Service:
         publication = {"status": "LOCAL_ONLY"}
         if spec.publication.enabled:
             from ..publication import publish
-            publication = publish(directory, push=True)
+            try:
+                publication = publish(directory, push=True)
+            except Exception as error:  # finalized local evidence stays valid when publication fails
+                publication = {"status": "FAILED", "error": f"{type(error).__name__}: {error}"}
         artifacts = self._register_artifacts(identifier)
         report_artifact = next(item["id"] for item in artifacts if item["path"] == "report.html")
         self.catalog.set_state(identifier, summary["state"], summary={"phase": summary["state"], "report_status": "READY", "report_artifact_id": report_artifact,

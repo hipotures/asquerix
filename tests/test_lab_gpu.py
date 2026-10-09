@@ -209,3 +209,45 @@ def test_replay_writes_loadable_trace_with_shared_vm_steps(cuda_device, tmp_path
     # The best snapshot and final current state are recorded at the same VM step.
     assert arrays["vm_sequence"][-2] == arrays["vm_sequence"][-1]
     assert metadata["strategy"]["frames"][-1]["vm_sequence"] == str(arrays["vm_sequence"][-1])
+
+
+def test_campaign_worker_report_and_publication_end_to_end(cuda_device, tmp_path):
+    import subprocess
+    from types import SimpleNamespace
+    from asquerix.lab.report import generate
+    from asquerix.lab.worker import CampaignWorker
+    from asquerix.publication import publish
+
+    spec = Campaign(name="Worker publication", n=4, batch_capacity=8, controls=["legacy_compress"],
+                    search={"methods": []}, datasets={"training": {"first_id": "100", "valid_count": 2},
+                                                      "holdout": {"first_id": "200", "valid_count": 2}},
+                    recording={"max_traces": 1}, publication={"enabled": True})
+    directory = tmp_path / "campaign"
+    messages = []
+    worker = CampaignWorker({"id": "0" * 32, "spec": spec.document(), "directory": str(directory),
+                             "checkpoint": str(tmp_path / "checkpoint.json.gz")},
+                            emit=messages.append, signal=SimpleNamespace(value=0), signal_since=SimpleNamespace(value=0.0))
+    summary = worker.run()
+    assert summary["state"] == "COMPLETED"
+    assert summary["completed_episode_executions"] == 4
+    assert [item["status"] for item in summary["replays"]] == ["REPLAY_MATCHED"]
+    generate(directory, [], campaign=spec)
+
+    repo, remote = tmp_path / "repo", tmp_path / "remote.git"
+    git = lambda cwd, *args: subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+    repo.mkdir()
+    git(repo, "init", "--initial-branch=main")
+    git(repo, "config", "user.name", "Asquerix Test")
+    git(repo, "config", "user.email", "asquerix@example.invalid")
+    (repo / "README.md").write_text("test\n")
+    git(repo, "add", "README.md")
+    git(repo, "commit", "-m", "initial")
+    git(tmp_path, "init", "--bare", str(remote))
+    git(repo, "remote", "add", "origin", str(remote))
+    git(repo, "push", "origin", "main")
+    result = publish(directory, repo=repo, push=True)
+    assert result["status"] == "PUBLISHED", result
+    assert git(remote, "rev-parse", "main") == result["commit_sha"]
+    published = git(remote, "ls-tree", "-r", "--name-only", "main").splitlines()
+    assert result["artifact_path"] + "/report.html" in published
+    assert any(path.endswith(".npz") and "/trajectories/episode-" in path for path in published)

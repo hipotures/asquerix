@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import asdict
 import hashlib
+import gzip
 import importlib.metadata
 import io
 import json
@@ -24,6 +25,7 @@ from ..trajectory_format import atomic_write_bytes
 from .config import Campaign, digest
 
 MAX_CHUNK_BYTES = 32 * 1024**2
+MAX_JSON_BYTES = 64 * 1024**2
 NUMERICAL_FILES = ("gpu.py", "geometry.py", "lab/config.py", "lab/strategy.py", "lab/gpu.py",
                    "lab/storage.py", "lab/evaluation.py", "lab/search.py", "lab/worker.py")
 
@@ -204,6 +206,18 @@ def load_banks(directory: Path) -> tuple[dict, dict]:
         banks[kind] = {"ids": parts["ids"], "poses": parts["poses"], "initial_results": records,
                        "hash": metadata[kind]["hash"]}
     return metadata, banks
+
+
+def bounded_json(path: Path) -> dict:
+    """Read one gzip JSON object without unbounded decompression."""
+    with gzip.open(path, "rb") as stream:
+        data = stream.read(MAX_JSON_BYTES + 1)
+    if len(data) > MAX_JSON_BYTES:
+        raise ValueError(f"{path.name} exceeds the bounded decompressed JSON size")
+    value = json.loads(data)
+    if not isinstance(value, dict):
+        raise ValueError(f"{path.name} is not a JSON object")
+    return value
 
 
 def storage_bytes(directory: Path) -> int:
