@@ -1,0 +1,10 @@
+{
+  "source_sha256": "083bccc537b745063688f0baf549adc3377f56a94204dcdd6fcadfe545ebfa6e",
+  "targeted_tests": {
+    "passed": 32,
+    "failed": 15,
+    "seconds": 66.77
+  },
+  "decision": "Rejected: strict numerical equivalence failed; no performance benchmark scheduled.",
+  "diagnosis": "CUDA probe: all axis components bitwise equal, but orthogonal/self dot products differ after compiler reuse (axes-probe.json)."
+}

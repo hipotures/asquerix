@@ -1,0 +1,27 @@
+{
+  "scope": "Work-count proxy from equal-output baseline results, not measured CUDA branch divergence or achieved occupancy. Individual sweeps can have different costs.",
+  "n16": {
+    "trial_count": 131072,
+    "sweeps_mean": 32203.220977783203,
+    "sweeps_min": 6134,
+    "sweeps_max": 52502,
+    "within_warp_mean_over_max_mean": 0.6609839222914656,
+    "within_warp_mean_over_max_median": 0.6623008455825741,
+    "status_counts": {
+      "0": 71983,
+      "1": 59089
+    }
+  },
+  "n12": {
+    "trial_count": 131072,
+    "sweeps_mean": 28981.27155303955,
+    "sweeps_min": 6163,
+    "sweeps_max": 52571,
+    "within_warp_mean_over_max_mean": 0.6117769070118504,
+    "within_warp_mean_over_max_median": 0.6111834836947664,
+    "status_counts": {
+      "0": 65228,
+      "1": 65844
+    }
+  }
+}

@@ -1,0 +1,277 @@
+{
+  "artifact": "Static PTX evidence for the axes compiler candidates",
+  "created": "2026-10-09",
+  "scope": {
+    "static_only": true,
+    "gpu_workloads_run_for_this_artifact": false,
+    "counts_are_dynamic_performance_metrics": false,
+    "count_method": "Textual counts within each visible PTX entry; they do not represent executed instruction counts, achieved occupancy, or physical register allocation.",
+    "ptx_target": "sm_89",
+    "warp_version": "1.18.0",
+    "cuda_toolkit": "13.4.92",
+    "nvvm_version": "7.0.1"
+  },
+  "source": {
+    "current_gpu_py": {
+      "path": "src/asquerix/gpu.py",
+      "sha256": "a73adf65e92336a1c865f698497cdbba03b8efd2eb19670f8b17885b846e9d0d",
+      "variant": "opaque axis-value separation currently present in the working tree"
+    },
+    "baseline_gpu_py": {
+      "path": "artifacts/performance/cuda-20261009/baseline/gpu.py",
+      "sha256": "e21c939b07edab77b50f32d5b74e1f9b9ad4c510ed7ad323e417714dacbe9571",
+      "revision": "d4ec2384c4ad2c5fa303772214c0793633e95f3b",
+      "step_floor_revision": "eb8d2ac42a089a19a172074f554d6bed2cb17bb0"
+    },
+    "rejected_simple_reuse_gpu_py": {
+      "sha256": "083bccc537b745063688f0baf549adc3377f56a94204dcdd6fcadfe545ebfa6e",
+      "evidence_record": "artifacts/performance/cuda-20261009/candidates/axes-rejected.json"
+    },
+    "native_candidate_gpu_py": {
+      "path": "src/asquerix/gpu.py",
+      "sha256": "a73adf65e92336a1c865f698497cdbba03b8efd2eb19670f8b17885b846e9d0d",
+      "patch": "artifacts/performance/cuda-20261009/candidates/axes-opaque.patch"
+    }
+  },
+  "modules": [
+    {
+      "name": "baseline",
+      "cache_directory": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_08fb550",
+      "tile_block_dim": 32,
+      "files": {
+        "cuda": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_08fb550/wp_asquerix.gpu_08fb550.cu",
+          "sha256": "0314eeb70b98d5578c24286e50b9df61be1511b18f812d40c9b4274fb47b956d"
+        },
+        "ptx": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_08fb550/wp_asquerix.gpu_08fb550.sm89.ptx",
+          "sha256": "c3860cf84f3401abdd683ec357621fec98e9d9197abbd406383b80162cd953b8"
+        },
+        "metadata": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_08fb550/wp_asquerix.gpu_08fb550.meta",
+          "sha256": "af0d615a383b21c401b2845abe4f85803c585fe2f06265f2c71ff12e87d00f2a"
+        }
+      },
+      "entries": {
+        "simulate_4af21d26_cuda_kernel_forward": {
+          "ptx_lines": 11274,
+          "textual_counts": {
+            "fma.rn.f32": 565,
+            "mul.f32": 165,
+            "div.rn.f32": 15,
+            "sqrt.rn.f32": 2,
+            "ld.local": 216,
+            "st.local": 616,
+            "trig_range_reduction_marker_0f3F22F983": 10,
+            "setp": 657
+          },
+          "virtual_register_declarations": {
+            "pred": 836,
+            "b16": 49,
+            "f32": 3264,
+            "b32": 4190,
+            "f64": 145,
+            "b64": 1656
+          }
+        },
+        "contact_diagnostic_60cf6ea4_cuda_kernel_forward": {
+          "ptx_lines": 3959,
+          "textual_counts": {
+            "fma.rn.f32": 218,
+            "mul.f32": 111,
+            "div.rn.f32": 13,
+            "sqrt.rn.f32": 1,
+            "ld.local": 72,
+            "st.local": 168,
+            "trig_range_reduction_marker_0f3F22F983": 5,
+            "setp": 249
+          },
+          "virtual_register_declarations": {
+            "pred": 301,
+            "b16": 37,
+            "f32": 1550,
+            "b32": 1396,
+            "f64": 49,
+            "b64": 486
+          }
+        }
+      }
+    },
+    {
+      "name": "rejected_simple_axes_reuse_block32",
+      "cache_directory": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_6a8b5d9",
+      "tile_block_dim": 32,
+      "files": {
+        "cuda": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_6a8b5d9/wp_asquerix.gpu_6a8b5d9.cu",
+          "sha256": "72eba4c1b17cf0ba1d6da7d18499cb7cd27021eb1e441e3b301c5cba0ae83643"
+        },
+        "ptx": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_6a8b5d9/wp_asquerix.gpu_6a8b5d9.sm89.ptx",
+          "sha256": "fd53efee2289e72fcc8d21ef1f0c1cfdf9ece2ea97c3f79814b965f85d8d94d9"
+        },
+        "metadata": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_6a8b5d9/wp_asquerix.gpu_6a8b5d9.meta",
+          "sha256": "184b327969b6e90335518bc754257440165fff11c4918fbb4fe453327faccd65"
+        }
+      },
+      "entries": {
+        "simulate_b2c6c6a0_cuda_kernel_forward": {
+          "ptx_lines": 6734,
+          "textual_counts": {
+            "fma.rn.f32": 350,
+            "mul.f32": 165,
+            "div.rn.f32": 15,
+            "sqrt.rn.f32": 2,
+            "ld.local": 108,
+            "st.local": 308,
+            "trig_range_reduction_marker_0f3F22F983": 14,
+            "setp": 405
+          },
+          "virtual_register_declarations": {
+            "pred": 512,
+            "b16": 49,
+            "f32": 2307,
+            "b32": 2378,
+            "f64": 73,
+            "b64": 990
+          }
+        },
+        "contact_diagnostic_1d33aa69_cuda_kernel_forward": {
+          "ptx_lines": 2473,
+          "textual_counts": {
+            "fma.rn.f32": 148,
+            "mul.f32": 109,
+            "div.rn.f32": 13,
+            "sqrt.rn.f32": 1,
+            "ld.local": 36,
+            "st.local": 84,
+            "trig_range_reduction_marker_0f3F22F983": 9,
+            "setp": 165
+          },
+          "virtual_register_declarations": {
+            "pred": 193,
+            "b16": 37,
+            "f32": 1233,
+            "b32": 782,
+            "f64": 25,
+            "b64": 270
+          }
+        }
+      }
+    },
+    {
+      "name": "rejected_simple_axes_reuse_block256",
+      "cache_directory": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_d0b526a",
+      "tile_block_dim": 256,
+      "files": {
+        "cuda": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_d0b526a/wp_asquerix.gpu_d0b526a.cu",
+          "sha256": "864c49893b62e29522bb359a8cab7041fa5d62361c5ce4cebf3f75855087dc0d"
+        },
+        "ptx": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_d0b526a/wp_asquerix.gpu_d0b526a.sm89.ptx",
+          "sha256": "4d603ca490211351b6f01a63fc3ff9bf7eeee5e850b0d9b6a59925d3296beb55"
+        },
+        "metadata": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_d0b526a/wp_asquerix.gpu_d0b526a.meta",
+          "sha256": "184b327969b6e90335518bc754257440165fff11c4918fbb4fe453327faccd65"
+        }
+      },
+      "note": "Same simple axes source as the block32 rejected module; tile block dimension differs. No dynamic result is inferred from this static record."
+    },
+    {
+      "name": "native_opaque_axes_reuse",
+      "cache_directory": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_612901a",
+      "tile_block_dim": 256,
+      "files": {
+        "cuda": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_612901a/wp_asquerix.gpu_612901a.cu",
+          "sha256": "0e7bdbaae75d7f265978772cc4eb34fe24c97d5759dbc90d36fe68b2c99ddaf4"
+        },
+        "ptx": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_612901a/wp_asquerix.gpu_612901a.sm89.ptx",
+          "sha256": "ecab3c1aa474a79905d33737ce29d4bf66bc25418ccf38cb0ac505faf7cdea81"
+        },
+        "metadata": {
+          "path": "/tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_612901a/wp_asquerix.gpu_612901a.meta",
+          "sha256": "15c0b7daae6d9e2b2a490488cf41f365d2c8cf34a2a2265c54a026ecf61965fd"
+        }
+      },
+      "entries": {
+        "simulate_0a446899_cuda_kernel_forward": {
+          "ptx_lines": 7601,
+          "textual_counts": {
+            "fma.rn.f32": 403,
+            "mul.f32": 171,
+            "div.rn.f32": 15,
+            "sqrt.rn.f32": 2,
+            "ld.local": 132,
+            "st.local": 308,
+            "trig_range_reduction_marker_0f3F22F983": 16,
+            "setp": 463
+          },
+          "virtual_register_declarations": {
+            "pred": 582,
+            "b16": 49,
+            "f32": 2633,
+            "b32": 2709,
+            "f64": 89,
+            "b64": 1028
+          }
+        },
+        "contact_diagnostic_36c8e1d0_cuda_kernel_forward": {
+          "ptx_lines": 2496,
+          "textual_counts": {
+            "fma.rn.f32": 146,
+            "mul.f32": 115,
+            "div.rn.f32": 13,
+            "sqrt.rn.f32": 1,
+            "ld.local": 36,
+            "st.local": 84,
+            "trig_range_reduction_marker_0f3F22F983": 9,
+            "setp": 169
+          },
+          "virtual_register_declarations": {
+            "pred": 197,
+            "b16": 37,
+            "f32": 1248,
+            "b32": 778,
+            "f64": 25,
+            "b64": 270
+          }
+        }
+      },
+      "opaque_copy_count": {
+        "ptx_textual_count": 56,
+        "pattern": "mov.b32 %f<destination>, %f<source>"
+      }
+    }
+  ],
+  "numerical_probe_records": [
+    {
+      "path": "artifacts/performance/cuda-20261009/candidates/axes-probe.json",
+      "sha256": "77909419e89a87be089d33dcea6a19816414a788b1f9a8a7db5ea65e3e9d4c4c",
+      "result": "Axis components match baseline, but dot(u,v), dot(v,u), and dot(v,v) do not match bitwise."
+    },
+    {
+      "path": "artifacts/performance/cuda-20261009/candidates/axes-opaque-probe.json",
+      "sha256": "c4a89dae8a94399cc90cf115ea0dc05c8ca4b4930433548ff3e109b3fe388c70",
+      "result": "All recorded axis components and dot products match baseline bitwise for the probe corpus."
+    },
+    {
+      "path": "artifacts/performance/cuda-20261009/candidates/axes-rejected.json",
+      "sha256": "a815bfa3e16d47ce319c58e379a0e71896e607e1287a3c16352728159ee8e00b",
+      "result": "The simple axes reuse candidate was rejected after 32 targeted tests passed and 15 failed."
+    }
+  ],
+  "interpretation": {
+    "compiler_change": "The simple candidate exposes one cosine and one sine SSA value to both basis vectors. Generated PTX keeps equal axis components but changes the multiply/FMA graph for SAT dot products and also loses some cross-call common-subexpression reuse.",
+    "opaque_change": "The native candidate inserts volatile bit-preserving mov.b32 barriers for the second basis operands. The generated PTX contains 56 float mov.b32 instructions and the recorded probe restores bitwise equality.",
+    "remaining_requirement": "The opaque probe does not establish full solver equivalence or performance. Full exact-output CUDA regression and synchronized benchmarking are required before acceptance."
+  },
+  "extracts": {
+    "path": "artifacts/performance/cuda-20261009/candidates/axes-compiler-extracts.txt",
+    "purpose": "Small line-numbered PTX excerpts showing the baseline repeated trigonometric polynomial chains and the native candidate's opaque mov.b32 operands."
+  }
+}

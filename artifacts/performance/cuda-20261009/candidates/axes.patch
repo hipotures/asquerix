@@ -1,0 +1,15 @@
+diff --git a/src/asquerix/gpu.py b/src/asquerix/gpu.py
+index eabd4d0..4e36bde 100644
+--- a/src/asquerix/gpu.py
++++ b/src/asquerix/gpu.py
+@@ -138,7 +138,9 @@ def sign_symmetric(x: float):
+ 
+ @wp.func
+ def axes(theta: float):
+-    return wp.vec2(wp.cos(theta), wp.sin(theta)), wp.vec2(-wp.sin(theta), wp.cos(theta))
++    cosine = wp.cos(theta)
++    sine = wp.sin(theta)
++    return wp.vec2(cosine, sine), wp.vec2(-sine, cosine)
+ 
+ 
+ @wp.func

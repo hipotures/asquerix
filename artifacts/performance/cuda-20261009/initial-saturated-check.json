@@ -1,0 +1,19 @@
+{
+  "source_sha256": "a73adf65e92336a1c865f698497cdbba03b8efd2eb19670f8b17885b846e9d0d",
+  "experiments": [
+    {
+      "n": 12,
+      "count": 131072,
+      "offset": 0,
+      "archive_sha256": "bb5393063607a6a3cbf07a8ae67d1431e316e3b9cd16b1251b6bbfc93644b1c8",
+      "exact": true
+    },
+    {
+      "n": 16,
+      "count": 131072,
+      "offset": 0,
+      "archive_sha256": "36adbde39177e22814e8b07ea6ac5784a32fc8adf7c2268ed013ef5c545eeb15",
+      "exact": true
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "file": "n12-reference.npz",
+  "sha256": "bb5393063607a6a3cbf07a8ae67d1431e316e3b9cd16b1251b6bbfc93644b1c8",
+  "config": {
+    "n": 12,
+    "initial_side": 10.0,
+    "seed": 20261008,
+    "step": 0.2,
+    "step_floor": 0.0001,
+    "step_reduction": 0.5,
+    "guard": 2e-05,
+    "acceptance_tolerance": 2e-06,
+    "motion_tolerance": 1e-07,
+    "rotation_mobility": 0.3,
+    "relaxation": 0.8,
+    "max_translation": 0.1,
+    "max_rotation": 0.08,
+    "max_attempts": 128,
+    "max_sweeps": 480,
+    "stagnation_sweeps": 4,
+    "proposals_per_square": 2000
+  },
+  "count": 131072,
+  "offset": 0,
+  "arrays": [
+    "results",
+    "poses",
+    "initial_results",
+    "initial_poses"
+  ]
+}

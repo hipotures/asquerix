@@ -1,0 +1,18 @@
+diff --git a/src/asquerix/gpu.py b/src/asquerix/gpu.py
+index eabd4d0..7958409 100644
+--- a/src/asquerix/gpu.py
++++ b/src/asquerix/gpu.py
+@@ -259,6 +259,13 @@ def correct_pair(p: wp.vec3, q: wp.vec3, cfg: Parameters):
+ 
+ @wp.func
+ def correct_wall(p: wp.vec3, side: float, normal: wp.vec2, cfg: Parameters):
++    # Unit squares fit inside radius sqrt(2)/2. Keep a conservative FP32
++    # margin and restrict the shortcut to bounded inputs and axis normals.
++    distance = 0.5 * side - wp.dot(wp.vec2(p[0], p[1]), normal)
++    if (distance > 0.7072068 + cfg.guard and distance < 1000.0
++            and wp.abs(p[2]) <= 10000.0
++            and wp.abs(normal[0]) + wp.abs(normal[1]) <= 1.0):
++        return p, float(0.0)
+     gap = 0.5 * side - wp.dot(wp.vec2(p[0], p[1]), normal) - support(p[2], normal)
+     motion = float(0.0)
+     if gap < cfg.guard:

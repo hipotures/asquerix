@@ -1,0 +1,89 @@
+Static PTX extracts for the axes compiler comparison
+====================================================
+
+This file contains selected lines from generated PTX modules. It is static
+compiler evidence only: no GPU workload was run to produce these excerpts,
+and the snippets do not establish dynamic instruction counts, occupancy,
+register allocation, or performance.
+
+The baseline module is:
+  /tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_08fb550/wp_asquerix.gpu_08fb550.sm89.ptx
+  SHA-256 c3860cf84f3401abdd683ec357621fec98e9d9197abbd406383b80162cd953b8
+
+The opaque native module is:
+  /tmp/asquerix-warp-cache/1.18.0/wp_asquerix.gpu_612901a/wp_asquerix.gpu_612901a.sm89.ptx
+  SHA-256 ecab3c1aa474a79905d33737ce29d4bf66bc25418ccf38cb0ac505faf7cdea81
+
+Baseline angle reduction and four distinct polynomial output chains
+--------------------------------------------------------------------
+
+In the baseline PTX, the finite-angle path first reduces the loaded theta
+value in %f1549 to %f1543:
+
+11433  ld.global.f32     %f1549, [%rd19+8];
+11436  mul.f32            %f1193, %f1549, 0f3F22F983;
+11440  fma.rn.f32         %f1196, %f1194, %f1195, %f1549;
+11444  fma.rn.f32         %f1543, %f1194, %f1199, %f1198;
+
+The same reduced value is copied to the first result chain and then used as
+the input to four separate sine/cosine polynomial chains. The first chain
+ends at %f1524, the second starts from its own %f1525 and ends at %f1527,
+and the third starts from %f1528 and ends at %f1530:
+
+11448  mov.f32            %f1522, %f1543;
+11586  selp.f32           %f520, %f1522, 0f3F800000, %p219;
+11587  mul.rn.f32         %f521, %f1522, %f1522;
+11597  fma.rn.f32         %f1207, %f1523, %f521, %f1206;
+11602  fma.rn.f32         %f1524, %f1209, %f1211, %f520;
+11612  mov.f32            %f1525, %f1543;
+11637  selp.f32           %f530, %f1525, 0f3F800000, %p228;
+11638  mul.rn.f32         %f531, %f1525, %f1525;
+11648  fma.rn.f32         %f1221, %f1526, %f531, %f1220;
+11653  fma.rn.f32         %f1527, %f1223, %f1225, %f530;
+11663  mov.f32            %f1528, %f1543;
+12087  selp.f32           %f540, %f1528, 0f3F800000, %p237;
+12088  mul.rn.f32         %f541, %f1528, %f1528;
+12098  fma.rn.f32         %f1235, %f1529, %f541, %f1234;
+12103  fma.rn.f32         %f1530, %f1237, %f1239, %f540;
+
+The fourth chain has the same polynomial shape and ends at %f1533:
+
+12113  mov.f32            %f1531, %f1543;
+12337  selp.f32           %f550, %f1531, 0f3F800000, %p246;
+12338  mul.rn.f32         %f551, %f1531, %f1531;
+12348  fma.rn.f32         %f1249, %f1532, %f551, %f1248;
+12353  fma.rn.f32         %f1533, %f1251, %f1253, %f550;
+
+These are four distinct output/register chains in the generated baseline
+PTX. The excerpt shows polynomial evaluation duplication; it does not claim
+that the compiler emitted four independent range-reduction sequences. The
+special-value fallback branches remain present and use the original theta
+register, as shown for the first three chains:
+
+11622  mul.rn.f32         %f1525, %f1549, %f1216;
+11873  mul.rn.f32         %f1528, %f1549, %f1230;
+12123  mul.rn.f32         %f1531, %f1549, %f1244;
+
+Opaque native copies consumed by SAT arithmetic
+-----------------------------------------------
+
+The opaque candidate emits native volatile bitwise copies before the
+orthogonal-axis arithmetic. The copied registers are then consumed by a
+subtraction and an FMA in the same SAT diagnostic block:
+
+8192  fma.rn.f32         %f1110, %f1246, 0f00000000, %f1245;
+8193  // begin inline asm
+8194  mov.b32            %f1014, %f1237;
+8195  // end inline asm
+8196  sub.f32            %f1019, %f1010, %f1014;
+8197  // begin inline asm
+8198  mov.b32            %f1016, %f1234;
+8199  // end inline asm
+8200  fma.rn.f32         %f1020, %f1237, 0f00000000, %f1234;
+8202  fma.rn.f32         %f1022, %f1016, 0f00000000, %f1019;
+
+The opaque module contains 56 textual float-register mov.b32 instructions
+matching mov.b32 %f<destination>, %f<source>. This demonstrates the changed
+compiled operand graph used by the candidate. It does not by itself prove
+that every full solver result is unchanged; the exact-output regression and
+synchronized benchmark remain the acceptance evidence.

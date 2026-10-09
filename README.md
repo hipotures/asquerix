@@ -56,6 +56,16 @@ uv run python tools/extended_benchmark.py --output runs/extended-archive-new --r
 
 The extended script preserves every scalar record in gzip archives, with uncompressed SHA-256 hashes. New run directories under `runs/` use gzip JSON/JSONL. See [the measured report](artifacts/pilot/REPORT.md) for durations, variability, audit coverage, and limitations.
 
+The performance-only CUDA campaign freezes production revision `d4ec238`, including the `eb8d2ac` minimum-step correction. It compares every result field and final pose byte, then measures alternating 131,072-world batches with unchanged budgets. See [the kernel optimization report](artifacts/performance/cuda-20261009/REPORT.md) for accepted and rejected candidates, timings, register usage, and reproducibility limits.
+
+```bash
+uv run --locked pytest -q
+uv run --locked python tools/kernel_benchmark.py compare --output runs/kernel-exact-check.json
+uv run --locked python tools/kernel_benchmark.py benchmark --count 131072 --repeats 3 --output runs/kernel-benchmark-new
+```
+
+The benchmark tool never publishes experiments. Its frozen source is an archival comparison reference; production retains one solver. `axes()` shares the existing standard sine/cosine evaluations and uses bit-preserving CUDA operand copies to retain the original SAT rounding behavior. No fast math, tolerance, contact ordering, or stopping criterion changes are enabled.
+
 ## Geometry and numerical method
 
 The container is `[-L/2,L/2]^2`. A pose is `(x,y,theta)`, with radians and square side exactly one. With `u=(cos(theta),sin(theta))`, `v=(-sin(theta),cos(theta))`, vertices are `c +/- u/2 +/- v/2`. Projection support is `h(theta,a)=(abs(u.a)+abs(v.a))/2` for a unit axis `a`. The exact SAT signed separation is:

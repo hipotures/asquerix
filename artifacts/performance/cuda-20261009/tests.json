@@ -1,0 +1,54 @@
+{
+  "baseline_pre_edit_cuda": {
+    "passed": 29,
+    "warnings": 2,
+    "seconds": 2.39
+  },
+  "axes_native_targeted": {
+    "command": "uv run --locked pytest -q tests/test_kernel_exact_gpu.py tests/test_workflow_gpu.py tests/test_gpu.py",
+    "passed": 34,
+    "warnings": 2,
+    "seconds": 66.63,
+    "source_sha256": "a73adf65e92336a1c865f698497cdbba03b8efd2eb19670f8b17885b846e9d0d"
+  },
+  "axes_native_focused": {
+    "passed": 3,
+    "warnings": 2,
+    "seconds": 6.1
+  },
+  "pair_targeted": {
+    "passed": 47,
+    "warnings": 2,
+    "seconds": 73.82
+  },
+  "wall_targeted": {
+    "passed": 47,
+    "warnings": 2,
+    "seconds": 93.08
+  },
+  "full_cuda_suite": {
+    "command": "uv run --locked pytest -q",
+    "passed": 248,
+    "skipped": 0,
+    "failed": 0,
+    "warnings": 2,
+    "seconds": 85.6,
+    "log": "tests-full.log"
+  },
+  "production_cli_smoke": {
+    "completed": 8,
+    "numerically_validated": 8,
+    "gzip_persistence": true,
+    "svg_rendering": true,
+    "publication_status": "LOCAL_ONLY",
+    "command": "uv run --locked asquerix run --n 12 --max-sweeps 480 --trials 8 --batch-size 8 --retain-all --sample-every 0 --audit-size 8 --keep-best 2 --max-images 1 --max-seconds 30 --output runs/performance-cuda-20261009/cli-smoke --json --no-push"
+  },
+  "harness_smoke": {
+    "count": 32,
+    "n": 1,
+    "repeats": 1,
+    "automatic_initialization_comparison": true,
+    "complete_results_and_poses_exact": true,
+    "scope": "Tool behavior check; not part of final performance estimates."
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "input_count": 65536,
+  "columns": [
+    "u.x",
+    "u.y",
+    "v.x",
+    "v.y",
+    "dot(u,u)",
+    "dot(u,v)",
+    "dot(v,u)",
+    "dot(v,v)"
+  ],
+  "differing_bit_patterns_per_column": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ]
+}

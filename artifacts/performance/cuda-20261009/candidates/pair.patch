@@ -1,0 +1,30 @@
+diff --git a/src/asquerix/gpu.py b/src/asquerix/gpu.py
+index eabd4d0..3c0a162 100644
+--- a/src/asquerix/gpu.py
++++ b/src/asquerix/gpu.py
+@@ -239,8 +239,25 @@ def bounded_scale(lam: float, linear_norm: float, angular: float, cfg: Parameter
+     return scale
+ 
+ 
++@wp.func
++def pair_distant(p: wp.vec3, q: wp.vec3, guard: float):
++    # Scaling both squares by (1 + guard) increases every summed SAT support
++    # by at least guard. Their circumcircles then bound the contact region.
++    # The squared-distance margin covers FP32 SAT/trigonometry rounding.
++    # Keep exceptional and extreme inputs on the original numerical path.
++    dx = q[0] - p[0]
++    dy = q[1] - p[1]
++    distance_squared = dx * dx + dy * dy
++    extent = 1.0 + guard
++    return (distance_squared > 2.0 * extent * extent + 0.001
++            and distance_squared < 1000000.0
++            and wp.abs(p[2]) <= 10000.0 and wp.abs(q[2]) <= 10000.0)
++
++
+ @wp.func
+ def correct_pair(p: wp.vec3, q: wp.vec3, cfg: Parameters):
++    if pair_distant(p, q, cfg.guard):
++        return p, q, float(0.0)
+     gap, normal, gp, gq = pair_constraint(p, q)
+     motion = float(0.0)
+     if gap < cfg.guard:

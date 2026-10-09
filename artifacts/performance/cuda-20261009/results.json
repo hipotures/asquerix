@@ -1,0 +1,80 @@
+[
+  {
+    "n": 16,
+    "count": 131072,
+    "variants": {
+      "baseline": {
+        "gpu_trials_per_second_median": 1907.0886813805887,
+        "gpu_trials_per_second_min": 1900.7692708581164,
+        "gpu_trials_per_second_max": 1925.955279657688,
+        "device_seconds_median": 68.72884375,
+        "complete_batch_seconds_median": 68.75362834800035,
+        "end_to_end_seconds_median": 69.90012051298982,
+        "register_count": 139,
+        "local_memory_bytes": 32,
+        "theoretical_occupancy": 0.25,
+        "exact": true,
+        "validation": [
+          "NUMERICALLY_VALIDATED"
+        ],
+        "measurements": 3
+      },
+      "optimized": {
+        "gpu_trials_per_second_median": 2913.589740517236,
+        "gpu_trials_per_second_min": 2911.25270491666,
+        "gpu_trials_per_second_max": 2941.16019799151,
+        "device_seconds_median": 44.9864296875,
+        "complete_batch_seconds_median": 45.02106726900092,
+        "end_to_end_seconds_median": 45.654284099000506,
+        "register_count": 128,
+        "local_memory_bytes": 32,
+        "theoretical_occupancy": 0.3333333333333333,
+        "exact": true,
+        "validation": [
+          "NUMERICALLY_VALIDATED"
+        ],
+        "measurements": 3
+      }
+    },
+    "speedup": 1.527768356533906
+  },
+  {
+    "n": 12,
+    "count": 131072,
+    "variants": {
+      "baseline": {
+        "gpu_trials_per_second_median": 3278.5603051325797,
+        "gpu_trials_per_second_min": 3253.8498723602324,
+        "gpu_trials_per_second_max": 3279.170673876827,
+        "device_seconds_median": 39.9785234375,
+        "complete_batch_seconds_median": 39.99464498698944,
+        "end_to_end_seconds_median": 40.56755976300337,
+        "register_count": 139,
+        "local_memory_bytes": 32,
+        "theoretical_occupancy": 0.25,
+        "exact": true,
+        "validation": [
+          "NUMERICALLY_VALIDATED"
+        ],
+        "measurements": 3
+      },
+      "optimized": {
+        "gpu_trials_per_second_median": 5044.129097315607,
+        "gpu_trials_per_second_min": 5043.544540753484,
+        "gpu_trials_per_second_max": 5046.340416351562,
+        "device_seconds_median": 25.985060546875,
+        "complete_batch_seconds_median": 25.99805021600332,
+        "end_to_end_seconds_median": 26.304147766000824,
+        "register_count": 128,
+        "local_memory_bytes": 32,
+        "theoretical_occupancy": 0.3333333333333333,
+        "exact": true,
+        "validation": [
+          "NUMERICALLY_VALIDATED"
+        ],
+        "measurements": 3
+      }
+    },
+    "speedup": 1.5385195414642925
+  }
+]

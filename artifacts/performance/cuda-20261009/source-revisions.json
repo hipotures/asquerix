@@ -1,0 +1,7 @@
+{
+  "baseline_commit": "d4ec2384c4ad2c5fa303772214c0793633e95f3b",
+  "step_floor_commit": "eb8d2ac42a089a19a172074f554d6bed2cb17bb0",
+  "optimized_commit": "d5e98a4f07ae196a9af9b344fab903869c9a9869",
+  "baseline_gpu_sha256": "e21c939b07edab77b50f32d5b74e1f9b9ad4c510ed7ad323e417714dacbe9571",
+  "optimized_gpu_sha256": "a73adf65e92336a1c865f698497cdbba03b8efd2eb19670f8b17885b846e9d0d"
+}

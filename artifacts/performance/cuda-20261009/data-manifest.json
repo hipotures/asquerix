@@ -1,0 +1,89 @@
+{
+  "reference_arrays": [
+    "results",
+    "poses",
+    "initial_results",
+    "initial_poses"
+  ],
+  "trial_id_rule": "Global trial ID = manifest offset + row index; n and seed are in each measurement config.",
+  "files": [
+    {
+      "path": "runs/performance-cuda-20261009/axes-opaque-medium/n12-reference.npz",
+      "bytes": 1144143,
+      "sha256": "ca8f69789ddcd06bb36781d19073ea6d55d0f340195bb3dfc0fc52e032314ef3",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/axes-opaque-medium/n16-reference.npz",
+      "bytes": 1511953,
+      "sha256": "ee04a91aacbdf5444a8c8cab2b401b2e6f397a91791deddca97bcdde3783901a",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/axes-opaque-saturated/n12-reference.npz",
+      "bytes": 36538260,
+      "sha256": "bb5393063607a6a3cbf07a8ae67d1431e316e3b9cd16b1251b6bbfc93644b1c8",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/axes-opaque-saturated/n16-reference.npz",
+      "bytes": 48292883,
+      "sha256": "36adbde39177e22814e8b07ea6ac5784a32fc8adf7c2268ed013ef5c545eeb15",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/baseline-medium/n12-reference.npz",
+      "bytes": 1144143,
+      "sha256": "ca8f69789ddcd06bb36781d19073ea6d55d0f340195bb3dfc0fc52e032314ef3",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/baseline-medium/n16-reference.npz",
+      "bytes": 1511953,
+      "sha256": "ee04a91aacbdf5444a8c8cab2b401b2e6f397a91791deddca97bcdde3783901a",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/pair-medium/n12-reference.npz",
+      "bytes": 1144143,
+      "sha256": "ca8f69789ddcd06bb36781d19073ea6d55d0f340195bb3dfc0fc52e032314ef3",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/pair-medium/n16-reference.npz",
+      "bytes": 1511953,
+      "sha256": "ee04a91aacbdf5444a8c8cab2b401b2e6f397a91791deddca97bcdde3783901a",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/wall-medium/n12-reference.npz",
+      "bytes": 1144143,
+      "sha256": "ca8f69789ddcd06bb36781d19073ea6d55d0f340195bb3dfc0fc52e032314ef3",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/wall-medium/n16-reference.npz",
+      "bytes": 1511953,
+      "sha256": "ee04a91aacbdf5444a8c8cab2b401b2e6f397a91791deddca97bcdde3783901a",
+      "retention": "Local durable run directory; excluded from Git to avoid large intermediate datasets."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/axes-opaque-probe.npz",
+      "bytes": 2698566,
+      "sha256": "27cd308e64878e83846edf7e6d0965ed9c985a86ddfa5bf0d3bee6cd433f393b",
+      "retention": "Local diagnostic input/output archive; excluded from Git."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/axes-probe.npz",
+      "bytes": 2691160,
+      "sha256": "d32503870dfa4e437665eae3b7a83a65d0b21b2cb6aac5ab22e6f78562a8ea8c",
+      "retention": "Local diagnostic input/output archive; excluded from Git."
+    },
+    {
+      "path": "runs/performance-cuda-20261009/harness-smoke/n1-reference.npz",
+      "bytes": 2203,
+      "sha256": "190b72fc8b9e30270cc7b2fcd3bbbe7acb55b183179e81002d865ed6e5a4512b",
+      "retention": "Local harness smoke archive; excluded from Git."
+    }
+  ]
+}
