@@ -143,3 +143,11 @@ table.episodes td button{padding:4px 10px}
 .progress-chart .best-known{stroke:var(--ink);stroke-width:2}
 .legend i.best-known{background:var(--ink)}
 .chart-source{margin:6px 0 0;color:var(--muted);font-size:12px}
+
+/* Size and time fields: explicit − / + steppers instead of the native spinner. */
+.stepper{display:flex;align-items:stretch}
+.stepper input{flex:1;min-width:0;border-radius:0;text-align:right;-moz-appearance:textfield;appearance:textfield}
+.stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.stepper button{width:34px;padding:0;font:600 16px/1 Cantarell,system-ui,sans-serif}
+.stepper button:first-child{border-radius:5px 0 0 5px;border-right:0}
+.stepper button:last-child{border-radius:0 5px 5px 0;border-left:0}

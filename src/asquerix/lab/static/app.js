@@ -186,7 +186,7 @@ async function openCampaign(identifier){
   stream.addEventListener('progress',event=>{const id=BigInt(event.lastEventId||'0');if(id<=last)return;last=id;if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;refresh().catch(e=>fail(e.message));},700);});
   stream.addEventListener('reset',()=>{last=0n;refresh().catch(e=>fail(e.message));});
 }
-function create(){if(stream)stream.close();selectedId=null;location.hash='';view('create');plan();}
+function create(){if(stream)stream.close();selectedId=null;location.hash='';view('create');for(const input of form.querySelectorAll('input[data-step]'))stepperState(input);plan();}
 for(const name of ['pause','resume','stop'])document.getElementById(name+'-campaign').addEventListener('click',async()=>{try{await api(`/campaigns/${selectedId}/${name}`,{method:'POST'});await refresh();}catch(e){fail(e.message);}});
 document.getElementById('new-campaign').addEventListener('click',create);document.getElementById('cancel-create').addEventListener('click',()=>{view('catalog');catalog();});document.getElementById('back-catalog').addEventListener('click',()=>{if(stream)stream.close();selectedId=null;location.hash='';view('catalog');catalog();});
 document.getElementById('review-plan').addEventListener('click',()=>{try{plan();}catch(e){fail(e.message);}});
@@ -209,9 +209,20 @@ function stepped(input,up){
   let next;
   if(mode==='pow2')next=up?2**Math.floor(Math.log2(value)+1):2**Math.ceil(Math.log2(value)-1);
   else{const unit=Number(mode);next=up?(Math.floor(value/unit)+1)*unit:(Math.ceil(value/unit)-1)*unit;}
-  input.value=String(Math.min(max,Math.max(min,next)));input.dataset.previous=input.value;
+  input.value=String(Math.min(max,Math.max(min,next)));input.dataset.previous=input.value;stepperState(input);
 }
 document.addEventListener('focusin',event=>{const input=event.target;if(input.dataset?.step)input.dataset.previous=input.value;});
+// Explicit − / + buttons replace the browser spinner, which browsers implement inconsistently.
+function stepperState(input){const wrap=input.parentElement;if(!wrap?.classList.contains('stepper'))return;const value=Number(input.value),min=Number(input.min||1),max=Number(input.max||Infinity);
+  const [down,up]=wrap.querySelectorAll('button');down.disabled=!(value>min);up.disabled=!(value<max);up.title=up.disabled?`Maximum ${input.max}`:up.dataset.title;down.title=down.disabled?`Minimum ${input.min||1}`:down.dataset.title;}
+function addSteppers(root=document){for(const input of root.querySelectorAll('input[data-step]')){if(input.parentElement.classList.contains('stepper'))continue;
+  const wrap=element('span',undefined,'stepper'),pow2=input.dataset.step==='pow2';input.replaceWith(wrap);wrap.append(input);
+  for(const [up,text,title] of [[false,'−',pow2?'Halve':`−${input.dataset.step} s`],[true,'+',pow2?'Double':`+${input.dataset.step} s`]]){
+    const button=element('button',text);button.type='button';button.dataset.title=title;button.setAttribute('aria-label',title);
+    button.addEventListener('click',()=>{input.dataset.previous=input.value;stepped(input,up);input.dispatchEvent(new Event('change',{bubbles:true}));stepperState(input);});
+    up?wrap.append(button):wrap.insertBefore(button,input);}
+  input.addEventListener('input',()=>stepperState(input));stepperState(input);}}
+addSteppers();
 document.addEventListener('keydown',event=>{const input=event.target;if(!input.dataset?.step||!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();input.dataset.previous=input.value;stepped(input,event.key==='ArrowUp');});
 document.addEventListener('input',event=>{
   const input=event.target;if(!input.dataset?.step)return;
@@ -228,6 +239,7 @@ document.getElementById('continue-campaign').addEventListener('click',()=>{
   f.namedItem('batch_capacity').value=String(spec.batch_capacity);f.namedItem('max_seconds').value=String(spec.limits.max_seconds);f.namedItem('max_artifact_mib').value=String(spec.limits.max_artifact_mib);
   f.namedItem('automatic_replays').checked=spec.recording.automatic;f.namedItem('publication').checked=spec.publication.enabled;
   document.getElementById('continue-locked').textContent=`Kept from the original so results stay comparable: n=${spec.n}, initial side ${spec.initial_side}, ${spec.datasets.training.valid_count} training and ${spec.datasets.holdout.valid_count} holdout starts, all seeds, the evaluation profile and work caps, the generation and mutation law, λ=${spec.search.lambda}, methods (${spec.search.methods.join(', ')}) and controls. Change those with “Clone as draft”, which starts from scratch.`;
+  for(const input of continueForm.querySelectorAll('input[data-step]'))stepperState(input);
   continueForm.hidden=false;f.namedItem('additional').focus();});
 document.getElementById('cancel-continue').addEventListener('click',()=>{continueForm.hidden=true;});
 continueForm.addEventListener('submit',async event=>{event.preventDefault();const f=continueForm.elements,button=continueForm.querySelector('[type=submit]');button.disabled=true;
