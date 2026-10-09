@@ -4,7 +4,10 @@ const {element,number,programView,curve,replayComparison}=LabInspect;
 let capabilities, inventory, defaults, selectedId=null, selectedCampaign=null, selectedProgram=null, fixedDraft=null;
 const ACTIVE=['QUEUED','PREPARING','RUNNING','PAUSE_REQUESTED','FINALIZING'];
 const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common initial worlds',CONTROLS:'Evaluating fixed controls',SEARCH:'Searching programs',TRAINING:'Evaluating programs on the training bank',HOLDOUT:'Evaluating frozen winners on the holdout bank',REPLAYS:'Recording selected replays',FINALIZING:'Writing report and publishing',PAUSE_REQUESTED:'Pausing after the current group'};
-let lastUpdate=0,chartArgs=null,resizeTimer=null;
+// "Name · continued · continued" (older campaigns) and "Name · continuation 2" both read as base name + depth.
+function lineage(name){const match=/^(.*?)((?: · continued)+| · continuation (\d+))$/.exec(name);if(!match)return {base:name,depth:0};return {base:match[1],depth:match[3]?Number(match[3]):match[2].split(' · continued').length-1};}
+const PAGE=10;
+let programTotal=0,lastUpdate=0,chartArgs=null,resizeTimer=null;
 addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(chartArgs&&!document.getElementById('detail').hidden)curve(document.getElementById('live-curve'),...chartArgs);},150);});
 function duration(seconds){if(typeof seconds!=='number')return '—';const s=Math.round(seconds);if(s<60)return `${s} s`;if(s<3600)return `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s`;return `${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;}
 function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length,winners=spec.search.methods.length*(spec.continuation_of?2:1);return ((candidates+fixed)*spec.datasets.training.valid_count+(winners+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
@@ -64,7 +67,7 @@ function plan(){
   const data=spec(),candidateCount=data.search.methods.length*data.search.candidate_budget_per_method,fixed=data.controls.length+data.fixed_programs.length;
   const episodes=(candidateCount+fixed)*data.datasets.training.valid_count*data.operator_replicates;
   const holdout=(data.search.methods.length+fixed)*data.datasets.holdout.valid_count*data.operator_replicates;
-  const bytes=(episodes+holdout)*(24*data.n+2048);
+  const bytes=(episodes+holdout)*(24*data.n+512);
   document.getElementById('plan-summary').textContent=`${candidateCount} new candidate evaluations; ${episodes} logical training episodes; up to ${holdout} holdout episodes after winners are frozen. Approximate native evidence ${(bytes/1048576).toFixed(2)} MiB, plus reports/replays within declared quotas. Maximum ${data.limits.max_seconds} execution seconds. Automatic replay cap ${data.recording.automatic?data.recording.max_traces:0}. No unmeasured time forecast.`;
   return data;
 }
@@ -72,7 +75,7 @@ async function catalog(){
   const page=await api(`/campaigns?limit=30&offset=${catalogOffset}&query=${encodeURIComponent(document.getElementById('catalog-query').value)}&state=${encodeURIComponent(document.getElementById('catalog-state').value)}`);
   const target=document.getElementById('campaign-list');target.replaceChildren();
   if(!page.total){const empty=element('div',undefined,'card empty');empty.append(element('h2','No campaigns recorded.'),element('p','Create a finite campaign, choose the detected GPU, and inspect actual programs and recorded geometry here.','muted'));target.append(empty);}
-  for(const campaign of page.items){const card=element('article',undefined,'card'),title=element('h2',campaign.spec.name),open=element('button','Open campaign');open.addEventListener('click',()=>openCampaign(campaign.id));card.append(title,element('p',`n=${campaign.spec.n} · ${campaign.spec.search.methods.join(' + ')||'Fixed programs'} · ${campaign.state} · ${campaign.device_uuid||campaign.spec.device}`,'muted'),element('p',`${campaign.summary.completed_candidates||0} candidates completed · ${campaign.summary.completed_episode_executions||0} scientific episodes · publication ${campaign.publication.status||'PENDING'}`),open);target.append(card);}
+  for(const campaign of page.items){const card=element('article',undefined,'card'),title=element('h2',`n=${campaign.spec.n} · ${(({base,depth})=>depth?`${base} · continuation ${depth}`:base)(lineage(campaign.spec.name))}`),open=element('button','Open campaign');open.addEventListener('click',()=>openCampaign(campaign.id));card.append(title,element('p',`n=${campaign.spec.n} · ${campaign.spec.search.methods.join(' + ')||'Fixed programs'} · ${campaign.state} · ${campaign.device_uuid||campaign.spec.device}`,'muted'),element('p',`${campaign.summary.completed_candidates||0} candidates completed · ${campaign.summary.completed_episode_executions||0} scientific episodes · publication ${campaign.publication.status||'PENDING'}`),open);target.append(card);}
   document.getElementById('catalog-page').textContent=`${catalogOffset+1}–${Math.min(catalogOffset+30,page.total)} of ${page.total}`;
   document.getElementById('catalog-previous').disabled=catalogOffset===0;document.getElementById('catalog-next').disabled=catalogOffset+30>=page.total;
 }
@@ -97,7 +100,7 @@ async function inspect(candidate){
   if(episodes.total>episodes.items.length)target.append(element('p',`Showing ${episodes.items.length} of ${episodes.total} episodes.`,'muted'));
 }
 async function programs(){
-  const page=await api(`/campaigns/${selectedId}/programs?limit=50&offset=${programOffset}&sort=${programSort}`);currentCandidates=page.items;
+  const page=await api(`/campaigns/${selectedId}/programs?limit=${PAGE}&offset=${programOffset}&sort=${programSort}`);currentCandidates=page.items;
   for(const header of document.querySelectorAll('#tab-programs th'))header.removeAttribute('aria-sort');
   document.querySelector(`#tab-programs .sort[data-sort=${programSort}]`).closest('th').setAttribute('aria-sort','ascending');
   const target=document.getElementById('program-table');target.replaceChildren();
@@ -109,7 +112,9 @@ async function programs(){
     const rank=programSort==='rank'&&score.eligible?String(programOffset+page.items.indexOf(candidate)+1):'';
     row.append(element('td',rank,'num rank'),label,element('td',number(score.mean_best_L),'num'),element('td',number(score.best_L),'num'),validity);
     const cell=element('td'),button=element('button','Inspect');button.addEventListener('click',()=>inspect(candidate).catch(e=>fail(e.message)));cell.append(button);row.append(cell);target.append(row);}
-  document.getElementById('program-page').textContent=`${programOffset+1}–${Math.min(programOffset+50,page.total)} of ${page.total}`;document.getElementById('program-previous').disabled=programOffset===0;document.getElementById('program-next').disabled=programOffset+50>=page.total;
+  programTotal=page.total;const last=Math.max(0,Math.ceil(page.total/PAGE)-1)*PAGE;
+  document.getElementById('program-page').textContent=page.total?`${programOffset+1}–${Math.min(programOffset+PAGE,page.total)} of ${page.total}`:'none yet';
+  for(const button of document.querySelectorAll('.pager button'))button.disabled=Number(button.dataset.pages)<0||button.id==='program-first'?programOffset===0:programOffset>=last;
   const comparison=await api(`/campaigns/${selectedId}/comparison`),key=document.getElementById('live-curve-axis').value;
   const points=[],counts={},work={},incumbent={};
   const ordered=[...comparison.candidates].sort((a,b)=>(a.completed_at??Infinity)-(b.completed_at??Infinity));
@@ -135,8 +140,11 @@ function replays(){
 async function refresh(){
   if(!selectedId)return;
   selectedCampaign=await api(`/campaigns/${selectedId}`);const {spec,summary,state,publication}=selectedCampaign;
-  document.getElementById('campaign-name').textContent=spec.name;const scope=document.getElementById('campaign-scope');scope.textContent=`n=${spec.n} · ${spec.device} / ${selectedCampaign.device_uuid||'resolving physical identity'} · ${summary.profile_hash||spec.evaluation_profile} · training ${spec.datasets.training.valid_count}, holdout ${spec.datasets.holdout.valid_count}`;
-  if(spec.continuation_of){const link=element('a','the original campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
+  const {base,depth}=lineage(spec.name);
+  document.getElementById('campaign-n').textContent=`n = ${spec.n}`;document.getElementById('campaign-name').textContent=base;
+  document.getElementById('campaign-lineage').textContent=depth?` · continuation ${depth}`:'';document.title=`n=${spec.n} · ${base} — Asquerix`;
+  const scope=document.getElementById('campaign-scope');scope.textContent=`${spec.datasets.training.valid_count} training and ${spec.datasets.holdout.valid_count} holdout starts`;
+  if(spec.continuation_of){const link=element('a','the previous campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
   const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
   for(const [label,text] of [['Completed candidates',`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)]]){const box=element('div',undefined,'metric');box.append(element('small',label),element('strong',text));metrics.append(box);}
@@ -153,11 +161,11 @@ async function refresh(){
   document.querySelector('.activity .progress').setAttribute('aria-valuenow',String(Math.round(fraction*100)));
   document.getElementById('campaign-progress-label').textContent=`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
   lastUpdate=Date.now();freshness();
-  document.getElementById('campaign-phase').textContent='Counts advance after each finalized batch of episodes. Closing the browser does not stop the GPU worker.';
   const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
-  const line=document.getElementById('publication-state');line.replaceChildren(element('strong','GitHub publication: '));
+  const line=document.getElementById('campaign-provenance');
+  line.replaceChildren(`${spec.device} · ${selectedCampaign.device_uuid||'GPU not resolved yet'} · profile ${(summary.profile_hash||spec.evaluation_profile).slice(0,12)} · GitHub: `);
   if(published){const link=element('a',`published, commit ${publication.commit_sha.slice(0,7)}`);link.href=publication.url;link.target='_blank';link.rel='noopener';line.append(link);}
-  else line.append(element('span',{PENDING:'waits until the campaign finishes',LOCAL_ONLY:'disabled for this campaign (local results only)',FAILED:`failed (${publication.error||'see server log'}); local results are preserved`,NONE:'not performed'}[status]||status));
+  else line.append({PENDING:'published after the campaign finishes',LOCAL_ONLY:'not published (local results only)',FAILED:`publication failed (${publication.error||'see server log'}); local results are kept`,NONE:'not published'}[status]||status);
   // Show only the lifecycle actions that apply to the current state.
   document.getElementById('pause-campaign').hidden=!['QUEUED','PREPARING','RUNNING'].includes(state);document.getElementById('resume-campaign').hidden=!['PAUSED','INTERRUPTED'].includes(state);document.getElementById('stop-campaign').hidden=!['QUEUED','PREPARING','RUNNING','PAUSE_REQUESTED','PAUSED'].includes(state);
   document.getElementById('continue-campaign').hidden=!(['COMPLETED','PARTIAL'].includes(state)&&spec.search.methods.length);
@@ -182,28 +190,37 @@ document.getElementById('review-plan').addEventListener('click',()=>{try{plan();
 form.addEventListener('submit',async event=>{event.preventDefault();const button=document.getElementById('launch-campaign');button.disabled=true;try{const queued=await api('/campaigns',{method:'POST',body:plan()});await openCampaign(queued.id);}catch(e){fail(e.message);}finally{button.disabled=false;}});
 document.getElementById('filter-catalog').addEventListener('click',()=>{catalogOffset=0;catalog().catch(e=>fail(e.message));});
 for(const [id,change] of [['catalog-previous',-30],['catalog-next',30]])document.getElementById(id).addEventListener('click',()=>{catalogOffset=Math.max(0,catalogOffset+change);catalog();});
-for(const [id,change] of [['program-previous',-50],['program-next',50]])document.getElementById(id).addEventListener('click',()=>{programOffset=Math.max(0,programOffset+change);programs();});
+for(const button of document.querySelectorAll('.pager button'))button.addEventListener('click',()=>{
+  const last=Math.max(0,Math.ceil(programTotal/PAGE)-1)*PAGE;
+  programOffset=button.id==='program-first'?0:button.id==='program-last'?last:Math.min(last,Math.max(0,programOffset+Number(button.dataset.pages)*PAGE));
+  programs().catch(e=>fail(e.message));});
 document.getElementById('live-curve-axis').addEventListener('change',()=>programs());
 for(const button of document.querySelectorAll('#tab-programs .sort'))button.addEventListener('click',()=>{programSort=button.dataset.sort;programOffset=0;programs().catch(e=>fail(e.message));});
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',async()=>{for(const tab of ['programs','history','replays'])document.getElementById('tab-'+tab).hidden=tab!==button.dataset.tab;for(const other of document.querySelectorAll('[data-tab]'))other.setAttribute('aria-selected',String(other===button));if(button.dataset.tab==='history')await history();if(button.dataset.tab==='replays')replays();});
 // Arrow keys, the spinner and the wheel step size fields by powers of two and time budgets by minutes;
-// typed values are kept as entered (typing raises an InputEvent, stepping a plain input event).
+// typed values are kept as entered. Keys are handled directly; spinner/wheel steps are any input that is
+// not typing or deleting (browsers differ in the event they raise for a step).
+function stepped(input,up){
+  const mode=input.dataset.step,value=Number(input.dataset.previous??input.value),min=Number(input.min||1),max=Number(input.max||Infinity);
+  if(!Number.isFinite(value)||value<=0)return;
+  let next;
+  if(mode==='pow2')next=up?2**Math.floor(Math.log2(value)+1):2**Math.ceil(Math.log2(value)-1);
+  else{const unit=Number(mode);next=up?(Math.floor(value/unit)+1)*unit:(Math.ceil(value/unit)-1)*unit;}
+  input.value=String(Math.min(max,Math.max(min,next)));input.dataset.previous=input.value;
+}
 document.addEventListener('focusin',event=>{const input=event.target;if(input.dataset?.step)input.dataset.previous=input.value;});
+document.addEventListener('keydown',event=>{const input=event.target;if(!input.dataset?.step||!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();input.dataset.previous=input.value;stepped(input,event.key==='ArrowUp');});
 document.addEventListener('input',event=>{
-  const input=event.target,mode=input.dataset?.step;if(!mode)return;
+  const input=event.target;if(!input.dataset?.step)return;
+  const typing=/^(insert|delete)/.test(event.inputType||'');
   const previous=Number(input.dataset.previous),current=Number(input.value);
-  if(!(event instanceof InputEvent)&&Number.isFinite(previous)&&current!==previous){
-    const up=current>previous,min=Number(input.min||1),max=Number(input.max||Infinity);let next;
-    if(mode==='pow2')next=up?2**Math.floor(Math.log2(previous)+1):2**Math.ceil(Math.log2(previous)-1);
-    else{const unit=Number(mode);next=up?(Math.floor(previous/unit)+1)*unit:(Math.ceil(previous/unit)-1)*unit;}
-    input.value=String(Math.min(max,Math.max(min,next)));
-  }
-  input.dataset.previous=input.value;
+  if(!typing&&Number.isFinite(previous)&&current!==previous){const up=current>previous;input.value=String(previous);stepped(input,up);}
+  else input.dataset.previous=input.value;
 });
 const continueForm=document.getElementById('continue-form');
 document.getElementById('continue-campaign').addEventListener('click',()=>{
   const {spec}=selectedCampaign,f=continueForm.elements;
-  f.namedItem('additional').value=String(spec.search.candidate_budget_per_method);f.namedItem('name').value=`${spec.name.slice(0,140)} · continued`;
+  f.namedItem('additional').value=String(spec.search.candidate_budget_per_method);const {base,depth}=lineage(spec.name);f.namedItem('name').value=`${base.slice(0,130)} · continuation ${depth+1}`;
   f.namedItem('device').replaceChildren(...inventory.items.map(item=>{const option=element('option',`${item.name} · ${item.device}`);option.value=item.device;return option;}));f.namedItem('device').value=spec.device;
   f.namedItem('batch_capacity').value=String(spec.batch_capacity);f.namedItem('max_seconds').value=String(spec.limits.max_seconds);f.namedItem('max_artifact_mib').value=String(spec.limits.max_artifact_mib);
   f.namedItem('automatic_replays').checked=spec.recording.automatic;f.namedItem('publication').checked=spec.publication.enabled;

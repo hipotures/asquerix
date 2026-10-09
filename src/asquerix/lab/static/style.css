@@ -130,3 +130,11 @@ table.episodes td button{padding:4px 10px}
 .theme-toggle{width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:50%;background:transparent;border:1px solid rgba(160,205,225,.45);color:#d9e6ee}
 .theme-toggle:hover:enabled{border-color:#d9e6ee}
 .theme-toggle span{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+
+/* Campaign title: the square count is the key parameter. */
+.campaign-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.n-badge{padding:2px 12px;border-radius:8px;background:var(--strong-bg);color:var(--strong-ink);font:700 30px/1.25 ui-monospace,monospace}
+.lineage{color:var(--muted);font-weight:400}
+.provenance{margin:22px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.pager button{min-width:38px}
+#program-page{min-width:120px;text-align:center;font-variant-numeric:tabular-nums}

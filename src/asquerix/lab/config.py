@@ -66,7 +66,7 @@ class Datasets(Model):
 class Search(Model):
     methods: list[Literal["random_program_search", "one_plus_lambda"]] = ["random_program_search", "one_plus_lambda"]
     seed: str = "8001"
-    candidate_budget_per_method: Annotated[StrictInt, Field(ge=1, le=1024)] = 32
+    candidate_budget_per_method: Annotated[StrictInt, Field(ge=1, le=4096)] = 32
     initial_pool: Annotated[StrictInt, Field(ge=1, le=128)] = 8
     lambda_: Annotated[StrictInt, Field(ge=1, le=128)] = Field(default=8, alias="lambda")
     shared_initial_pool: Literal[True] = True
@@ -237,7 +237,8 @@ class Campaign(Model):
         fixed = len(self.controls) + len(self.fixed_programs)
         training = (candidates + fixed) * self.datasets.training.valid_count * self.operator_replicates
         holdout = (len(self.search.methods) + fixed) * self.datasets.holdout.valid_count * self.operator_replicates
-        native = (training + holdout) * (24 * self.n + 2048) + (self.datasets.training.valid_count + self.datasets.holdout.valid_count) * (12 * self.n + 16)
+        # Measured ~0.55 KB per n=11 episode (best/current FP32 poses, VM fields, gzip JSONL row); 24n + 512 keeps a margin.
+        native = (training + holdout) * (24 * self.n + 512) + (self.datasets.training.valid_count + self.datasets.holdout.valid_count) * (12 * self.n + 16)
         return {"candidate_evaluations": candidates, "training_episodes": training,
                 "holdout_episodes_before_deduplication": holdout,
                 "estimated_native_bytes": native,

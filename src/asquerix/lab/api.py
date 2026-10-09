@@ -126,6 +126,8 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-cache"  # revalidate so an updated laboratory is picked up
         if "content-security-policy" not in response.headers:
             response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; frame-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"
         return response

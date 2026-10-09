@@ -177,8 +177,8 @@ def run(url, output, screenshots, old_trajectory, old_npz):
                 state = cdp.evaluate("document.getElementById('campaign-state').dataset.state")
                 evidence["state"] = state
                 if state != "COMPLETED":
-                    raise AssertionError(cdp.evaluate("document.getElementById('publication-state').textContent"))
-                evidence["phase_line"] = cdp.evaluate("document.getElementById('campaign-phase').textContent")
+                    raise AssertionError(cdp.evaluate("document.getElementById('campaign-provenance').textContent"))
+                evidence["phase_line"] = cdp.evaluate("document.getElementById('campaign-activity').textContent")
                 log("Closed and reopened the page; the same CUDA campaign completed in the background")
                 evidence["screenshots"].append(screenshot(cdp, screenshots / "campaign.png"))
                 campaign = fetch(f"{url}/api/v1/campaigns/{identifier}")
