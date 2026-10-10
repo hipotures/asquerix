@@ -1,0 +1,712 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rigid-square comparison — Asquerix</title><style>:root{color-scheme:light;--paper:#eaf0f4;--surface:#fff;--ink:#1e3448;--muted:#496174;--line:#cbd7e1;--blue:#2764ad;--violet:#7464ab;--teal:#147d8b;--warning:#b05c37;--header:#1e3448;--primary:#2764ad;--on-primary:#fff;--strong-bg:#1e3448;--strong-ink:#fff;--subtle:#f0f5fa;--badge:#edf3f8;--selected-row:#eaf2fb;--panel:#f5f8fb;--notice:#edf6f7;--grid:#e3eaf0;--track:#e2eaf1;--axis:#9fb0bd;--reference:#7d8d99;--error-ink:#9e3e24;--error-bg:#fff0e9;--before:#fcf0ed;--after:#ebf6f3;--danger-line:#e3c3b4;--shadow:#1e344807;--popover-shadow:#0d22304d;--series-random:#2764ad;--series-mutation:#c2761f;--series-3:#147d8b;--series-4:#8a5a9e;font:15px/1.5 Cantarell,system-ui,sans-serif}
+/* Dark theme: follows the system unless the header toggle chose a theme. */
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--paper:#111a22;--surface:#18232d;--ink:#e3ebf1;--muted:#9cb0c0;--line:#2f3e4b;--blue:#6aa6ea;--violet:#a597d6;--teal:#3fb6c8;--warning:#e08a64;--header:#0c141b;--primary:#2f6fb8;--on-primary:#fff;--strong-bg:#d9e6ee;--strong-ink:#10202c;--subtle:#1f2c37;--badge:#22303c;--selected-row:#1d3550;--panel:#1c2833;--notice:#17323a;--grid:#26333f;--track:#26333f;--axis:#5d7182;--reference:#8a9bab;--error-ink:#f2a58c;--error-bg:#3a221b;--before:#3a2420;--after:#18332c;--danger-line:#6b3f2f;--shadow:#0006;--popover-shadow:#0009;--series-random:#4d8fdc;--series-mutation:#bf7d2e;--series-3:#3fb6c8;--series-4:#b48ad0}}
+:root[data-theme=dark]{color-scheme:dark;--paper:#111a22;--surface:#18232d;--ink:#e3ebf1;--muted:#9cb0c0;--line:#2f3e4b;--blue:#6aa6ea;--violet:#a597d6;--teal:#3fb6c8;--warning:#e08a64;--header:#0c141b;--primary:#2f6fb8;--on-primary:#fff;--strong-bg:#d9e6ee;--strong-ink:#10202c;--subtle:#1f2c37;--badge:#22303c;--selected-row:#1d3550;--panel:#1c2833;--notice:#17323a;--grid:#26333f;--track:#26333f;--axis:#5d7182;--reference:#8a9bab;--error-ink:#f2a58c;--error-bg:#3a221b;--before:#3a2420;--after:#18332c;--danger-line:#6b3f2f;--shadow:#0006;--popover-shadow:#0009;--series-random:#4d8fdc;--series-mutation:#bf7d2e;--series-3:#3fb6c8;--series-4:#b48ad0}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink)}header{background:var(--header);color:#fff;padding:18px max(24px,calc((100vw - 1440px)/2));display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px 20px}
+header.stacked{grid-template-columns:1fr auto}
+header.stacked .header-actions{grid-column:2}.brand{display:flex;align-items:center;gap:14px;justify-self:start;grid-column:1;grid-row:1}.mark{width:38px;height:38px;display:grid;grid-template-columns:1fr 1fr;gap:4px;transform:rotate(-8deg)}.mark i{border:2px solid #afccec}.brand strong{font:700 23px/1 "Trebuchet MS",sans-serif;letter-spacing:.015em}.brand small{display:block;color:#b9c9d8;margin-top:5px}main{max-width:1440px;margin:auto;padding:26px}h1,h2,h3{font-family:"Trebuchet MS",Cantarell,sans-serif;line-height:1.15}h1{font-size:34px;margin:0 0 12px}h2{font-size:23px}h3{font-size:19px}h4{font-size:15px}.muted,small{color:var(--muted)}.topline{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.card{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:21px;margin:16px 0;box-shadow:0 3px 8px var(--shadow)}.split{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(360px,1fr);gap:22px;align-items:start}.fields{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:15px}label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}label.check{flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid var(--line);border-radius:5px;padding:8px 10px;background:var(--surface);color:var(--ink);max-width:100%}input[type=checkbox]{width:17px;height:17px}input[type=range]{padding:0;width:100%;accent-color:var(--blue)}button{cursor:pointer;font-size:13px;font-weight:600}button.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}button:disabled{opacity:.45;cursor:default}button:hover:enabled{border-color:var(--blue)}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #75a9db;outline-offset:3px}button.danger{color:var(--warning)}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.error{color:var(--error-ink);background:var(--error-bg);border-left:4px solid var(--warning);padding:12px;white-space:pre-wrap}.badge{display:inline-block;border:1px solid var(--line);background:var(--badge);padding:3px 8px;border-radius:4px;font:12px ui-monospace,monospace}.statusline{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.metric strong{display:block;font:600 21px ui-monospace,monospace}.metric small{font-size:12px}.hash,pre{font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}pre{max-height:330px;overflow:auto;background:var(--subtle);padding:12px;border-radius:5px}.program-list{list-style:none;padding:0;max-height:470px;overflow:auto}.program-list li{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;border-left:3px solid var(--blue);padding:9px 12px;margin:8px 0;background:var(--subtle);font-size:13px}.program-list small{grid-column:2}.program-list strong{font:600 12px ui-monospace,monospace}.diff{display:grid;grid-template-columns:1fr 1fr;gap:12px}.before{background:var(--before)}.after{background:var(--after)}details{margin:18px 0}summary{cursor:pointer;font-weight:600}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th{text-align:left;color:var(--muted);font-size:11px;letter-spacing:.035em}td,th{padding:10px 9px;border-bottom:1px solid var(--line);vertical-align:top}td button{padding:4px 7px}svg{max-width:100%;height:auto}.replay-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}.replay-pair iframe{width:100%;height:760px;border:1px solid var(--line);border-radius:6px;background:#0d1215}.tabs{margin:18px 0}.tabs button[aria-selected=true]{background:var(--strong-bg);color:var(--strong-ink);border-color:var(--strong-bg)}.empty{padding:45px 25px;max-width:650px}.empty h2{font-size:29px}.hidden,[hidden]{display:none!important}.notice{padding:12px;border-left:3px solid var(--teal);background:var(--notice)}a{color:var(--blue)}.operator-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.operator-grid .card{margin:0;padding:12px}.inline{display:flex;gap:10px;align-items:center}footer{padding:18px;color:var(--muted);font-size:12px}@media(max-width:1050px){.split{grid-template-columns:1fr}.replay-pair{grid-template-columns:1fr}.fields{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){main{padding:16px}header{padding:16px}.brand small{font-size:10px}.fields,.operator-grid{grid-template-columns:1fr}.statusline{grid-template-columns:repeat(2,1fr)}.topline{flex-direction:column}.diff{grid-template-columns:1fr}.program-list li{grid-template-columns:1fr}.program-list small{grid-column:1}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+#program-inspector p,#history p{overflow-wrap:anywhere}
+
+/* Campaign bar: one status indicator, then uniform actions. Only applicable actions are shown. */
+.campaign-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.campaign-bar .actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.campaign-bar button,.campaign-bar .button{display:inline-flex;align-items:center;height:34px;padding:0 14px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--ink);font:600 13px/1 Cantarell,system-ui,sans-serif;text-decoration:none;white-space:nowrap}
+.campaign-bar .button:hover{border-color:var(--blue)}
+.campaign-bar button.danger{color:var(--warning);border-color:var(--danger-line)}
+.campaign-bar button.danger:hover{border-color:var(--warning)}
+.campaign-bar .divider{width:1px;height:22px;background:var(--line);margin:0 4px}
+.state{--state:var(--muted);display:inline-flex;align-items:center;gap:8px;height:34px;font:600 15px/1 Cantarell,system-ui,sans-serif;color:var(--ink)}
+.state::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--state);box-shadow:0 0 0 4px color-mix(in srgb,var(--state) 18%,transparent)}
+.state[data-state=RUNNING],.state[data-state=PREPARING]{--state:var(--blue)}
+.state[data-state=COMPLETED]{--state:var(--teal)}
+.state[data-state=PAUSED],.state[data-state=PAUSE_REQUESTED],.state[data-state=INTERRUPTED],.state[data-state=PARTIAL],.state[data-state=FINALIZING]{--state:var(--violet)}
+.state[data-state=FAILED]{--state:var(--warning)}
+
+/* Live progress: what the GPU worker is doing and how far it is. */
+.activity{padding:16px 0 4px}
+.activity-line{display:flex;align-items:center;gap:10px;margin:0 0 10px;font:600 17px/1.3 Cantarell,system-ui,sans-serif}
+.activity-line[data-active=true]::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:var(--blue);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--blue) 45%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+@media (prefers-reduced-motion:reduce){.activity-line[data-active=true]::before{animation:none}}
+.progress{height:8px;border-radius:4px;background:var(--track);overflow:hidden}
+.progress span{display:block;height:100%;width:0;background:var(--blue);transition:width .4s ease}
+.activity-meta{display:flex;justify-content:space-between;gap:12px;margin:6px 0 0;color:var(--muted);font-size:13px}
+.publication{font-size:13px;color:var(--muted);margin:4px 0 0}
+.publication strong{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 4px;font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:3px;border-radius:2px}
+
+/* GPU telemetry in the header: one compact tile per GPU, nvtop-like. */
+header .brand{flex:none}
+.gpu-monitor{position:relative;grid-column:2;grid-row:1;display:grid;grid-template-columns:400px;gap:8px 10px}
+.gpu-monitor:not([data-count="1"]){grid-template-columns:repeat(2,400px)}
+/* Centred in the first row when it fits beside the brand and actions; otherwise centred on its own row. */
+header.stacked .gpu-monitor{grid-column:1/-1;grid-row:2;justify-self:center}
+@media (max-width:900px){header.stacked .gpu-monitor{justify-self:stretch;padding-right:28px}header.stacked .gpu-monitor,header.stacked .gpu-monitor:not([data-count="1"]){grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}header.stacked .gpu-close{right:0}}
+.header-actions{grid-column:3;grid-row:1;justify-self:end;display:flex;align-items:center;gap:10px}
+.header-actions > button{white-space:nowrap}
+.gpu-tile{position:relative;min-width:0;padding:7px 10px 6px;border:1px solid rgba(160,205,225,.32);border-radius:6px;background:rgba(255,255,255,.04);font:12px/1.35 ui-monospace,"JetBrains Mono",monospace;color:#d9e6ee}
+.gpu-head{display:flex;justify-content:space-between;gap:8px;color:#9fb7c7}
+.gpu-name{color:#e8f0f5;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gpu-tag{white-space:nowrap}
+.gpu-stats{display:flex;flex-wrap:nowrap;white-space:nowrap;align-items:center;gap:2px 12px;margin:3px 0 4px;color:#7fd9b0}
+.gpu-temp{padding:0 4px;border-radius:3px;color:#0d2230;font-weight:700;background:#7fd9b0}
+.gpu-temp.warm{background:#e9c46a}
+.gpu-temp.hot{background:#ef7f6a}
+.gpu-power{all:unset;cursor:pointer;color:#7fd9b0;border-bottom:1px dotted rgba(127,217,176,.6)}
+.gpu-power:hover,.gpu-power[aria-expanded=true]{color:#fff}
+.gpu-power:focus-visible{outline:2px solid #75a9db;outline-offset:2px}
+.gpu-spark{display:block;width:100%;height:16px}
+.gpu-monitor.frozen .gpu-tile{opacity:.6}
+.gpu-close{position:absolute;top:0;right:-28px;width:20px;height:20px;padding:0;border:1px solid rgba(160,205,225,.4);border-radius:50%;background:transparent;color:#d9e6ee}
+.gpu-close::before,.gpu-close::after{content:"";position:absolute;left:50%;top:50%;width:10px;height:1.5px;border-radius:1px;background:currentColor;transform:translate(-50%,-50%) rotate(45deg)}
+.gpu-close::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.gpu-close:hover{background:rgba(255,255,255,.12);color:#fff}
+.gpu-limit-panel{position:absolute;z-index:5;top:calc(100% + 6px);right:0;width:300px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);box-shadow:0 8px 24px var(--popover-shadow);font:13px/1.45 Cantarell,system-ui,sans-serif;display:grid;gap:8px}
+.gpu-limit-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.gpu-limit-row input{width:90px}
+.gpu-apply{justify-self:start;background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.gpu-limit-message{margin:0;font-size:12px;color:var(--muted)}
+.gpu-limit-message code{display:block;margin-top:6px;padding:6px;background:var(--subtle);border-radius:4px;font:11px/1.4 ui-monospace,monospace;overflow-wrap:anywhere;color:var(--ink)}
+
+
+/* Candidate table: one line per candidate; the explorer stays in view while scrolling. */
+#program-table td,#tab-programs th{white-space:nowrap}
+#tab-programs .num{text-align:right;font-variant-numeric:tabular-nums}
+#program-table tr.selected td{background:var(--selected-row)}
+#program-table tr.selected td:first-child{box-shadow:inset 3px 0 0 var(--blue)}
+.explorer{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
+
+/* Search progress: the main result of a campaign. */
+.chart-card{margin:0 0 22px}
+.chart-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px}
+.chart-head h2{margin:0 0 4px}
+.chart-head p{margin:0;max-width:760px}
+.chart-head label{min-width:220px}
+.progress-chart{position:relative;margin-top:12px}
+.progress-chart svg{display:block;width:100%;height:auto}
+.progress-chart .grid{stroke:var(--grid);stroke-width:1}
+.progress-chart .axis{stroke:var(--axis);stroke-width:1}
+.progress-chart .reference{stroke:var(--reference);stroke-width:1.5;stroke-dasharray:6 4}
+.progress-chart .crosshair{stroke:var(--muted);stroke-width:1}
+.progress-chart .tick{fill:var(--muted);font:12px Cantarell,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.progress-chart .axis-label{fill:var(--muted);font:12px Cantarell,system-ui,sans-serif}
+.progress-chart .end-label{fill:var(--ink);font:600 12px Cantarell,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.progress-chart .chart-point{stroke:var(--surface);stroke-width:2;cursor:pointer}
+.progress-chart .chart-point:hover,.progress-chart .chart-point:focus{r:6.5;outline:none}
+.legend i.dashed{height:0;border-top:2px dashed var(--reference);background:none}
+.chart-tooltip{position:absolute;z-index:4;pointer-events:none;min-width:200px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);box-shadow:0 6px 18px var(--popover-shadow);font-size:12px;display:grid;gap:3px}
+.chart-tooltip div{display:flex;align-items:center;gap:6px}
+.chart-tooltip i{width:12px;height:3px;border-radius:2px}
+.empty-chart{padding:40px 0;text-align:center}
+
+/* Continuation form inside the campaign card. */
+.continue-panel{margin:16px 0 4px;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);display:grid;gap:12px}
+.continue-panel h3{margin:0}
+.continue-panel p{margin:0}
+
+/* Sortable candidate table headers. */
+#tab-programs th .sort{all:unset;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit}
+#tab-programs th .sort:hover{color:var(--ink)}
+#tab-programs th .sort:focus-visible{outline:2px solid #75a9db;outline-offset:2px}
+#tab-programs th[aria-sort] .sort{color:var(--ink)}
+#tab-programs th[aria-sort] .sort::after{content:" ▲";font-size:9px}
+#program-table td.rank{color:var(--muted)}
+
+/* The candidate table takes its content width; the program explorer gets the rest. */
+#tab-programs .split{grid-template-columns:max-content minmax(380px,1fr)}
+#tab-programs .split > .card:first-child{max-width:720px}
+@media (max-width:1100px){#tab-programs .split{grid-template-columns:1fr}#tab-programs .split > .card:first-child{max-width:none}.explorer{position:static;max-height:none}}
+
+/* Episode references in the program explorer. */
+table.episodes td,table.episodes th{white-space:nowrap;padding:6px 8px}
+table.episodes .num{text-align:right;font-variant-numeric:tabular-nums}
+table.episodes td.ok{color:var(--teal)}
+table.episodes td.bad{color:var(--warning)}
+table.episodes td button{padding:4px 10px}
+
+/* Theme toggle: a half-filled disc, unambiguous in both themes. */
+.theme-toggle{width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:50%;background:transparent;border:1px solid rgba(160,205,225,.45);color:#d9e6ee}
+.theme-toggle:hover:enabled{border-color:#d9e6ee}
+.theme-toggle span{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+
+/* Campaign title: the square count is the key parameter. */
+.campaign-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.n-badge{padding:2px 12px;border-radius:8px;background:var(--strong-bg);color:var(--strong-ink);font:700 30px/1.25 ui-monospace,monospace}
+.lineage{color:var(--muted);font-weight:400}
+.provenance{margin:22px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.pager button{min-width:38px}
+#program-page{min-width:120px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* Best known upper bound from the literature: a solid line distinct from the dashed controls. */
+.progress-chart .best-known{stroke:var(--ink);stroke-width:2}
+.legend i.best-known{background:var(--ink)}
+.chart-source{margin:6px 0 0;color:var(--muted);font-size:12px}
+
+/* Size and time fields: one compact control (− value +) sized to the number, not stretched across the column. */
+.stepper{display:inline-flex;align-self:flex-start;align-items:stretch;border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden}
+.stepper:focus-within{outline:3px solid #75a9db;outline-offset:2px}
+.stepper input{width:9ch;border:0;border-radius:0;padding:7px 4px;text-align:center;font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
+.stepper input:focus-visible{outline:none}
+.stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.stepper button{width:32px;padding:0;border:0;border-radius:0;background:var(--subtle);color:var(--ink);font:600 15px/1 Cantarell,system-ui,sans-serif}
+.stepper button:hover:enabled{background:var(--selected-row)}
+.stepper button:first-child{border-right:1px solid var(--line)}
+.stepper button:last-child{border-left:1px solid var(--line)}
+.stepper button:disabled{opacity:.35}
+/* Plain numeric fields are as wide as their numbers; uint64 seeds and IDs need up to 20 digits. */
+label > input[type=number]{align-self:flex-start;width:11ch;text-align:right;font-variant-numeric:tabular-nums}
+label > input[inputmode=numeric]{align-self:flex-start;width:22ch;font-variant-numeric:tabular-nums}
+
+/* Continuation form rows: text fields share a row; numeric steppers sit side by side at their natural width. */
+.form-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px 28px}
+.form-row > .grow{flex:1 1 280px}
+.form-row > .grow input,.form-row > .grow select{width:100%}
+
+/* Five status tiles; the speed tile's second line is smaller. */
+.statusline{grid-template-columns:repeat(5,1fr)}
+@media (max-width:1050px){.statusline{grid-template-columns:repeat(3,1fr)}}
+</style></head><body>
+<header><div class="brand"><span class="mark"><i></i><i></i><i></i><i></i></span><div><strong>ASQUERIX / EXPERIMENT LAB</strong><small>Offline campaign evidence · rigid unit squares</small></div></div><span class="badge">PARTIAL</span></header>
+<main><h1>Rigid-square comparison</h1><p class="muted">n = 51 · profile 1218ea9c9657cf6886f63a5c451a8b8be793d952f5fe99e6016c4fd8a78b8005 · 0 completed scientific episode executions · 0 diagnostic replays</p><p class="notice">Functional pilot; no claim of optimality or statistically established method superiority. All ranking best poses were independently checked. GPU acceptance, validation, and errors remain separate in the native records. Training winners were frozen before holdout.</p>
+<section class="card"><h2>Quality, reliability and cost</h2><label>Curve coordinate<select id="curve-axis"><option value="evaluations">Completed candidate evaluations</option><option value="work">Charged work</option><option value="time">Arm execution time</option></select></label><div id="curve"></div><p class="muted">Mixed strategy batch timing is not isolated per-program timing. Native chunks retain measured timing scopes. Equal candidate budgets do not imply equal work.</p><div class="table-wrap"><table><thead><tr><th>Arm</th><th>Candidate</th><th>Training mean L</th><th>Holdout mean L</th><th>Best individual L</th><th>Eligibility</th><th>Program</th></tr></thead><tbody id="candidate-table"></tbody></table></div></section>
+<section class="split"><div class="card"><h2>Search history</h2><div id="history"></div></div><div class="card"><h2>Program explorer</h2><div id="program"></div></div></section>
+<section class="card"><h2>Geometric replay and paired programs</h2><div id="replays"></div></section><details class="card"><summary>Paired per-start differences</summary><pre id="paired-data"></pre></details>
+<details class="card"><summary>Configuration and provenance</summary><pre>{
+  &quot;campaign&quot;: {
+    &quot;id&quot;: &quot;e3492cab59954411a1c56b4b35c1f604&quot;,
+    &quot;plan&quot;: {
+      &quot;automatic_replay_cap&quot;: 8,
+      &quot;candidate_evaluations&quot;: 2000000,
+      &quot;estimated_device_bytes&quot;: 106054656,
+      &quot;estimated_native_bytes&quot;: 11857408,
+      &quot;holdout_episodes_before_deduplication&quot;: 256,
+      &quot;maximum_seconds&quot;: 1200.0,
+      &quot;timing_forecast&quot;: null,
+      &quot;training_episodes&quot;: 128000128
+    },
+    &quot;profile&quot;: {
+      &quot;cpu_validation_tolerance&quot;: 1e-09,
+      &quot;fast_math&quot;: false,
+      &quot;initial_side&quot;: 15.0,
+      &quot;maximum_side&quot;: 30.0,
+      &quot;n&quot;: 51,
+      &quot;name&quot;: &quot;rigid-square-lab-v1&quot;,
+      &quot;operator_version&quot;: &quot;rigid-operators-v1&quot;,
+      &quot;precision&quot;: &quot;FP32&quot;,
+      &quot;rng_version&quot;: &quot;splitmix64-operator-world-v1&quot;,
+      &quot;scoring_version&quot;: &quot;eligible-f64-mean-median-work-size-hash-v1&quot;,
+      &quot;solver&quot;: {
+        &quot;acceptance_tolerance&quot;: 2e-06,
+        &quot;guard&quot;: 2e-05,
+        &quot;max_rotation&quot;: 0.08,
+        &quot;max_translation&quot;: 0.1,
+        &quot;motion_tolerance&quot;: 1e-07,
+        &quot;proposals_per_square&quot;: 2000,
+        &quot;relaxation&quot;: 0.8,
+        &quot;rotation_mobility&quot;: 0.3,
+        &quot;stagnation_sweeps&quot;: 4,
+        &quot;step&quot;: 0.2,
+        &quot;step_floor&quot;: 0.0001,
+        &quot;step_reduction&quot;: 0.5
+      },
+      &quot;work_limits&quot;: {
+        &quot;compression_attempts&quot;: 128,
+        &quot;constraint_visits&quot;: 176262912,
+        &quot;contact_sweeps&quot;: 61440,
+        &quot;dispatches&quot;: 256
+      },
+      &quot;work_policy&quot;: &quot;Prepaid conservative constraint visits, copies, selectors and dispatches; actual sweeps recorded separately; no refunds.&quot;
+    },
+    &quot;spec&quot;: {
+      &quot;batch_capacity&quot;: 32768,
+      &quot;controls&quot;: [
+        &quot;legacy_compress&quot;,
+        &quot;pulse_rotate&quot;
+      ],
+      &quot;datasets&quot;: {
+        &quot;holdout&quot;: {
+          &quot;first_id&quot;: &quot;200000&quot;,
+          &quot;valid_count&quot;: 64
+        },
+        &quot;initializer_seed&quot;: &quot;20261008&quot;,
+        &quot;training&quot;: {
+          &quot;first_id&quot;: &quot;100000&quot;,
+          &quot;valid_count&quot;: 64
+        }
+      },
+      &quot;description&quot;: &quot;&quot;,
+      &quot;device&quot;: &quot;cuda:0&quot;,
+      &quot;evaluation_profile&quot;: &quot;rigid-square-lab-v1&quot;,
+      &quot;fixed_programs&quot;: [],
+      &quot;generation&quot;: {
+        &quot;attempt_max&quot;: 32,
+        &quot;attempt_min&quot;: 4,
+        &quot;compress_fraction&quot;: {
+          &quot;maximum&quot;: 0.1,
+          &quot;minimum&quot;: 0.01
+        },
+        &quot;condition_probability&quot;: 0.05,
+        &quot;expand_fraction&quot;: {
+          &quot;maximum&quot;: 0.1,
+          &quot;minimum&quot;: 0.005
+        },
+        &quot;k_max&quot;: 6,
+        &quot;k_min&quot;: 1,
+        &quot;legacy_target_probability&quot;: 0.25,
+        &quot;max_nodes&quot;: 16,
+        &quot;min_nodes&quot;: 4,
+        &quot;move_distance&quot;: {
+          &quot;maximum&quot;: 0.2,
+          &quot;minimum&quot;: 0.005
+        },
+        &quot;mutation_weights&quot;: {
+          &quot;condition&quot;: 5,
+          &quot;delete&quot;: 10,
+          &quot;insert&quot;: 15,
+          &quot;parameter&quot;: 30,
+          &quot;repeat&quot;: 10,
+          &quot;replace&quot;: 15,
+          &quot;selector&quot;: 15
+        },
+        &quot;proposal_retries&quot;: 64,
+        &quot;repeat_max&quot;: 4,
+        &quot;repeat_min&quot;: 1,
+        &quot;repeat_probability&quot;: 0.08,
+        &quot;rotate_angle_rad&quot;: {
+          &quot;maximum&quot;: 0.3,
+          &quot;minimum&quot;: 0.01
+        },
+        &quot;selectors&quot;: [
+          &quot;ALL&quot;,
+          &quot;RANDOM_K&quot;,
+          &quot;WALL_K&quot;
+        ],
+        &quot;sweep_max&quot;: 480,
+        &quot;sweep_min&quot;: 120,
+        &quot;version&quot;: &quot;bounded-grammar-v1&quot;,
+        &quot;weights&quot;: {
+          &quot;COMPRESS&quot;: 40,
+          &quot;EXPAND&quot;: 20,
+          &quot;MOVE&quot;: 15,
+          &quot;RELAX&quot;: 0,
+          &quot;RESTORE_BEST&quot;: 5,
+          &quot;ROTATE&quot;: 20
+        }
+      },
+      &quot;initial_side&quot;: 15.0,
+      &quot;limits&quot;: {
+        &quot;max_artifact_mib&quot;: 256.0,
+        &quot;max_seconds&quot;: 1200.0
+      },
+      &quot;n&quot;: 51,
+      &quot;name&quot;: &quot;Rigid-square comparison&quot;,
+      &quot;operator_replicates&quot;: 1,
+      &quot;operator_seed&quot;: &quot;20261009&quot;,
+      &quot;pose_evidence&quot;: &quot;important&quot;,
+      &quot;publication&quot;: {
+        &quot;enabled&quot;: true
+      },
+      &quot;recording&quot;: {
+        &quot;automatic&quot;: true,
+        &quot;every&quot;: 16,
+        &quot;max_frames_per_trace&quot;: 256,
+        &quot;max_trace_mib&quot;: 10.0,
+        &quot;max_traces&quot;: 8,
+        &quot;mode&quot;: &quot;accepted&quot;
+      },
+      &quot;schema&quot;: &quot;asquerix-lab-campaign-v1&quot;,
+      &quot;search&quot;: {
+        &quot;candidate_budget_per_method&quot;: 1000000,
+        &quot;initial_pool&quot;: 8,
+        &quot;lambda&quot;: 0,
+        &quot;methods&quot;: [
+          &quot;random_program_search&quot;,
+          &quot;one_plus_lambda&quot;
+        ],
+        &quot;seed&quot;: &quot;8001&quot;,
+        &quot;shared_initial_pool&quot;: true,
+        &quot;time_budget_seconds&quot;: 300.0
+      },
+      &quot;slice_dispatches&quot;: 32,
+      &quot;slice_sweeps&quot;: 128,
+      &quot;thresholds&quot;: [],
+      &quot;work_limits&quot;: {
+        &quot;compression_attempts&quot;: 128,
+        &quot;constraint_visits&quot;: null,
+        &quot;contact_sweeps&quot;: 61440,
+        &quot;dispatches&quot;: 256
+      }
+    }
+  },
+  &quot;summary&quot;: {
+    &quot;cache_hits&quot;: 0,
+    &quot;chunks&quot;: [
+      {
+        &quot;attempt&quot;: 1,
+        &quot;completed_at&quot;: 1791593786.4067323,
+        &quot;completed_episode_executions&quot;: 0,
+        &quot;count&quot;: 128,
+        &quot;execution_elapsed_seconds&quot;: 13.331770838005468,
+        &quot;group&quot;: &quot;part-05d0d8340f55960f-0000&quot;,
+        &quot;group_episode_executions&quot;: 0,
+        &quot;group_parts&quot;: 1,
+        &quot;numeric_path&quot;: &quot;evaluations/part-05d0d8340f55960f-0000.npz&quot;,
+        &quot;numeric_sha256&quot;: &quot;cd46d9608f15d4235bf4ca135d1d255428b79b1ab6c00a43167859e7f03246df&quot;,
+        &quot;records_path&quot;: &quot;evaluations/part-05d0d8340f55960f-0000.jsonl.gz&quot;,
+        &quot;records_sha256&quot;: &quot;05e75a3dcebb884e32ef936944fb04006b6fcd4755c0e291cc39d544b4efb9b6&quot;,
+        &quot;schema&quot;: &quot;asquerix-lab-result-chunk-v1&quot;,
+        &quot;timings&quot;: {
+          &quot;device_seconds&quot;: 0.0006144000291824341,
+          &quot;persistence_seconds&quot;: 0.028500974003691226,
+          &quot;simulation_seconds&quot;: 0.0006336240330711007,
+          &quot;transfer_seconds&quot;: 0.0005398669745773077,
+          &quot;validation_seconds&quot;: 1.004293065983802
+        }
+      }
+    ],
+    &quot;completed_candidates&quot;: 0,
+    &quot;completed_episode_executions&quot;: 0,
+    &quot;continuation&quot;: null,
+    &quot;controllers&quot;: {},
+    &quot;datasets&quot;: {
+      &quot;holdout&quot;: {
+        &quot;count&quot;: 64,
+        &quot;hash&quot;: &quot;cec075c0ca6273931a7f565bdc04dd9726d5bc4c214a15493252f69ab3bfd507&quot;,
+        &quot;provenance&quot;: {
+          &quot;config&quot;: {
+            &quot;acceptance_tolerance&quot;: 2e-06,
+            &quot;guard&quot;: 2e-05,
+            &quot;initial_side&quot;: 15.0,
+            &quot;max_attempts&quot;: 0,
+            &quot;max_rotation&quot;: 0.08,
+            &quot;max_sweeps&quot;: 480,
+            &quot;max_translation&quot;: 0.1,
+            &quot;motion_tolerance&quot;: 1e-07,
+            &quot;n&quot;: 51,
+            &quot;proposals_per_square&quot;: 2000,
+            &quot;relaxation&quot;: 0.8,
+            &quot;rotation_mobility&quot;: 0.3,
+            &quot;seed&quot;: 20261008,
+            &quot;stagnation_sweeps&quot;: 4,
+            &quot;step&quot;: 0.2,
+            &quot;step_floor&quot;: 0.0001,
+            &quot;step_reduction&quot;: 0.5
+          },
+          &quot;first_id&quot;: &quot;200000&quot;,
+          &quot;initializer_seed&quot;: &quot;20261008&quot;,
+          &quot;n&quot;: 51,
+          &quot;rejected&quot;: [],
+          &quot;replacement_policy&quot;: &quot;Increasing IDs, at most four times the bank count, shared by all programs.&quot;
+        }
+      },
+      &quot;training&quot;: {
+        &quot;count&quot;: 64,
+        &quot;hash&quot;: &quot;9d14c408a8eaf81ce51d943983794688d7ac0750fe5a558ab27207af5e194b91&quot;,
+        &quot;provenance&quot;: {
+          &quot;config&quot;: {
+            &quot;acceptance_tolerance&quot;: 2e-06,
+            &quot;guard&quot;: 2e-05,
+            &quot;initial_side&quot;: 15.0,
+            &quot;max_attempts&quot;: 0,
+            &quot;max_rotation&quot;: 0.08,
+            &quot;max_sweeps&quot;: 480,
+            &quot;max_translation&quot;: 0.1,
+            &quot;motion_tolerance&quot;: 1e-07,
+            &quot;n&quot;: 51,
+            &quot;proposals_per_square&quot;: 2000,
+            &quot;relaxation&quot;: 0.8,
+            &quot;rotation_mobility&quot;: 0.3,
+            &quot;seed&quot;: 20261008,
+            &quot;stagnation_sweeps&quot;: 4,
+            &quot;step&quot;: 0.2,
+            &quot;step_floor&quot;: 0.0001,
+            &quot;step_reduction&quot;: 0.5
+          },
+          &quot;first_id&quot;: &quot;100000&quot;,
+          &quot;initializer_seed&quot;: &quot;20261008&quot;,
+          &quot;n&quot;: 51,
+          &quot;rejected&quot;: [],
+          &quot;replacement_policy&quot;: &quot;Increasing IDs, at most four times the bank count, shared by all programs.&quot;
+        }
+      }
+    },
+    &quot;elapsed_execution_seconds&quot;: 13.388938047981355,
+    &quot;evaluated_programs&quot;: 0,
+    &quot;executable_hash&quot;: &quot;6429e39b9d60094e9445a0650adfa8c2cfcb9bd2afe76415dc94d07ee2038faa&quot;,
+    &quot;frozen_winners&quot;: [],
+    &quot;id&quot;: &quot;e3492cab59954411a1c56b4b35c1f604&quot;,
+    &quot;logical_candidate_budget&quot;: 2000000,
+    &quot;pause_drains&quot;: [],
+    &quot;pose_evidence&quot;: &quot;important&quot;,
+    &quot;profile_hash&quot;: &quot;1218ea9c9657cf6886f63a5c451a8b8be793d952f5fe99e6016c4fd8a78b8005&quot;,
+    &quot;replay_executions&quot;: 0,
+    &quot;replay_omissions&quot;: [],
+    &quot;replays&quot;: [],
+    &quot;retained_programs&quot;: 2,
+    &quot;schema&quot;: &quot;asquerix-lab-summary-v1&quot;,
+    &quot;scientific_caveat&quot;: &quot;Functional pilot; no claim of optimality or statistically established method superiority.&quot;,
+    &quot;state&quot;: &quot;PARTIAL&quot;,
+    &quot;stop_drain_seconds&quot;: 3.549182653427124,
+    &quot;stop_reason&quot;: &quot;USER_STOP&quot;,
+    &quot;submitted_episode_attempts&quot;: 128,
+    &quot;time_budget_seconds&quot;: 300.0,
+    &quot;timings&quot;: {
+      &quot;initial_validation_seconds&quot;: 0.36943395709386095,
+      &quot;initialization_device_seconds&quot;: 0.0019441279768943787,
+      &quot;initialization_seconds&quot;: 0.002017220016568899,
+      &quot;initialization_transfer_seconds&quot;: 0.010144752042833716
+    },
+    &quot;top_evidence&quot;: []
+  }
+}</pre></details></main><script id="report-data" type="application/json">{"campaign":{"id":"e3492cab59954411a1c56b4b35c1f604","plan":{"automatic_replay_cap":8,"candidate_evaluations":2000000,"estimated_device_bytes":106054656,"estimated_native_bytes":11857408,"holdout_episodes_before_deduplication":256,"maximum_seconds":1200.0,"timing_forecast":null,"training_episodes":128000128},"profile":{"cpu_validation_tolerance":1e-09,"fast_math":false,"initial_side":15.0,"maximum_side":30.0,"n":51,"name":"rigid-square-lab-v1","operator_version":"rigid-operators-v1","precision":"FP32","rng_version":"splitmix64-operator-world-v1","scoring_version":"eligible-f64-mean-median-work-size-hash-v1","solver":{"acceptance_tolerance":2e-06,"guard":2e-05,"max_rotation":0.08,"max_translation":0.1,"motion_tolerance":1e-07,"proposals_per_square":2000,"relaxation":0.8,"rotation_mobility":0.3,"stagnation_sweeps":4,"step":0.2,"step_floor":0.0001,"step_reduction":0.5},"work_limits":{"compression_attempts":128,"constraint_visits":176262912,"contact_sweeps":61440,"dispatches":256},"work_policy":"Prepaid conservative constraint visits, copies, selectors and dispatches; actual sweeps recorded separately; no refunds."},"spec":{"batch_capacity":32768,"controls":["legacy_compress","pulse_rotate"],"datasets":{"holdout":{"first_id":"200000","valid_count":64},"initializer_seed":"20261008","training":{"first_id":"100000","valid_count":64}},"description":"","device":"cuda:0","evaluation_profile":"rigid-square-lab-v1","fixed_programs":[],"generation":{"attempt_max":32,"attempt_min":4,"compress_fraction":{"maximum":0.1,"minimum":0.01},"condition_probability":0.05,"expand_fraction":{"maximum":0.1,"minimum":0.005},"k_max":6,"k_min":1,"legacy_target_probability":0.25,"max_nodes":16,"min_nodes":4,"move_distance":{"maximum":0.2,"minimum":0.005},"mutation_weights":{"condition":5,"delete":10,"insert":15,"parameter":30,"repeat":10,"replace":15,"selector":15},"proposal_retries":64,"repeat_max":4,"repeat_min":1,"repeat_probability":0.08,"rotate_angle_rad":{"maximum":0.3,"minimum":0.01},"selectors":["ALL","RANDOM_K","WALL_K"],"sweep_max":480,"sweep_min":120,"version":"bounded-grammar-v1","weights":{"COMPRESS":40,"EXPAND":20,"MOVE":15,"RELAX":0,"RESTORE_BEST":5,"ROTATE":20}},"initial_side":15.0,"limits":{"max_artifact_mib":256.0,"max_seconds":1200.0},"n":51,"name":"Rigid-square comparison","operator_replicates":1,"operator_seed":"20261009","pose_evidence":"important","publication":{"enabled":true},"recording":{"automatic":true,"every":16,"max_frames_per_trace":256,"max_trace_mib":10.0,"max_traces":8,"mode":"accepted"},"schema":"asquerix-lab-campaign-v1","search":{"candidate_budget_per_method":1000000,"initial_pool":8,"lambda":0,"methods":["random_program_search","one_plus_lambda"],"seed":"8001","shared_initial_pool":true,"time_budget_seconds":300.0},"slice_dispatches":32,"slice_sweeps":128,"thresholds":[],"work_limits":{"compression_attempts":128,"constraint_visits":null,"contact_sweeps":61440,"dispatches":256}}},"summary":{"cache_hits":0,"chunks":[{"attempt":1,"completed_at":1791593786.4067323,"completed_episode_executions":0,"count":128,"execution_elapsed_seconds":13.331770838005468,"group":"part-05d0d8340f55960f-0000","group_episode_executions":0,"group_parts":1,"numeric_path":"evaluations/part-05d0d8340f55960f-0000.npz","numeric_sha256":"cd46d9608f15d4235bf4ca135d1d255428b79b1ab6c00a43167859e7f03246df","records_path":"evaluations/part-05d0d8340f55960f-0000.jsonl.gz","records_sha256":"05e75a3dcebb884e32ef936944fb04006b6fcd4755c0e291cc39d544b4efb9b6","schema":"asquerix-lab-result-chunk-v1","timings":{"device_seconds":0.0006144000291824341,"persistence_seconds":0.028500974003691226,"simulation_seconds":0.0006336240330711007,"transfer_seconds":0.0005398669745773077,"validation_seconds":1.004293065983802}}],"completed_candidates":0,"completed_episode_executions":0,"continuation":null,"controllers":{},"datasets":{"holdout":{"count":64,"hash":"cec075c0ca6273931a7f565bdc04dd9726d5bc4c214a15493252f69ab3bfd507","provenance":{"config":{"acceptance_tolerance":2e-06,"guard":2e-05,"initial_side":15.0,"max_attempts":0,"max_rotation":0.08,"max_sweeps":480,"max_translation":0.1,"motion_tolerance":1e-07,"n":51,"proposals_per_square":2000,"relaxation":0.8,"rotation_mobility":0.3,"seed":20261008,"stagnation_sweeps":4,"step":0.2,"step_floor":0.0001,"step_reduction":0.5},"first_id":"200000","initializer_seed":"20261008","n":51,"rejected":[],"replacement_policy":"Increasing IDs, at most four times the bank count, shared by all programs."}},"training":{"count":64,"hash":"9d14c408a8eaf81ce51d943983794688d7ac0750fe5a558ab27207af5e194b91","provenance":{"config":{"acceptance_tolerance":2e-06,"guard":2e-05,"initial_side":15.0,"max_attempts":0,"max_rotation":0.08,"max_sweeps":480,"max_translation":0.1,"motion_tolerance":1e-07,"n":51,"proposals_per_square":2000,"relaxation":0.8,"rotation_mobility":0.3,"seed":20261008,"stagnation_sweeps":4,"step":0.2,"step_floor":0.0001,"step_reduction":0.5},"first_id":"100000","initializer_seed":"20261008","n":51,"rejected":[],"replacement_policy":"Increasing IDs, at most four times the bank count, shared by all programs."}}},"elapsed_execution_seconds":13.388938047981355,"evaluated_programs":0,"executable_hash":"6429e39b9d60094e9445a0650adfa8c2cfcb9bd2afe76415dc94d07ee2038faa","frozen_winners":[],"id":"e3492cab59954411a1c56b4b35c1f604","logical_candidate_budget":2000000,"pause_drains":[],"pose_evidence":"important","profile_hash":"1218ea9c9657cf6886f63a5c451a8b8be793d952f5fe99e6016c4fd8a78b8005","replay_executions":0,"replay_omissions":[],"replays":[],"retained_programs":2,"schema":"asquerix-lab-summary-v1","scientific_caveat":"Functional pilot; no claim of optimality or statistically established method superiority.","state":"PARTIAL","stop_drain_seconds":3.549182653427124,"stop_reason":"USER_STOP","submitted_episode_attempts":128,"time_budget_seconds":300.0,"timings":{"initial_validation_seconds":0.36943395709386095,"initialization_device_seconds":0.0019441279768943787,"initialization_seconds":0.002017220016568899,"initialization_transfer_seconds":0.010144752042833716},"top_evidence":[]},"programs":[{"id":"e3492cab59954411a1c56b4b35c1f604:controls:0","arm":"controls","position":0,"generation":0,"program":{"schema":"asquerix-strategy-v1","operator_version":"rigid-operators-v1","hash":"b0929a8d0c22e63b93796409c46798e4ba40f28e50c4a3d3d05f59f5dd2ef851","authored":{"body":[{"attempt_limit":128,"op":"COMPRESS","sweep_limit":480,"target_reduction":null},{"op":"STOP"}],"name":"legacy_compress","schema":"asquerix-strategy-v1"},"instruction_count":2,"source_map":["body[0]","body[1]"],"instructions":[{"pc":0,"op":"COMPRESS","words":[1,128,480,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[0]"},{"pc":1,"op":"STOP","words":[7,0,0,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[1]"}]},"parent_id":null,"parent_hash":null,"mutation":null,"origin":"fixed_control","state":"INCOMPLETE","score":{"complete":false,"eligible":false,"completed_episodes":64,"expected_episodes":64,"mean_best_L":15.0,"median_best_L":15.0,"best_L":15.0,"worst_L":15.0,"stddev_best_L":0.0,"quantiles":{"0.1":15.0,"0.25":15.0,"0.75":15.0,"0.9":15.0},"mean_charged_work":2805.0,"total_charged_work":179520,"validation_counts":{"NUMERICALLY_VALIDATED":64},"termination_counts":{"CANCELLED":64},"threshold_hits":{},"instruction_count":2,"program_hash":"b0929a8d0c22e63b93796409c46798e4ba40f28e50c4a3d3d05f59f5dd2ef851","ranking_tuple":null,"aggregation":"math.fsum/float64 in initial-ID, replicate, episode-key order; population standard deviation","scoring_seconds":0.012336832005530596},"completed_at":1791593786.4149976,"execution_elapsed_seconds":13.340033083979506,"arm_execution_elapsed_seconds":13.340034946973901},{"id":"e3492cab59954411a1c56b4b35c1f604:controls:1","arm":"controls","position":1,"generation":0,"program":{"schema":"asquerix-strategy-v1","operator_version":"rigid-operators-v1","hash":"d181ebfa3b3be214500044767ce94f3c765cd2c78be2a0557493718e4efe5129","authored":{"body":[{"body":[{"attempt_limit":8,"op":"COMPRESS","sweep_limit":120,"target_reduction":0.05},{"fraction":0.04,"op":"EXPAND"},{"max_angle_rad":0.1,"op":"ROTATE","repair_sweeps":120,"selector":{"k":3,"kind":"WALL_K"}}],"count":4,"op":"REPEAT"},{"attempt_limit":64,"op":"COMPRESS","sweep_limit":480,"target_reduction":null},{"op":"STOP"}],"name":"pulse_rotate","schema":"asquerix-strategy-v1"},"instruction_count":14,"source_map":["body[0].body[0]","body[0].body[1]","body[0].body[2]","body[0].body[0]","body[0].body[1]","body[0].body[2]","body[0].body[0]","body[0].body[1]","body[0].body[2]","body[0].body[0]","body[0].body[1]","body[0].body[2]","body[1]","body[2]"],"instructions":[{"pc":0,"op":"COMPRESS","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0],"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"source_node":"body[0].body[0]"},{"pc":1,"op":"EXPAND","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0],"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"source_node":"body[0].body[1]"},{"pc":2,"op":"ROTATE","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0],"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"source_node":"body[0].body[2]"},{"pc":3,"op":"COMPRESS","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0],"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"source_node":"body[0].body[0]"},{"pc":4,"op":"EXPAND","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0],"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"source_node":"body[0].body[1]"},{"pc":5,"op":"ROTATE","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0],"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"source_node":"body[0].body[2]"},{"pc":6,"op":"COMPRESS","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0],"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"source_node":"body[0].body[0]"},{"pc":7,"op":"EXPAND","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0],"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"source_node":"body[0].body[1]"},{"pc":8,"op":"ROTATE","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0],"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"source_node":"body[0].body[2]"},{"pc":9,"op":"COMPRESS","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0],"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"source_node":"body[0].body[0]"},{"pc":10,"op":"EXPAND","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0],"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"source_node":"body[0].body[1]"},{"pc":11,"op":"ROTATE","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0],"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"source_node":"body[0].body[2]"},{"pc":12,"op":"COMPRESS","words":[1,64,480,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[1]"},{"pc":13,"op":"STOP","words":[7,0,0,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[2]"}]},"parent_id":null,"parent_hash":null,"mutation":null,"origin":"fixed_control","state":"INCOMPLETE","score":{"complete":false,"eligible":false,"completed_episodes":64,"expected_episodes":64,"mean_best_L":15.0,"median_best_L":15.0,"best_L":15.0,"worst_L":15.0,"stddev_best_L":0.0,"quantiles":{"0.1":15.0,"0.25":15.0,"0.75":15.0,"0.9":15.0},"mean_charged_work":2805.0,"total_charged_work":179520,"validation_counts":{"NUMERICALLY_VALIDATED":64},"termination_counts":{"CANCELLED":64},"threshold_hits":{},"instruction_count":14,"program_hash":"d181ebfa3b3be214500044767ce94f3c765cd2c78be2a0557493718e4efe5129","ranking_tuple":null,"aggregation":"math.fsum/float64 in initial-ID, replicate, episode-key order; population standard deviation","scoring_seconds":0.0003269959706813097},"completed_at":1791593786.4152808,"execution_elapsed_seconds":13.340315385023132,"arm_execution_elapsed_seconds":13.340316247020382}],"events":[{"id":"125654","kind":"CAMPAIGN_QUEUED","created":1791593772.6361,"payload":{"manifest_hash":"6852df76eefda29761c2a801ddde39fccbc8144cb7a3db3ebc120a463a7085b8","plan":{"automatic_replay_cap":8,"candidate_evaluations":2000000,"estimated_device_bytes":106054656,"estimated_native_bytes":11857408,"holdout_episodes_before_deduplication":256,"maximum_seconds":1200.0,"timing_forecast":null,"training_episodes":128000128}}},{"id":"125660","kind":"CANDIDATE_GENERATED","created":1791593774.223302,"payload":{"arm":"controls","generation":0,"id":"e3492cab59954411a1c56b4b35c1f604:controls:0","mutation":null,"origin":"fixed_control","parent_hash":null,"parent_id":null,"position":0,"program":{"authored":{"body":[{"attempt_limit":128,"op":"COMPRESS","sweep_limit":480,"target_reduction":null},{"op":"STOP"}],"name":"legacy_compress","schema":"asquerix-strategy-v1"},"hash":"b0929a8d0c22e63b93796409c46798e4ba40f28e50c4a3d3d05f59f5dd2ef851","instruction_count":2,"instructions":[{"fp32_bits":["00000000","00000000","00000000","00000000"],"op":"COMPRESS","pc":0,"source_node":"body[0]","words":[1,128,480,0,0.0,0.0,0.0,0.0]},{"fp32_bits":["00000000","00000000","00000000","00000000"],"op":"STOP","pc":1,"source_node":"body[1]","words":[7,0,0,0,0.0,0.0,0.0,0.0]}],"operator_version":"rigid-operators-v1","schema":"asquerix-strategy-v1","source_map":["body[0]","body[1]"]},"score":{},"state":"PENDING"}},{"id":"125661","kind":"CANDIDATE_GENERATED","created":1791593774.239639,"payload":{"arm":"controls","generation":0,"id":"e3492cab59954411a1c56b4b35c1f604:controls:1","mutation":null,"origin":"fixed_control","parent_hash":null,"parent_id":null,"position":1,"program":{"authored":{"body":[{"body":[{"attempt_limit":8,"op":"COMPRESS","sweep_limit":120,"target_reduction":0.05},{"fraction":0.04,"op":"EXPAND"},{"max_angle_rad":0.1,"op":"ROTATE","repair_sweeps":120,"selector":{"k":3,"kind":"WALL_K"}}],"count":4,"op":"REPEAT"},{"attempt_limit":64,"op":"COMPRESS","sweep_limit":480,"target_reduction":null},{"op":"STOP"}],"name":"pulse_rotate","schema":"asquerix-strategy-v1"},"hash":"d181ebfa3b3be214500044767ce94f3c765cd2c78be2a0557493718e4efe5129","instruction_count":14,"instructions":[{"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"op":"COMPRESS","pc":0,"source_node":"body[0].body[0]","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0]},{"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"op":"EXPAND","pc":1,"source_node":"body[0].body[1]","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0]},{"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"op":"ROTATE","pc":2,"source_node":"body[0].body[2]","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0]},{"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"op":"COMPRESS","pc":3,"source_node":"body[0].body[0]","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0]},{"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"op":"EXPAND","pc":4,"source_node":"body[0].body[1]","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0]},{"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"op":"ROTATE","pc":5,"source_node":"body[0].body[2]","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0]},{"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"op":"COMPRESS","pc":6,"source_node":"body[0].body[0]","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0]},{"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"op":"EXPAND","pc":7,"source_node":"body[0].body[1]","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0]},{"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"op":"ROTATE","pc":8,"source_node":"body[0].body[2]","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0]},{"fp32_bits":["cdcc4c3d","00000000","00000000","00000000"],"op":"COMPRESS","pc":9,"source_node":"body[0].body[0]","words":[1,8,120,1,0.05000000074505806,0.0,0.0,0.0]},{"fp32_bits":["0ad7233d","00000000","00000000","00000000"],"op":"EXPAND","pc":10,"source_node":"body[0].body[1]","words":[2,0,0,0,0.03999999910593033,0.0,0.0,0.0]},{"fp32_bits":["cdcccc3d","00000000","00000000","00000000"],"op":"ROTATE","pc":11,"source_node":"body[0].body[2]","words":[4,2,3,120,0.10000000149011612,0.0,0.0,0.0]},{"fp32_bits":["00000000","00000000","00000000","00000000"],"op":"COMPRESS","pc":12,"source_node":"body[1]","words":[1,64,480,0,0.0,0.0,0.0,0.0]},{"fp32_bits":["00000000","00000000","00000000","00000000"],"op":"STOP","pc":13,"source_node":"body[2]","words":[7,0,0,0,0.0,0.0,0.0,0.0]}],"operator_version":"rigid-operators-v1","schema":"asquerix-strategy-v1","source_map":["body[0].body[0]","body[0].body[1]","body[0].body[2]","body[0].body[0]","body[0].body[1]","body[0].body[2]","body[0].body[0]","body[0].body[1]","body[0].body[2]","body[0].body[0]","body[0].body[1]","body[0].body[2]","body[1]","body[2]"]},"score":{},"state":"PENDING"}},{"id":"125664","kind":"COMMAND","created":1791593782.9025488,"payload":{"command":"stop","state":"STOP_REQUESTED"}},{"id":"125666","kind":"CANDIDATE_RESULT","created":1791593786.48561,"payload":{"arm":"controls","bank":"training","candidate_id":"e3492cab59954411a1c56b4b35c1f604:controls:0","execution_elapsed_seconds":13.340168137976434,"program_hash":"b0929a8d0c22e63b93796409c46798e4ba40f28e50c4a3d3d05f59f5dd2ef851","score":{"best_L":15.0,"complete":false,"eligible":false,"mean_best_L":15.0,"ranking_tuple":null}}},{"id":"125667","kind":"CANDIDATE_RESULT","created":1791593786.4990597,"payload":{"arm":"controls","bank":"training","candidate_id":"e3492cab59954411a1c56b4b35c1f604:controls:1","execution_elapsed_seconds":13.340444108005613,"program_hash":"d181ebfa3b3be214500044767ce94f3c765cd2c78be2a0557493718e4efe5129","score":{"best_L":15.0,"complete":false,"eligible":false,"mean_best_L":15.0,"ranking_tuple":null}}},{"id":"125668","kind":"COMPUTATION_FINALIZED","created":1791593786.520081,"payload":{"completed_candidates":0,"completed_episode_executions":0,"state":"PARTIAL"}}],"replays":[],"paired":{"training: e3492cab59954411a1c56b4b35c1f604:controls:0 vs e3492cab59954411a1c56b4b35c1f604:controls:1":{"pairs":[{"initial_id":"100000","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"e7b6eec192aad62f18888f28653c1bcf074c24ca8866ecb37a4cbe8aede387d0","right_episode":"9262fe7b47dc074d079ab392485da1804e9c4663b0c457cc9238062dc694fed2"},{"initial_id":"100001","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"c618a96b5b195a494021c3ed0b150ea8d5822fa31da2082f2c992e41380c446b","right_episode":"cd267df26c3e54103afa7f2fe8c1182671775ab6947fc2c4470cecbe20424d6b"},{"initial_id":"100002","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"27d3c101a7aeec20ffc19943f5c20809e50a31c3c1891e1bad498a30deafac99","right_episode":"b4e1216fc4ef41913d04a3d4ce4689dbcdbc0ecf6ff21dd5bbdc07b887ac19d7"},{"initial_id":"100003","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"db89a73d92248fc291801734552563e4db5e65c72545f6566a568448c1db1a7e","right_episode":"86a5f9a1c4a9f1ab9a6c28c36f70c061d820a594865c58ec1a9aab2e94b3f308"},{"initial_id":"100004","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"6cd41b3843e3b1f733fc3cd52e13173a4134c3c911e55463a27a708a4a1b1c57","right_episode":"fa01e5bb8fcb24714d928b673039e21a2052c186e3eb7f893ca04175df1420a6"},{"initial_id":"100005","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"bac915cba8dfb906bfd0d62ec0ffae7b13d61a34a3c96c6c43979aa487c14e51","right_episode":"24805c8852ca075f22e42919b384c2aba3d9d20dd962a8b2de1f03583ddeaf72"},{"initial_id":"100006","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"e9017c50db0b920f2b847fd2944631e341ce330ed7d4697000375867ae6f07b4","right_episode":"6a9e381d86884a32a00f348f4c9bfb27c02530ca7f1c575ce11af85528384915"},{"initial_id":"100007","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"473021b228cc897f8bdf23f43ed7217b3ef7127ae058492e5ba63384fc34c2a2","right_episode":"31d052c2f1fac3169a288af7b2a68689899706b1343a4ec0703a36f810dbb355"},{"initial_id":"100008","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"10d8058bfecae1b876baf7c66577fc28fd203a2fe6581d87a010cc93cb87b284","right_episode":"24a70f41d814934bab091b24bc26dfec24bc4c9803e2f20b097bfb72f37c7cb0"},{"initial_id":"100009","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"17ed5535e94dacd6aace6ba20f49ba4484fab16c2865a209cc174b08b497e717","right_episode":"2b92411159da6056bd1b39af336389460c2a4f6cdec206174854c9ac9af1800d"},{"initial_id":"100010","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"70be803a78f6166c251dc094bf8d3a0e9c70fd79cd7ecc6b4e932ed5af11f418","right_episode":"464a8589b3806fad95cef8df54797a22fe3a071fe2aa19e819712cc74ae09e63"},{"initial_id":"100011","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"ea38c163aaaa85c323e9829bfda0286d223249a7d50de5cded179751f49d3ef9","right_episode":"202fb5bc9d41b2a7510707f4dc490745a794ca0323e2ba379c8ef57cc762f1ee"},{"initial_id":"100012","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"23ad061f346375139c8a93fecaebda9bd79e2b1df647530a8c3a5a457db90f55","right_episode":"ae8cc7270878e1d318ad79c7a3901bcc2344a58f78b7838708c9f600f29a7d4f"},{"initial_id":"100013","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"3d77ef380787af5af1b47ba42be9dcae123ab6a6e30712955368fcac57d24698","right_episode":"9c36425efcc12371597231961edee1e31c1a8eec44e16e631c34c2bd714669d2"},{"initial_id":"100014","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"ef16d3ab87357b62e4592fdb772932dcc3f7381f2243b1c636667aa5a77b0c85","right_episode":"4b8be1db1d52d48b0c09223c36c7c4e2fc332120e61fa319ea6dc12b463c3d59"},{"initial_id":"100015","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"221ee7ca01cfdca64124329ae6716680b79e07d5ca9b0fabbfac684c7c848e84","right_episode":"b7377154d35474c01dec9ee8db5ad18dda6e649f79a6e24129c8104cd87c1a1f"},{"initial_id":"100016","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"8f9fc556015cc7e5044c094fd64c6c8602249c97cf8ede842d7621875e9da04d","right_episode":"4a17c4d8d07ef00c7a32b33441d687bcfbd1f670ac858e49a0c9373105e75181"},{"initial_id":"100017","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"7f04f234829053425ab876804b3eba76d6da9af581d05710245a58a076dce4c8","right_episode":"b5e6e0fb61777320acd4c818e87310e87005e336b2847842fd57ac58114d7642"},{"initial_id":"100018","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"7b72b81d206a861060d89b064ac87b7a4b94176579b3ff76c6751f81c1752cbb","right_episode":"ad2835cb869b3f3c1f176ae84fc12d925a5b2cbe14bd6fac0fa9f0620fe177f8"},{"initial_id":"100019","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"f3a2cd1926dc5e0c8d49fd6d9bf5ad46ed79c3c7352f8eeb7d44d2f48f22b7e6","right_episode":"908114513a0535b2d74c481de83e5e6bf96ef3567a7ba78d711f6b2f5a1f03b1"},{"initial_id":"100020","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"a19fd8aa86904d4de4928fffb132c19d964c69550a6d92ab2da31acec0fbde3e","right_episode":"3752d652def4f8da684cc52fbd49ca307440bd81545858e5c813559426bd8905"},{"initial_id":"100021","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"839f8bdbe5fb4d6d7f1c403dc665db249f343ce9769d3f3db913bb936d58f0f6","right_episode":"fc6d5a0806c690847592a8cf8adf964f73d9c99c507cc1c637d850197e45847c"},{"initial_id":"100022","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"9b9b1793661fe64f0e730c8c4ff345a21bea79d2f90990767773768a940689eb","right_episode":"10d63cb23b703acce019b9aad46899ada37a635b6e288f77a44631c1988bf26b"},{"initial_id":"100023","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"3bfeb62bec4a6bc0386bb4935389255ebd99a39cff60cfced25fdc1348ea9c00","right_episode":"854853e30555f75fb295f1ce584469d5163f8217814986c7cfe5f0b10f54a055"},{"initial_id":"100024","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"102bba05441c1a84ab772d0596dbb3d80ef2894f7cbad67aee247b75201ff3cd","right_episode":"907f786b793ff202b8d4e2e72661b1bb0b8a3b89433d78519e996abb8ecd0af4"},{"initial_id":"100025","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"da146668c5185ec6b43c0d952a035220bdc52737b573c25afde75b8ccd1ff53e","right_episode":"4798670d4cb775ce3fcf1d2ba3df6ed66a8c2a9cc459ecd3f71e0c8b078bc219"},{"initial_id":"100026","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"631b1af0aee33747d937ddbf54092c8ab98257bde85d59c93859cf5c8c73d695","right_episode":"d1296031aa432018edd5918207ae44e1c0ff976516935ddb1459ffea0b2ccc49"},{"initial_id":"100027","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"24c4eda086c8da1905f4a81f3ae7a9f2718d995436815cf0be80818c3743ce44","right_episode":"e9a91197787788439aba1c5a89bf87257049ccf30d7e4673eb993c17a327c07b"},{"initial_id":"100028","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"e58060963284d7086d9b6b65e6c759539214517ba269384c2b5b3202f5390900","right_episode":"4266315f5a60262b1fb5ff9117585a6a63917529b3b92496cbb653dfe5925e2c"},{"initial_id":"100029","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"4271d67ce7af48b2f1cec2a6379dd99bc944073ae7344cb299b9fe7c1ab7d9dd","right_episode":"204e8c0c8332f21ec316e40ae1bb3b9ca902c72b94ce1a0e1681cb815a6ce3da"},{"initial_id":"100030","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"aa52bd2aacb30f2596f51bc4fd68764676e15d215150c80d5999674f6f76b73a","right_episode":"11f5ddc96167cb31bdca7a827d50902007b334e07d11951e48829d2b4f091fa4"},{"initial_id":"100031","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"3e65251e54e73340cb6a992f82b8c0c748989c8a13209de142b429dffb736ffe","right_episode":"bf39ea315f65ee62e85c762a9cf1b2256787fc122e6a55c83c5f17a013472d78"},{"initial_id":"100032","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"5cc908f439f7fac7803f1e6c4c55e49fb73a06d0b053db1a81ed6613aa5eee2a","right_episode":"e106ec7e3eac1170488a196f9efadc1e12fe2253276c3152b52f1abf86eb76a4"},{"initial_id":"100033","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"71b5c39669f69e0323be7ebe8575f7e012e22869e37f77457601205a4bd344a2","right_episode":"299e91034a99d3dfb2716b2916e01748ef05582cb187aeb35d0c94230c649488"},{"initial_id":"100034","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"59192e1705cf9c43342b7f923dac64e08737c81320fcb48a5081cdebe1d909b7","right_episode":"03396445ef35bb2c22e7f85cc9fd6b51aa23acb5d0a951212025f6d7eb366370"},{"initial_id":"100035","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"4e3a54684c92ea8da11a898dab0afa9eb12a747339f0aa357501872e5ed2ae61","right_episode":"d3af135094ab374f8029f553099515d669857d361296ea5d13f8316a6a1cce0d"},{"initial_id":"100036","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"9cfe60b2bf0845efc201ce59484061cf73f643c9146f9e334baf44d31c649781","right_episode":"efc756ecc086ad42dc13ac3c263ba70342087eca1a4ca30bf0eeb8d9a4fe6770"},{"initial_id":"100037","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"fc8eca354e8c90b720dd7b9550427672dd57a2d702dd5d59add9147b40899337","right_episode":"5084439d63da8755b0e50c84a47ae8b4168315d5c69fc6b0db3cec7dd99fd4fa"},{"initial_id":"100038","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"12687a64365105f9e87f3a991d175e07899f1075e0b62ee32340a963ee4b1b86","right_episode":"d091e07f78effe9e4b279346e329c748a9c06989054957212203a9497e1c5035"},{"initial_id":"100039","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"964bba58c372923aad5d4dff7b2444ab434fab87e4f8afe4c059b11363ac6a55","right_episode":"460482ff728b7b3494a2a34954e37280211eae2c81f5b8f8f9a12a845d4695c6"},{"initial_id":"100040","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"5af73d571445835508b18bdb3a239f4f777cc066f1129d5d71a6e79ccd7438af","right_episode":"ce675c74f6f7d6531c7e260d4aa9f48525481448401b66d975aed3f0c9fa3eb7"},{"initial_id":"100041","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"dc099699737538c7f43dded1e202bdc79eba97204a4c2990a616962cb2005915","right_episode":"c7287e08f885c6f1f67b5d1948200dde8c54ed31bb29bab3f7ceebd243002465"},{"initial_id":"100042","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"2bdc29561823b75601dc87d0922ffaf3b3266dc969565dbb351aa45dc576f954","right_episode":"5fd978dabd57e31459047e7abe9c9e4316ed0b085d71fde997c561cfa742da5b"},{"initial_id":"100043","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"9534b63e34d636513b8020c62a3974023860cbd172f8d7dbf586191ce7d04ccf","right_episode":"c3b1959326a9839b9663f202b868beea2621ed07cfc4a005b0225bd9a91583df"},{"initial_id":"100044","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"ae31a68e3368bdb466ee720bf9cb4c7d342b2dfd183698eabf3cfb4c8eab2333","right_episode":"a89d632d2cd0d5259b9a35a4bd6b1762cbc0f9274b582b1123f760ad28f0ff3d"},{"initial_id":"100045","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"7be515ed64e9762ca1eb00de2270141c40c052ad153e8d45bb3e978aaf0535eb","right_episode":"a0987d873d6bba27467027d696d6d3515bfc7bad67ee26adcafcf2c73e4a99e3"},{"initial_id":"100046","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"709161658b593287515052ec07f68c31bf4ebd9fd18c856f778014f147c9841c","right_episode":"2ce5b1af7a252893ac5474d905463504eee8a19099ead0c87b6894741cf626e6"},{"initial_id":"100047","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"fa9c870e67e8a2fb0e3a7ba71208fa0aa5dc2b469c96a1db1b703098b069720c","right_episode":"f97e9ea7198489c8612f8e59ba39fb04c547d0c42ecb0f3130fd73e407c210c4"},{"initial_id":"100048","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"72af37e89fcf117d2420b6d164979b30f1f7c0c85792938ce36e2a907538c332","right_episode":"e3040eb187d9573aa3fe266f8f723107ab6561ddb9d39c7e20b751a6cb7cbfaf"},{"initial_id":"100049","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"b91c40e25be5ce6fa6c51e6e312fba9ac0c232d4fa75a0b5bf76890997bf0add","right_episode":"bf63430da34ccadd49883fdeba56ad03f1ca4226fcadad8a4c5e8b55453dd6b0"},{"initial_id":"100050","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"e57d7bfc3451731265160ae1f1bb3ae7df8ab36a7f8b594ba2fbb177b13593f7","right_episode":"63412921d16b5736f09e9423414eb489da4d84ea7cc787c9bbcb411223f3eee0"},{"initial_id":"100051","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"42c80b01c461b1523e81b077935626b78d49c5c67ce19aed9d3fc8f22166781c","right_episode":"f6ac562c41b38e4d75c2b141d36e7afb59d696f1294e4daf6f4193882030b6e9"},{"initial_id":"100052","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"2da06d59c592651c3591ad91377786dfceb0b0c34faafc11ce2039b3032591dd","right_episode":"7d239b502df1b59fcb39c04f44c8c203f3ebfa84f5b81f970b52586d7b3ff38f"},{"initial_id":"100053","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"2d3c29075230d604fc89a0c280e6b9ee976ac923ae14a0d4ab8809a4d40b1e3e","right_episode":"dfcd014724affb4c56c4a3dc76ba453b2b5b599baa2e53d3f42bd8fd1f4269e3"},{"initial_id":"100054","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"83b1c9dafa3c3f66c9fefe19096fa8e52596755e81d3032e4ec79061f4728572","right_episode":"34a5886cd189621890c90f4b964d9a068b3fa7e0842ef8af2ab072ec6cb871f7"},{"initial_id":"100055","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"f4a7651883d366b3c6f7e3e6e36d9ce8750af9e59022f839c4e12e90a4013431","right_episode":"31a17e6c7e275c48deef0e8ae37007302a49ace5f47620345a7c3bacfd5760c1"},{"initial_id":"100056","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"94e9bc0dee6343dfa3ad13b2709fc5c1f426b860b4eae9ef28ec2378eb1f8aac","right_episode":"96077eb5bc121415b4ec2a9d1920f3be7b89cbab8040f725cf5ded27975c3e2d"},{"initial_id":"100057","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"3f4f4aeaf4d00c84fc1cda27f80b270f942ea2f935cc65472567e70d9c975ea5","right_episode":"843c2ac6ff1dfd59be93a47937e111519c5949bbf7a9bcaa86377a2be7fbfdbd"},{"initial_id":"100058","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"8bd64ffa3a577add118c6cac62416e7ebd058629c08cffc626c99c17255a90fc","right_episode":"4b298e529d099a062e3f7a88d397741c1d47ca9b0de24ccc9c21cdb889e1a56b"},{"initial_id":"100059","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"497a4952960865c6d12a9a1d3a365e69760df83ea0cddacd967a3ebd6d0c5a67","right_episode":"a19867629b25fb0aa0ab3ecd60124ecea51ea63b2b5c3bd8e2524655e77a524c"},{"initial_id":"100060","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"ee8e8b06fb24181e0eb44ca5e5f4201b5ad30062c4c36248e753d89ebab813ad","right_episode":"00ba363622a50f5a7b49ec2d62839338768398a8283bfd88c9181516293bc3ec"},{"initial_id":"100061","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"d42295e5ea09a046c3a41482d0f157c139c7e73abceba11436aafbc25008e201","right_episode":"f2512d5406573ceb98075e06945ff6351bf2d852f8fc8eb0eb7855586373fbd0"},{"initial_id":"100062","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"ded5c34316f3e55074e9d8a3def8a408bb52e3c3e8a9e3af19a6b150a5be6b44","right_episode":"619eea39e10eb30a7cc71aaa67779ca8c5fe77095288961252af0b46c8364cc1"},{"initial_id":"100063","replicate":"0","difference_L":0.0,"both_valid":false,"left_episode":"d782d819da5a815cbbc6be0dd686063b0a2b9b8590269ce02a31c646a10d438e","right_episode":"8475d1b86e41d006cb0aff6afffbdd974723bb69db4c7317e3c434c9a21047fa"}],"mean_difference_L":0.0,"scope":"Matched common initial worlds and profile; left best L minus right best L"},"holdout: e3492cab59954411a1c56b4b35c1f604:controls:0 vs e3492cab59954411a1c56b4b35c1f604:controls:1":{"pairs":[],"mean_difference_L":null,"scope":"Matched common initial worlds and profile; left best L minus right best L"}},"events_total":16}</script><script>/* Shared real-data inspection controls for the local app and offline report. */
+const element = (tag, text, className = "") => {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  node.className = className;
+  return node;
+};
+const number = value => typeof value === "number" ? value.toPrecision(7) : "—";
+const describe = instruction => {
+  const [, a, b, c, magnitude] = instruction.words;
+  if (instruction.op === "COMPRESS") return `${c ? `${number(magnitude * 100)}% reduction at entry` : "legacy adaptive compression"}; ${a} attempts, ${b} sweeps per attempt`;
+  if (instruction.op === "EXPAND") return `${number(magnitude * 100)}% larger container; centers stay fixed`;
+  if (["MOVE", "ROTATE"].includes(instruction.op)) return `${["ALL", "RANDOM_K", "WALL_K"][a]}${a ? `(${b})` : ""}; maximum ${number(magnitude)} ${instruction.op === "MOVE" ? "unit lengths" : "radians"}; ${c} joint repair sweeps`;
+  if (instruction.op === "IF_FALSE") return `${["", "LAST_NO_PROGRESS", "LAST_REJECTED", "LAST_IMPROVED_BEST"][a]}; false branch → ${b}`;
+  if (instruction.op === "JUMP") return `forward to instruction ${b}`;
+  if (instruction.op === "RELAX") return "Already feasible: no geometric change";
+  if (instruction.op === "RESTORE_BEST") return "Restore protected best; RNG and work are preserved";
+  return "Return protected best; finalization does not compress";
+};
+
+function programView(target, candidate, candidates = []) {
+  target.replaceChildren();
+  const program = candidate.program;
+  target.append(element("h3", program.authored.name || "World strategy"));
+  target.append(element("p", `${candidate.origin || "Immutable program"} · ${candidate.state || "COMPILED"} · ${candidate.score?.eligible ? "Eligible" : "Unvalidated / ineligible"}`, "muted"));
+  const hash = element("p", program.hash, "hash"); target.append(hash);
+  const list = element("ol", undefined, "program-list");
+  for (const instruction of program.instructions) {
+    const row = element("li");
+    row.append(element("strong", `${instruction.pc}  ${instruction.op}`), element("span", describe(instruction)), element("small", instruction.source_node, "muted"));
+    row.title = `Exact FP32 bits: ${instruction.fp32_bits.join(" ")}`;
+    list.append(row);
+  }
+  target.append(list);
+  if (candidate.mutation) {
+    target.append(element("h4", `${candidate.mutation.type} at ${candidate.mutation.node_path}`));
+    const diff = element("div", undefined, "diff");
+    diff.append(element("pre", JSON.stringify(candidate.mutation.before, null, 2), "before"),
+                element("pre", JSON.stringify(candidate.mutation.after, null, 2), "after"));
+    target.append(diff);
+    const parent = candidates.find(item => item.id === candidate.parent_id);
+    target.append(element("p", `Parent: ${candidate.parent_id || candidate.parent_hash}. Child tuple: ${JSON.stringify(candidate.score?.ranking_tuple || null)}. Parent tuple: ${JSON.stringify(parent?.score?.ranking_tuple || null)}.`, "muted"));
+  } else target.append(element("p", candidate.parent_id ? `Parent: ${candidate.parent_id}` : "Independently generated or fixed; no parent.", "muted"));
+}
+
+// Validated pairs for the light and dark surfaces (theme tokens in style.css); color follows the method.
+const SERIES_COLORS = {random_program_search: "var(--series-random)", one_plus_lambda: "var(--series-mutation)"};
+const FALLBACK_COLORS = ["var(--series-3)", "var(--series-4)"];
+const ARM_LABELS = {random_program_search: "random search", one_plus_lambda: "(1 + λ) mutation"};
+const armLabel = arm => ARM_LABELS[arm] || arm.replaceAll("_", " ");
+const svgNode = (tag, attributes = {}, text) => {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+const compact = value => Math.abs(value) >= 1e6 ? `${+(value / 1e6).toFixed(1)}M` : Math.abs(value) >= 1e3 ? `${+(value / 1e3).toFixed(1)}K` : `${+value.toFixed(2)}`;
+function niceTicks(low, high, count) {
+  const span = Math.max(high - low, 1e-9), raw = span / count, power = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(f => f * power).find(f => f >= raw);
+  const ticks = [];
+  for (let value = Math.ceil(low / step) * step; value <= high + step * 1e-9; value += step) ticks.push(+value.toFixed(10));
+  return ticks;
+}
+
+// Best-so-far training mean L per search method as step lines, with fixed controls as reference lines.
+function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = [], marker = null, xMax: xLimit = 0} = {}) {
+  target.replaceChildren();
+  target.classList.add("progress-chart");
+  if (!points.length) { target.append(element("p", "No completed, independently validated candidates yet. The curve appears after the first finished group.", "muted empty-chart")); return; }
+  const arms = [...new Set(points.map(point => point.arm))];
+  const color = (arm, index) => SERIES_COLORS[arm] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+  const width = Math.max(560, target.clientWidth || 900), height = 340, margin = {left: 62, right: 190, top: 18, bottom: 44};
+  const plotW = width - margin.left - margin.right, plotH = height - margin.top - margin.bottom;
+  const ys = [...points.map(point => point[yKey]), ...references.map(item => item.value)];
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  // Early poor incumbents would flatten the interesting region: the scale tops out at the controls or at the
+  // best first value of any method, and higher values are clipped to the top edge with a marker.
+  const firsts = arms.map(arm => points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])[0][yKey]);
+  const focus = Math.max(...references.filter(item => item.kind !== "best-known").map(item => item.value), Math.min(...firsts));
+  if (yMax > focus + (focus - yMin) * 1.5) yMax = focus + (focus - yMin) * 0.25;
+  const pad = Math.max((yMax - yMin) * 0.08, 0.002); yMin -= pad; yMax += pad;
+  const top = yMax;
+  const xMax = Math.max(1, xLimit, ...points.map(point => point[xKey]));
+  const x = value => margin.left + value / xMax * plotW, y = value => margin.top + (top - Math.min(value, top)) / (top - yMin) * plotH;
+  const clipped = value => value > top;
+  const svg = svgNode("svg", {viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Best training mean side L so far for ${arms.join(" and ")} against ${xLabel}; lower is better`});
+  for (const tick of niceTicks(yMin, yMax, 5)) {
+    svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(tick), y2: y(tick), class: "grid"}));
+    svg.append(svgNode("text", {x: margin.left - 8, y: y(tick) + 4, "text-anchor": "end", class: "tick"}, tick.toFixed(3)));
+  }
+  for (const tick of niceTicks(0, xMax, 8)) svg.append(svgNode("text", {x: x(tick), y: margin.top + plotH + 18, "text-anchor": "middle", class: "tick"}, compact(tick)));
+  svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: margin.top + plotH, y2: margin.top + plotH, class: "axis"}));
+  svg.append(svgNode("text", {x: margin.left + plotW / 2, y: height - 6, "text-anchor": "middle", class: "axis-label"}, xLabel));
+  svg.append(svgNode("text", {x: 14, y: margin.top + plotH / 2, transform: `rotate(-90 14 ${margin.top + plotH / 2})`, "text-anchor": "middle", class: "axis-label"}, "Best mean L (lower is better)"));
+  if (marker && marker.x > 0 && marker.x < xMax) {
+    svg.append(svgNode("line", {x1: x(marker.x), x2: x(marker.x), y1: margin.top, y2: margin.top + plotH, class: "reference"}));
+    svg.append(svgNode("text", {x: x(marker.x) + 6, y: margin.top + 12, class: "tick"}, marker.label));
+  }
+  const labels = [];
+  for (const item of references) {
+    const best = item.kind === "best-known";
+    svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: best ? "best-known" : "reference"}));
+    labels.push({y: y(item.value), text: `${item.label} ${item.value.toFixed(4)}`, kind: best ? "best-known" : "reference"});
+  }
+  const groups = arms.map((arm, index) => ({arm, color: color(arm, index), points: points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])}));
+  for (const group of groups) {
+    const path = group.points.map((point, i) => i ? `H${x(point[xKey])}V${y(point[yKey])}` : `M${x(point[xKey])},${y(point[yKey])}`).join("");
+    const line = svgNode("path", {d: path + `H${margin.left + plotW}`, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"});
+    line.style.stroke = group.color; svg.append(line);
+    group.points.forEach((point, i) => {
+      if (i && point[yKey] >= group.points[i - 1][yKey]) return;  // markers only where the incumbent improved
+      const cx = x(point[xKey]), cy = y(point[yKey]);
+      const dot = clipped(point[yKey])
+        ? svgNode("path", {d: `M${cx - 5},${cy + 6}L${cx},${cy - 2}L${cx + 5},${cy + 6}Z`, class: "chart-point", tabindex: "0", role: "button"})
+        : svgNode("circle", {cx, cy, r: 4.5, class: "chart-point", tabindex: "0", role: "button"});
+      dot.style.fill = group.color;
+      dot.append(svgNode("title", {}, `${armLabel(group.arm)} ${i ? "improved to" : "started at"} ${point[yKey].toFixed(6)}${clipped(point[yKey]) ? " (above the shown range)" : ""} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
+      dot.addEventListener("click", () => onSelect(point));
+      dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); });
+      svg.append(dot);
+    });
+    const last = group.points.at(-1);
+    labels.push({y: y(last[yKey]), text: `${armLabel(group.arm)} ${last[yKey].toFixed(4)}`, color: group.color});
+  }
+  labels.sort((a, b) => a.y - b.y);  // keep end labels from overlapping
+  labels.forEach((label, i) => { if (i && label.y - labels[i - 1].y < 15) label.y = labels[i - 1].y + 15; });
+  for (const label of labels) {
+    if (label.color) { const key = svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5}); key.style.fill = label.color; svg.append(key); }
+    else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: label.kind}));
+    svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color || label.kind === "best-known" ? "end-label" : "tick"}, label.text));
+  }
+  // Crosshair and tooltip: values of every method at the hovered x.
+  const cross = svgNode("line", {y1: margin.top, y2: margin.top + plotH, class: "crosshair", visibility: "hidden"});
+  const hit = svgNode("rect", {x: margin.left, y: margin.top, width: plotW, height: plotH, fill: "transparent"});
+  svg.append(cross); svg.insertBefore(hit, svg.querySelector(".chart-point"));
+  const tooltip = element("div", undefined, "chart-tooltip"); tooltip.hidden = true;
+  hit.addEventListener("mousemove", event => {
+    const box = svg.getBoundingClientRect(), scale = width / box.width, px = (event.clientX - box.left) * scale;
+    const at = Math.max(0, Math.min(xMax, (px - margin.left) / plotW * xMax));
+    cross.setAttribute("x1", x(at)); cross.setAttribute("x2", x(at)); cross.setAttribute("visibility", "visible");
+    tooltip.replaceChildren(element("strong", `${xLabel}: ${compact(at)}`));
+    for (const group of groups) {
+      const current = group.points.filter(point => point[xKey] <= at).at(-1);
+      const row = element("div"), key = element("i"); key.style.background = group.color;
+      row.append(key, element("span", `${armLabel(group.arm)}: ${current ? current[yKey].toFixed(6) : "—"}`));
+      tooltip.append(row);
+    }
+    for (const item of references) tooltip.append(element("div", `${item.label}: ${item.value.toFixed(6)}`, "muted"));
+    tooltip.hidden = false;
+    tooltip.style.left = `${Math.min(event.clientX - target.getBoundingClientRect().left + 14, target.clientWidth - 240)}px`;
+    tooltip.style.top = `${event.clientY - target.getBoundingClientRect().top + 14}px`;
+  });
+  hit.addEventListener("mouseleave", () => { tooltip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+  const legend = element("div", undefined, "legend");
+  for (const group of groups) {
+    const item = element("span", armLabel(group.arm)), swatch = element("i");
+    swatch.style.background = group.color; item.prepend(swatch); legend.append(item);
+  }
+  if (references.some(item => item.kind !== "best-known")) { const item = element("span", "fixed controls"), swatch = element("i", undefined, "dashed"); item.prepend(swatch); legend.append(item); }
+  if (references.some(item => item.kind === "best-known")) { const item = element("span", "best known upper bound"), swatch = element("i", undefined, "best-known"); item.prepend(swatch); legend.append(item); }
+  if (points.some(point => clipped(point[yKey]))) legend.append(element("span", `▲ above ${top.toFixed(3)}: off scale, hover for the value`, "muted"));
+  target.append(legend, svg, tooltip);
+}
+
+function historyView(target, events, candidates, onSelect) {
+  target.replaceChildren();
+  if (!events.length) { target.append(element("p", "No durable semantic events yet.", "muted")); return; }
+  const slider = element("input"); slider.type = "range"; slider.min = "0"; slider.max = String(events.length - 1); slider.value = "0"; slider.setAttribute("aria-label", "Campaign history event");
+  const label = element("p"), detail = element("pre");
+  const show = () => {
+    const event = events[Number(slider.value)];
+    label.textContent = `Event ${event.id} · ${event.kind} · ${new Date(event.created * 1000).toLocaleString()}`;
+    detail.textContent = JSON.stringify(event.payload, null, 2);
+    const candidateId = event.payload.candidate_id || event.payload.parent_id || (event.kind === "CANDIDATE_GENERATED" ? event.payload.id : null);
+    const candidate = candidates.find(item => item.id === candidateId);
+    if (candidate) onSelect(candidate);
+  };
+  slider.addEventListener("input", show); target.append(slider, label, detail); show();
+}
+
+function replayComparison(target, replays, resolveHtml) {
+  target.replaceChildren();
+  if (!replays.length) { target.append(element("p", "Selected geometric replays become available after evaluation.", "muted")); return; }
+  const controls = element("div", undefined, "toolbar"), left = element("select"), right = element("select"), mode = element("select");
+  for (const select of [left, right]) for (const [index, replay] of replays.entries()) {
+    const option = element("option", `${replay.candidate_id} · ${replay.status}`); option.value = String(index); select.append(option);
+  }
+  right.value = String(Math.min(1, replays.length - 1));
+  for (const [value, label] of [["frame", "Recorded frame"],["work", "Normalized consumed work"],["independent", "Independent stepping"]]) {
+    const option = element("option",label); option.value=value; mode.append(option);
+  }
+  const range = element("input"); range.type="range"; range.min="0"; range.max="1000"; range.value="0"; range.setAttribute("aria-label", "Two-program synchronized progress");
+  const warning = element("p", undefined, "muted"), panes = element("div", undefined, "replay-pair");
+  const frames = [element("iframe"), element("iframe")];
+  frames.forEach(frame => { frame.title="Recorded strategy geometry"; frame.setAttribute("sandbox","allow-scripts allow-downloads"); panes.append(frame); });
+  controls.append(left,right,mode); target.append(controls,warning,range,panes);
+  const load = () => {
+    const selected = [replays[Number(left.value)],replays[Number(right.value)]];
+    const same = JSON.stringify(selected[0].initial_identity) === JSON.stringify(selected[1].initial_identity);
+    warning.textContent = same ? "Same initial-world identity. Equal frame indices do not imply equal work. Each pane also supports independent playback and zoom." : "Different initial-world identities: synchronized comparison is disabled.";
+    range.disabled = !same || mode.value === "independent";
+    selected.forEach((replay,index) => {
+      const html = resolveHtml(replay);
+      if (html.startsWith("<!") || html.startsWith("<html")) frames[index].srcdoc = html;
+      else frames[index].src = html;
+    });
+  };
+  [left,right,mode].forEach(select => select.addEventListener("change",load));
+  range.addEventListener("input", () => {
+    const fraction = Number(range.value) / 1000;
+    const selected = [replays[Number(left.value)],replays[Number(right.value)]];
+    frames.forEach((frame,index) => frame.contentWindow.postMessage({type:"asquerix-seek",mode:mode.value,value:mode.value === "work" ? fraction : Math.round(fraction*(selected[index].frames-1))},"*"));
+  });
+  load();
+}
+
+globalThis.LabInspect = {element, number, describe, programView, curve, historyView, replayComparison};
+
+
+(() => {
+const DATA = JSON.parse(document.getElementById('report-data').textContent);
+const {element,number,programView,curve,historyView,replayComparison} = LabInspect;
+const candidates = DATA.programs;
+const table = document.getElementById('candidate-table');
+for (const candidate of candidates) {
+  const row=element('tr');
+  for (const value of [candidate.arm,candidate.position,number(candidate.score?.mean_best_L),number(candidate.holdout_score?.mean_best_L),number(candidate.score?.best_L),candidate.score?.eligible ? 'Eligible' : 'Ineligible / incomplete']) row.append(element('td',String(value)));
+  const cell=element('td'), button=element('button','Inspect program'); button.addEventListener('click',()=>programView(document.getElementById('program'),candidate,candidates)); cell.append(button); row.append(cell); table.append(row);
+}
+if (candidates.length) programView(document.getElementById('program'),candidates[0],candidates);
+historyView(document.getElementById('history'),DATA.events,candidates,candidate=>programView(document.getElementById('program'),candidate,candidates));
+function drawCurve() {
+  const key=document.getElementById('curve-axis').value;
+  const points=[]; const counts={}; const work={}; const incumbents={};
+  for (const candidate of candidates.filter(item=>!['controls','fixed'].includes(item.arm)).sort((a,b)=>a.completed_at-b.completed_at)) {
+    counts[candidate.arm]=(counts[candidate.arm]||0)+(candidate.score?.complete ? 1 : 0);
+    work[candidate.arm]=(work[candidate.arm]||0)+(candidate.score?.total_charged_work||0);
+    if (candidate.score?.eligible) {
+      incumbents[candidate.arm]=Math.min(incumbents[candidate.arm]??Infinity,candidate.score.mean_best_L);
+      points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?counts[candidate.arm]:key==='work'?work[candidate.arm]:candidate.arm_execution_elapsed_seconds??candidate.execution_elapsed_seconds,y:incumbents[candidate.arm]});
+    }
+  }
+  curve(document.getElementById('curve'),points,{xLabel:key==='evaluations'?'Completed candidate evaluations':key==='work'?'Charged work':'Arm execution seconds',onSelect:point=>programView(document.getElementById('program'),candidates.find(item=>item.id===point.candidate_id),candidates)});
+}
+document.getElementById('curve-axis').addEventListener('change',drawCurve); drawCurve();
+replayComparison(document.getElementById('replays'),DATA.replays,replay=>replay.html);
+document.getElementById('paired-data').textContent=JSON.stringify(DATA.paired,null,2);
+})();
+</script></body></html>
