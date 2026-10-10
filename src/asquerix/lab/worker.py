@@ -106,8 +106,15 @@ class CampaignWorker:
         self.emit({"type": "checkpoint", "campaign_id": self.identifier, "path": str(self.checkpoint_path)})
 
     def activity(self, *, phase=None, **values):
+        """Report progress; a new phase or stage (what the worker is doing now, e.g. GPU or CPU work) is sent at once."""
         now = time.monotonic()
-        if phase is not None or now - self.last_activity > 2:
+        stage = values.get("stage")
+        changed = stage is not None and stage != getattr(self, "last_stage", None)
+        if changed:
+            self.last_stage, self.stage_since = stage, time.time()
+        if stage is not None:  # cleared fields replace the previous stage's values in the merged summary
+            values.update({"stage_done": values.get("stage_done"), "stage_total": values.get("stage_total"), "stage_since": self.stage_since})
+        if phase is not None or changed or now - self.last_activity > 2:
             self.last_activity = now
             self.emit({"type": "progress", "campaign_id": self.identifier,
                        "summary": {"phase": phase or self.state["phase"], "elapsed_execution_seconds": self.elapsed(),
@@ -256,7 +263,7 @@ class CampaignWorker:
                     cancelled = cancelled or cancel
                     if batch.advance(cancel=cancel):
                         break
-                    self.activity(active_episodes=total)
+                    self.activity(active_episodes=total, stage="GPU: simulating episodes", stage_done=int(batch.collected.sum()), stage_total=total)
                 for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
                     timing[key] += batch.timings.get(key, 0.0)
                 partial = False
@@ -282,6 +289,7 @@ class CampaignWorker:
                     if not partial:
                         states, best, current = batch.collect()
                     validation_start = time.monotonic()
+                    self.activity(stage="CPU: validating poses", stage_total=total)
                     validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
                                                    bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
                                                   for index in range(total)])
@@ -298,11 +306,13 @@ class CampaignWorker:
                                    **{"state_" + name: array for name, array in defined_fields(states).items()}})
             executed = sum(row["termination"] != "CANCELLED" for row in rows)
             self.state["completed_episode_executions"] += executed
+            self.activity(stage="CPU: scoring programs", stage_total=len(candidates))
             scores = self.scores(candidates, rows, episodes_per_candidate)
             keep = set()
             if len(rows) == total and executed == total:  # a group cut short by a stop is not admitted; a resume repeats it
                 keep = self.retained(candidates, scores, bank_name)
                 persist_start = time.monotonic()
+                self.activity(stage="Disk: writing evidence", stage_total=len(keep))
                 merged = {name: np.concatenate([part[name] for part in arrays]) for name in arrays[0]}
                 mask = np.asarray([row["candidate_id"] in keep for row in rows])
                 kept_rows = [row for row, flag in zip(rows, mask) if flag]
@@ -337,10 +347,12 @@ class CampaignWorker:
                     self.emit({"type": "chunk", "campaign_id": self.identifier, "records": receipt["records_path"]})
                     self.remember_chunk(receipt)
                 if bank_name == "training":
+                    self.activity(stage="Disk: updating top programs")
                     self.update_top(candidates, scores, rows, merged)
                 self.event("TASK_GROUP_COMPLETED", {"group": group_hash, "bank": bank_name, "episodes": total,
                                                     "retained_programs": len(keep), "timings": timing})
         evaluated = []
+        self.activity(stage="CPU: recording program results", stage_total=len(candidates))
         for candidate in candidates:
             result = {**candidate, "state": "EVALUATED" if scores[candidate["id"]]["complete"] else "INCOMPLETE",
                       "score" if bank_name == "training" else "holdout_score": scores[candidate["id"]],
@@ -354,6 +366,7 @@ class CampaignWorker:
                        {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name,
                         "score": {key: summary.get(key) for key in ("complete", "eligible", "mean_best_L", "best_L", "ranking_tuple")},
                         "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()})
+        self.activity(stage="Disk: candidate log and checkpoint")
         self.remember(evaluated, keep)
         self.checkpoint()
         return evaluated
@@ -564,6 +577,7 @@ class CampaignWorker:
                         self.event("TIME_BUDGET_REACHED", {"arm": method, "seconds": self.elapsed() - clock,
                                                            "completed_candidates": controller.completed})
                         break
+                    self.activity(stage="CPU: generating programs")
                     group = controller.ask()
                     if not group:
                         break

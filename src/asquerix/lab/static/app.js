@@ -194,6 +194,9 @@ async function render(){
   document.getElementById('campaign-progress-bar').style.width=`${(fraction*100).toFixed(1)}%`;
   document.querySelector('.activity .progress').setAttribute('aria-valuenow',String(Math.round(fraction*100)));
   document.getElementById('campaign-progress-label').textContent=timed&&state!=='COMPLETED'?`${duration(Math.min(seconds,timed))} of ${duration(timed)} search time · ${done} scientific episodes${seconds>=timed?' · holdout and replays':''}`:`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
+  // What the worker is doing right now (GPU simulation, CPU validation, disk writes...), with its duration.
+  const stage=document.getElementById('campaign-stage');
+  stage.textContent=active&&summary.stage?`Now: ${summary.stage}${summary.stage_total?` · ${summary.stage_done!=null?`${summary.stage_done} / `:''}${summary.stage_total}`:''}${summary.stage_since?` · for ${duration(Math.max(0,Date.now()/1000-summary.stage_since))}`:''}`:'';
   lastUpdate=Date.now();freshness();
   const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
   const line=document.getElementById('campaign-provenance');
