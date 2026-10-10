@@ -174,6 +174,7 @@ async function render(){
   document.getElementById('campaign-lineage').textContent=depth?` · continuation ${depth}`:'';document.title=`n=${spec.n} · ${base} — Asquerix`;
   const scope=document.getElementById('campaign-scope');scope.textContent=`${spec.datasets.training.valid_count} training and ${spec.datasets.holdout.valid_count} holdout starts`;
   if(spec.continuation_of){const link=element('a','the previous campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
+  notifyState(selectedId,spec,state,summary);
   const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
   for(const [label,text] of [[spec.search.time_budget_seconds?'Programs tried':'Programs tried / candidate budget',spec.search.time_budget_seconds?String(summary.completed_candidates||0):`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)],['Speed',speed(spec,summary)]]){const box=element('div',undefined,'metric'),[main,...detail]=text.split('\n');box.append(element('small',label),element('strong',main));if(detail.length)box.append(element('small',detail.join(' ')));metrics.append(box);}
@@ -292,6 +293,26 @@ document.querySelector('header .mark').addEventListener('dblclick',async()=>{
     toast(`Debug file path copied: ${saved.path} (${Math.round(saved.bytes/1024)} KB)`);
   }catch(e){fail(`Debug info could not be collected: ${e.message}`);}
 });
+// Desktop notifications (shown by the system, e.g. GNOME) when the open campaign leaves its active states.
+let notifyWanted=false,lastState={};
+try{notifyWanted=localStorage.getItem('asquerix-notify')==='on';}catch{}
+const notifyOn=()=>notifyWanted&&'Notification' in window&&Notification.permission==='granted';
+function notifyButton(){const button=document.getElementById('notify-toggle');button.setAttribute('aria-pressed',String(notifyOn()));button.classList.toggle('on',notifyOn());
+  button.title=!('Notification' in window)?'This browser has no desktop notifications':Notification.permission==='denied'?'Notifications are blocked for this page in the browser settings':notifyOn()?'Desktop notifications on: click to turn off':'Desktop notifications off: click to turn on';}
+document.getElementById('notify-toggle').addEventListener('click',async()=>{
+  if(!('Notification' in window))return;
+  if(notifyOn())notifyWanted=false;else{if(Notification.permission==='default')await Notification.requestPermission();notifyWanted=Notification.permission==='granted';}
+  try{localStorage.setItem('asquerix-notify',notifyWanted?'on':'off');}catch{}
+  notifyButton();if(notifyOn())toast('Desktop notifications on');});
+notifyButton();
+function notifyState(identifier,spec,state,summary){
+  const before=lastState[identifier];lastState[identifier]=state;
+  if(!before||!notifyOn()||!(ACTIVE.includes(before)||before==='STOP_REQUESTED')||ACTIVE.includes(state)||state==='STOP_REQUESTED')return;
+  const title={COMPLETED:'Campaign completed',FAILED:'Campaign failed',PARTIAL:'Campaign stopped',PAUSED:'Campaign paused',INTERRUPTED:'Campaign interrupted'}[state]||`Campaign ${state.toLowerCase()}`;
+  const body=`n=${spec.n} · ${spec.name}${summary.training_incumbent?.mean_best_L?` · best mean L ${summary.training_incumbent.mean_best_L.toFixed(4)}`:''}${summary.error?`\n${summary.error}`:''}`;
+  const note=new Notification(title,{body,tag:'asquerix-'+identifier,requireInteraction:state!=='COMPLETED'});
+  note.onclick=()=>{window.focus();note.close();};
+}
 function toast(message){const note=element('div',message,'toast');document.body.append(note);setTimeout(()=>note.remove(),2500);}
 async function start(){capabilities=await api('/capabilities');field('n').removeAttribute('max');try{bestKnown=await api('/references/best-known');}catch{bestKnown=null;}defaults=capabilities.defaults;inventory=await api('/devices');buildAdvanced();field('device').replaceChildren();for(const device of inventory.items){const option=element('option',`${device.name} · ${device.uuid}`);option.value=device.device;field('device').append(option);}document.getElementById('device-summary').textContent=inventory.items.length?inventory.items.map(item=>item.name).join(', '):'No accessible CUDA GPU';document.getElementById('launch-campaign').disabled=!inventory.items.length;document.getElementById('resource-warning').textContent=inventory.items.map(item=>`${item.device}: ${item.memory_used_mib}/${item.memory_total_mib} MiB in use, ${item.utilization_percent}% device activity. ${item.warning}`).join(' ');const identifier=location.hash.slice(1);if(/^[a-f0-9]{32}$/.test(identifier))await openCampaign(identifier);else await catalog();}
 start().catch(e=>fail(e.message));
