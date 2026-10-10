@@ -518,7 +518,7 @@ class CampaignWorker:
                 self.state["shared_pool"] = initial_pool(self.campaign, event=self.event)
                 self.checkpoint()
             budget = self.campaign.search.time_budget_seconds
-            share = budget / len(self.campaign.search.methods) if budget else None
+            share = budget / len(self.campaign.search.methods) if budget and self.campaign.search.methods else None
             for method in self.campaign.search.methods:
                 # A continuation resumes each method's clock where the parent left it.
                 self.state["arm_start_elapsed"].setdefault(method, self.elapsed() - self.state.get("arm_prior_elapsed", {}).get(method, 0.0))
