@@ -31,7 +31,7 @@ const describeSource = node => {
 let programMode = "compiled";
 try { programMode = localStorage.getItem("asquerix-program-view") || "compiled"; } catch {}
 
-function sourceList(items, path, mutated) {
+function sourceList(items, path, mutated, mutationType) {
   const list = element("ol", undefined, "source-list");
   items.forEach((node, index) => {
     const nodePath = `${path}[${index}]`, row = element("li");
@@ -40,12 +40,12 @@ function sourceList(items, path, mutated) {
     if (node.op === "REPEAT") head.append(element("strong", `${index}  REPEAT ${node.count}×`));
     else if (node.op === "IF") head.append(element("strong", `${index}  IF ${node.predicate}`));
     else head.append(element("strong", `${index}  ${node.op}`), element("span", describeSource(node)));
-    if (nodePath === mutated) head.title = "Node changed by this candidate's mutation";
+    if (nodePath === mutated) { head.title = "Node changed by this candidate's mutation"; head.append(element("em", `mutation: ${mutationType}`, "mutation-tag")); }
     row.append(head);
-    if (node.op === "REPEAT") row.append(sourceList(node.body, `${nodePath}.body`, mutated));
+    if (node.op === "REPEAT") row.append(sourceList(node.body, `${nodePath}.body`, mutated, mutationType));
     if (node.op === "IF") {
-      row.append(sourceList(node.then, `${nodePath}.then`, mutated));
-      if (node.else?.length) { row.append(element("div", "ELSE", "source-else")); row.append(sourceList(node.else, `${nodePath}.else`, mutated)); }
+      row.append(sourceList(node.then, `${nodePath}.then`, mutated, mutationType));
+      if (node.else?.length) { row.append(element("div", "ELSE", "source-else")); row.append(sourceList(node.else, `${nodePath}.else`, mutated, mutationType)); }
     }
     list.append(row);
   });
@@ -65,7 +65,7 @@ function programView(target, candidate, candidates = []) {
     for (const button of toggle.children) button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
     holder.replaceChildren();
     if (mode === "source") {
-      const tree = sourceList(program.authored.body, "body", candidate.mutation?.node_path);
+      const tree = sourceList(program.authored.body, "body", candidate.mutation?.node_path, candidate.mutation?.type);
       tree.classList.add("source-root"); holder.append(tree); return;
     }
     const list = element("ol", undefined, "program-list");
@@ -84,11 +84,21 @@ function programView(target, candidate, candidates = []) {
   target.append(toggle, holder);
   show(programMode);
   if (candidate.mutation) {
-    target.append(element("h4", `${candidate.mutation.type} at ${candidate.mutation.node_path}`));
+    // Same colour as the highlighted node in the source view; before/after use the same tree form.
+    const section = element("div", undefined, "mutation-section");
+    section.append(element("h4", `Mutation: ${candidate.mutation.type} at ${candidate.mutation.node_path}`));
+    const side = (value, label, className) => {
+      const box = element("div", undefined, `mutation-side ${className}`);
+      box.append(element("small", label));
+      const nodes = Array.isArray(value) ? value : value && typeof value === "object" && value.op ? [value] : null;
+      if (nodes) box.append(sourceList(nodes, "", null, null));
+      else box.append(element("pre", value === null || value === undefined ? "(nothing)" : JSON.stringify(value, null, 2)));
+      return box;
+    };
     const diff = element("div", undefined, "diff");
-    diff.append(element("pre", JSON.stringify(candidate.mutation.before, null, 2), "before"),
-                element("pre", JSON.stringify(candidate.mutation.after, null, 2), "after"));
-    target.append(diff);
+    diff.append(side(candidate.mutation.before, "Parent", "before"), side(candidate.mutation.after, "This candidate", "after"));
+    section.append(diff);
+    target.append(section);
     const parent = candidates.find(item => item.id === candidate.parent_id);
     target.append(element("p", `Parent: ${candidate.parent_id || candidate.parent_hash}. Child tuple: ${JSON.stringify(candidate.score?.ranking_tuple || null)}. Parent tuple: ${JSON.stringify(parent?.score?.ranking_tuple || null)}.`, "muted"));
   } else target.append(element("p", candidate.parent_id ? `Parent: ${candidate.parent_id}` : "Independently generated or fixed; no parent.", "muted"));

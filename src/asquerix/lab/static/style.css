@@ -176,3 +176,7 @@ header .mark{cursor:default;user-select:none}
 .source-node{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;border-left:3px solid var(--blue);padding:9px 12px;margin:8px 0;background:var(--subtle);font-size:13px}.source-node strong{font:600 12px ui-monospace,monospace}
 .source-list li.mutated>.source-node{border-left-color:var(--warning);outline:1px solid var(--warning)}.source-else{font:600 12px ui-monospace,monospace;color:var(--muted);margin:6px 0 0 22px}
 @media(max-width:600px){.source-node{grid-template-columns:1fr}}
+.mutation-tag{grid-column:1/-1;justify-self:start;font:600 11px ui-monospace,monospace;font-style:normal;color:var(--warning)}
+.mutation-section{border:1px solid var(--warning);border-radius:6px;padding:4px 12px 12px;margin:14px 0}.mutation-section h4{color:var(--warning);margin:10px 0}
+.mutation-side{border-radius:5px;padding:8px 10px;min-width:0}.mutation-side>small{display:block;margin-bottom:2px}.mutation-side pre{background:none;padding:0}
+
