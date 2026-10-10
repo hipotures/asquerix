@@ -106,7 +106,9 @@ async function programs(){
   for(const header of document.querySelectorAll('#tab-programs th'))header.removeAttribute('aria-sort');
   document.querySelector(`#tab-programs .sort[data-sort=${programSort}]`).closest('th').setAttribute('aria-sort','ascending');
   // Rows that entered the page shown since the last update glow briefly; changing page or sort shows no glow.
-  const view=`${selectedId}|${programSort}|${programOffset}`,previous=shownPage.view===view?shownPage.ids:null;shownPage={view,ids:new Set(page.items.map(item=>item.id))};
+  // A page that was empty, or whose rows were all replaced at once, shows no glow either.
+  const view=`${selectedId}|${programSort}|${programOffset}`,shown=shownPage.view===view?shownPage.ids:null;shownPage={view,ids:new Set(page.items.map(item=>item.id))};
+  const previous=shown?.size&&page.items.some(item=>shown.has(item.id))?shown:null;
   const target=document.getElementById('program-table');target.replaceChildren();
   for(const candidate of page.items){
     const row=element('tr'),score=candidate.score||{},valid=score.validation_counts?.NUMERICALLY_VALIDATED||0;
