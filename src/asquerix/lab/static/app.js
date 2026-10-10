@@ -156,7 +156,12 @@ function speed(spec,summary){
 }
 // A campaign view's background refresh can still be in flight after the user leaves it; its errors are dropped then.
 function campaignError(error){if(selectedId&&!document.getElementById('detail').hidden)fail(error.message);}
+// Parts of the page are rebuilt on every live update; holding the page height meanwhile keeps the scroll position.
 async function refresh(){
+  const page=document.getElementById('detail');page.style.minHeight=`${page.offsetHeight}px`;
+  try{await render();}finally{requestAnimationFrame(()=>{page.style.minHeight='';});}
+}
+async function render(){
   if(!selectedId)return;
   selectedCampaign=await api(`/campaigns/${selectedId}`);
   const parentId=selectedCampaign.spec.continuation_of;
