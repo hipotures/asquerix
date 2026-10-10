@@ -63,3 +63,5 @@ Numerical correctness takes precedence over apparent performance. GPU measuremen
 Commit task changes using explicit paths, excluding unrelated user changes. Do not finish with uncommitted task changes without explaining why. Use concise English commit messages. Never use `git add -A`, force pushes, destructive resets or cleaning commands. Normal CLI experiments publish only their finalized artifacts on remote `main` using an isolated index and a shared repository lock; `--no-push` is the local-only escape hatch. Preserve results on publication failure. Publication must preserve the existing source tree and history without changing the active checkout or index.
 
 For SQLite snapshots, use SQLite's Online Backup API or `.backup`, never plain `cp`. Test migrations only on a temporary snapshot and verify `PRAGMA integrity_check`.
+
+Always load the `sqlite-optimization` skill before designing or changing SQLite usage: schema, indexes, queries, connection PRAGMAs, transactions or write paths.
