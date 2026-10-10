@@ -26,7 +26,7 @@ async function api(path,{method='GET',body,key}={}){
   const response=await fetch('/api/v1'+path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-Asquerix-Client':'lab-v1',...(csrf?{'X-CSRF-Token':csrf}:{}),...(method==='POST'?{'Idempotency-Key':key||crypto.randomUUID()}:{})},body:body===undefined?undefined:JSON.stringify(body)});
   const data=await response.json();
   if(response.status===401){document.getElementById('login').hidden=false;throw new Error('Sign in to connect to the laboratory.');}
-  if(!response.ok)throw new Error(typeof data.detail==='string'?`${data.node_path?data.node_path+': ':''}${data.detail}`:JSON.stringify(data.detail));
+  if(!response.ok)throw new Error(typeof data.detail==='string'?`${data.node_path?data.node_path+': ':''}${data.detail}`:Array.isArray(data.detail)?data.detail.map(item=>`${String(item.msg).replace(/^Value error, /,'')}${item.loc&&item.loc.length>1?` (${item.loc.slice(1).join('.')})`:''}`).join('\n'):JSON.stringify(data.detail));
   return data;
 }
 function buildAdvanced(){
@@ -46,7 +46,7 @@ function buildAdvanced(){
 }
 function spec(){
   const result=structuredClone(defaults);
-  result.name=value('name');result.description=value('description');result.n=numeric('n');result.initial_side=numeric('initial_side');result.device=value('device');result.batch_capacity=numeric('batch_capacity');
+  result.name=value('name');result.description=value('description');result.n=numeric('n');result.initial_side=field('initial_side').dataset.manual?numeric('initial_side'):Math.max(numeric('initial_side'),10,Math.ceil(2*Math.sqrt(result.n)));result.device=value('device');result.batch_capacity=numeric('batch_capacity');
   result.search.methods=value('method')==='both'?capabilities.methods:value('method')==='fixed'?[]:[value('method')];
   result.search.seed=value('search_seed');const byTime=value('stop_rule')==='time';
   result.search.time_budget_seconds=byTime?numeric('time_budget'):null;result.search.candidate_budget_per_method=byTime?1000000:numeric('candidate_budget');result.search.initial_pool=numeric('initial_pool');result.search.lambda=numeric('lambda');
