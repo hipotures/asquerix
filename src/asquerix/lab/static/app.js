@@ -264,7 +264,6 @@ document.getElementById('continue-campaign').addEventListener('click',()=>{
   f.namedItem('device').replaceChildren(...inventory.items.map(item=>{const option=element('option',`${item.name} · ${item.device}`);option.value=item.device;return option;}));f.namedItem('device').value=spec.device;
   f.namedItem('batch_capacity').value=String(spec.batch_capacity);f.namedItem('max_seconds').value=String(spec.limits.max_seconds);f.namedItem('max_artifact_mib').value=String(spec.limits.max_artifact_mib);
   f.namedItem('automatic_replays').checked=spec.recording.automatic;f.namedItem('publication').checked=spec.publication.enabled;
-  document.getElementById('continue-locked').textContent=`Kept from the original so results stay comparable: n=${spec.n}, initial side ${spec.initial_side}, ${spec.datasets.training.valid_count} training and ${spec.datasets.holdout.valid_count} holdout starts, all seeds, the evaluation profile and work caps, the generation and mutation law, λ=${spec.search.lambda}, methods (${spec.search.methods.join(', ')}) and controls. Change those with “Clone as draft”, which starts from scratch.`;
   for(const input of continueForm.querySelectorAll('input[data-step]'))stepperState(input);
   continueForm.hidden=false;f.namedItem('additional').focus();});
 document.getElementById('cancel-continue').addEventListener('click',()=>{continueForm.hidden=true;});
