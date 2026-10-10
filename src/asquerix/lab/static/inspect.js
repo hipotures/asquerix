@@ -122,7 +122,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   const arms = [...new Set(points.map(point => point.arm))];
   const seriesLabel = group => armLabel(group.arm) + (group.measure === "single" ? " best single" : "");
   const color = (arm, index) => SERIES_COLORS[arm] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-  const width = Math.max(560, target.clientWidth || 900), height = 340, margin = {left: 62, right: 190, top: 18, bottom: 44};
+  const width = Math.max(560, target.clientWidth || 900), height = 340, margin = {left: 62, right: 64, top: 18, bottom: 44};
   const plotW = width - margin.left - margin.right, plotH = height - margin.top - margin.bottom;
   const ys = [...points.map(point => point[yKey]), ...references.map(item => item.value)];
   let yMin = Math.min(...ys), yMax = Math.max(...ys);
@@ -153,7 +153,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   for (const item of references) {
     const best = item.kind === "best-known";
     svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: best ? "best-known" : "reference"}));
-    labels.push({y: y(item.value), text: `${item.label} ${item.value.toFixed(4)}`, kind: best ? "best-known" : "reference"});
+    labels.push({y: y(item.value), text: item.value.toFixed(4), kind: best ? "best-known" : "reference"});
   }
   // The best-single line shares its method's colour and is drawn dashed.
   const groups = arms.flatMap((arm, index) => ["mean", "single"].map(measure => ({arm, measure, color: color(arm, index),
@@ -176,15 +176,13 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
       svg.append(dot);
     });
     const last = group.points.at(-1);
-    labels.push({y: y(last[yKey]), text: `${seriesLabel(group)} ${last[yKey].toFixed(4)}`, color: group.color, dashed: group.measure === "single"});
+    labels.push({y: y(last[yKey]), text: last[yKey].toFixed(4), color: group.color});
   }
   labels.sort((a, b) => a.y - b.y);  // keep end labels from overlapping
   labels.forEach((label, i) => { if (i && label.y - labels[i - 1].y < 15) label.y = labels[i - 1].y + 15; });
+  // Only the end values; the legend above the chart names the lines.
   for (const label of labels) {
-    if (label.dashed) { const key = svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, "stroke-width": 2, "stroke-dasharray": "4 2"}); key.style.stroke = label.color; svg.append(key); }
-    else if (label.color) { const key = svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5}); key.style.fill = label.color; svg.append(key); }
-    else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: label.kind}));
-    svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color || label.kind === "best-known" ? "end-label" : "tick"}, label.text));
+    svg.append(svgNode("text", {x: margin.left + plotW + 6, y: label.y + 4, class: label.color || label.kind === "best-known" ? "end-label" : "tick"}, label.text));
   }
   // Crosshair and tooltip: values of every method at the hovered x.
   const cross = svgNode("line", {y1: margin.top, y2: margin.top + plotH, class: "crosshair", visibility: "hidden"});
