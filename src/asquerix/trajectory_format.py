@@ -46,7 +46,7 @@ ROLE_FINAL = 2
 
 MAX_FRAMES = 4096
 MIN_FRAMES = 1
-from .limits import MAX_SQUARES
+MAX_SQUARES = None  # no upper limit; memory and time bound the square count
 MIN_SQUARES = 1
 MAX_METADATA_BYTES = 2 * 1024 * 1024
 MAX_METADATA_COMPRESSED_BYTES = 4 * 1024 * 1024
@@ -159,8 +159,8 @@ def validate_metadata(metadata: Mapping[str, Any], *, frame_count: int | None = 
             f"metadata schema must be {SCHEMA!r}, got {document.get('schema')!r}"
         )
     n = document.get("n")
-    if not _is_exact_int(n) or not MIN_SQUARES <= int(n) <= MAX_SQUARES:
-        raise TrajectoryFormatError(f"metadata field 'n' must be an integer in [{MIN_SQUARES}, {MAX_SQUARES}]")
+    if not _is_exact_int(n) or int(n) < MIN_SQUARES:
+        raise TrajectoryFormatError("metadata field 'n' must be a positive integer")
     if square_count is not None and int(n) != square_count:
         raise TrajectoryFormatError("metadata field 'n' does not match square_ids")
     _validate_decimal_u64(document.get("trial_id"), "trial_id")
@@ -243,8 +243,8 @@ def validate_arrays(arrays: Mapping[str, Any], metadata: Mapping[str, Any] | Non
     frame_count, square_count, _ = poses.shape
     if not MIN_FRAMES <= frame_count <= MAX_FRAMES:
         raise TrajectoryFormatError(f"poses frame count must be in [{MIN_FRAMES}, {MAX_FRAMES}]")
-    if not MIN_SQUARES <= square_count <= MAX_SQUARES:
-        raise TrajectoryFormatError(f"poses square count must be in [{MIN_SQUARES}, {MAX_SQUARES}]")
+    if square_count < MIN_SQUARES:
+        raise TrajectoryFormatError("poses square count must be positive")
     _checked_nbytes(poses.shape, poses.dtype, "poses")
 
     one_dimensional = ("side", "sequence", "attempt", "sweep", "sweep_total", "phase", "roles")

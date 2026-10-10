@@ -15,7 +15,6 @@ from ..trajectory_viewer import render_html
 from .config import Campaign, digest, uint64
 from .storage import check_quota, load_npz, primitive_scalar, sha256, write_npz
 from .strategy import compile_program
-from ..limits import MAX_SQUARES
 
 SCHEMA = "asquerix-strategy-trace-v1"
 EXTRA_DTYPES = {"best_side": "<f4", "pc": "<i4", "flags": "<i4", "mask": "<u4",
@@ -24,7 +23,7 @@ EXTRA_DTYPES = {"best_side": "<f4", "pc": "<i4", "flags": "<i4", "mask": "<u4",
 
 def load_trace(path: Path) -> tuple[dict, dict]:
     metadata = read_json(path.with_suffix(".meta.json.gz"))
-    if metadata.get("schema") != SCHEMA or not 3 <= metadata.get("frame_count", 0) <= 256 or not 1 <= metadata.get("n", 0) <= MAX_SQUARES:
+    if metadata.get("schema") != SCHEMA or not 3 <= metadata.get("frame_count", 0) <= 256 or metadata.get("n", 0) < 1:
         raise ValueError("Invalid strategy trace metadata bounds")
     uint64(metadata["trial_id"])
     uint64(metadata["seed"])

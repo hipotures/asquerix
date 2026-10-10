@@ -19,7 +19,6 @@ from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
-from .limits import MAX_SQUARES
 
 
 VALIDATOR_VERSION = "cpu-f64-projection-v2"
@@ -188,7 +187,13 @@ def _pair_separations(square_vertices: np.ndarray) -> np.ndarray:
     """
 
     count = square_vertices.shape[0]
-    first_index, second_index = np.triu_indices(count, k=1)
+    pairs_first, pairs_second = np.triu_indices(count, k=1)
+    # Pairs are processed in blocks so memory stays bounded for large n; results are element-wise identical.
+    return np.concatenate([_pair_block(square_vertices, pairs_first[start:start + 65536], pairs_second[start:start + 65536])
+                           for start in range(0, len(pairs_first), 65536)]) if len(pairs_first) else np.empty(0)
+
+
+def _pair_block(square_vertices: np.ndarray, first_index: np.ndarray, second_index: np.ndarray) -> np.ndarray:
     edges = np.roll(square_vertices, -1, axis=1) - square_vertices
     normals = np.stack((-edges[..., 1], edges[..., 0]), axis=-1)
     with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
@@ -346,10 +351,10 @@ def validate_document(document: Any, tolerance: float = 1e-8) -> dict[str, Any]:
         return invalid("document is missing required field 'n'")
     declared_n = document["n"]
     if isinstance(declared_n, bool) or not isinstance(declared_n, Integral):
-        return invalid(f"document field 'n' must be an integer in [1, {MAX_SQUARES}]")
+        return invalid("document field 'n' must be a positive integer")
     n = int(declared_n)
-    if not 1 <= n <= MAX_SQUARES:
-        return invalid(f"document field 'n' must be an integer in [1, {MAX_SQUARES}]")
+    if n < 1:
+        return invalid("document field 'n' must be a positive integer")
 
     if "poses" not in document:
         return invalid("document is missing required field 'poses'")
