@@ -249,7 +249,7 @@ class CampaignWorker:
                 # GPU slots are refilled as episodes finish, so long programs do not leave the GPU idle.
                 batch = StreamingBatch(self.campaign, programs, bank["poses"][initial_slots],
                                        bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
-                # An exhausted time budget cancels the group in flight; it is not admitted and stays pending.
+                # An exhausted time budget or a stop cancels the group in flight.
                 cancelled = False
                 while True:
                     cancel = self.stopped() or self.cut()
@@ -259,8 +259,28 @@ class CampaignWorker:
                     self.activity(active_episodes=total)
                 for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
                     timing[key] += batch.timings.get(key, 0.0)
+                partial = False
+                if cancelled and not self.stopped():
+                    # Time budget cut: programs whose every episode finished are admitted as a smaller group;
+                    # the rest are dropped unevaluated.
+                    finished = batch.collected & (batch.states["termination"] != 6)
+                    complete = finished.reshape(len(candidates), episodes_per_candidate).all(axis=1)
+                    self.event("TASK_GROUP_TRUNCATED", {"group": group_hash, "complete_candidates": int(complete.sum()),
+                                                        "dropped_candidates": int((~complete).sum())})
+                    if complete.any():
+                        selected = np.repeat(complete, episodes_per_candidate)
+                        states, best, current = batch.states[selected], batch.best[selected], batch.current[selected]
+                        candidates = [candidate for candidate, flag in zip(candidates, complete) if flag]
+                        total = len(candidates) * episodes_per_candidate
+                        initial_slots, replicates = initial_slots[selected], replicates[selected]
+                        pids = (np.arange(total) // episodes_per_candidate).astype(np.int32)
+                        group_hash = digest({"candidates": [candidate["id"] for candidate in candidates], "bank": bank_name})[:16]
+                        cancelled, partial = False, True
+                    else:
+                        candidates = []
                 if not cancelled and not self.stopped():
-                    states, best, current = batch.collect()
+                    if not partial:
+                        states, best, current = batch.collect()
                     validation_start = time.monotonic()
                     validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
                                                    bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
@@ -554,11 +574,16 @@ class CampaignWorker:
                     self.time_cut = None
                     if self.stopped() and not all(candidate["score"]["complete"] for candidate in evaluated):
                         return self.finish("PARTIAL")  # the interrupted group stays pending and is repeated later
-                    if not all(candidate["score"]["complete"] for candidate in evaluated):
+                    if len(evaluated) < len(group):  # cut by the time budget: only fully finished programs were admitted
+                        if evaluated:
+                            controller.pending = [candidate for candidate in controller.pending if candidate["id"] in {item["id"] for item in evaluated}]
+                            controller.tell(evaluated)
+                        else:
+                            controller.pending = []
                         controller.outcome = "TIME_BUDGET_REACHED"
                         self.state["controllers"][method] = controller.checkpoint()
                         self.event("TIME_BUDGET_REACHED", {"arm": method, "seconds": self.elapsed() - clock, "completed_candidates": controller.completed,
-                                                           "discarded_group_candidates": len(group)})
+                                                           "dropped_group_candidates": len(group) - len(evaluated)})
                         break
                     controller.tell(evaluated)
                     self.state["controllers"][method] = controller.checkpoint()
