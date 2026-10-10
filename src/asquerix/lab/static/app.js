@@ -162,10 +162,11 @@ function speed(spec,summary){
 // A campaign view's background refresh can still be in flight after the user leaves it; its errors are dropped then.
 function campaignError(error){if(selectedId&&!document.getElementById('detail').hidden)fail(error.message);}
 // Parts of the page are rebuilt on every live update; holding the page height meanwhile keeps the scroll position.
-async function refresh(){
+async function holdHeight(work){
   const page=document.getElementById('detail');page.style.minHeight=`${page.offsetHeight}px`;
-  try{await render();}finally{requestAnimationFrame(()=>{page.style.minHeight='';});}
+  try{await work();}finally{requestAnimationFrame(()=>{page.style.minHeight='';});}
 }
+const refresh=()=>holdHeight(render);
 async function render(){
   if(!selectedId)return;
   selectedCampaign=await api(`/campaigns/${selectedId}`);
@@ -231,9 +232,9 @@ for(const [id,change] of [['catalog-previous',-30],['catalog-next',30]])document
 for(const button of document.querySelectorAll('.pager button'))button.addEventListener('click',()=>{
   const last=Math.max(0,Math.ceil(programTotal/PAGE)-1)*PAGE;
   programOffset=button.id==='program-first'?0:button.id==='program-last'?last:Math.min(last,Math.max(0,programOffset+Number(button.dataset.pages)*PAGE));
-  programs().catch(campaignError);});
-document.getElementById('live-curve-axis').addEventListener('change',()=>programs());
-for(const button of document.querySelectorAll('#tab-programs .sort'))button.addEventListener('click',()=>{programSort=button.dataset.sort;programOffset=0;programs().catch(campaignError);});
+  holdHeight(programs).catch(campaignError);});
+document.getElementById('live-curve-axis').addEventListener('change',()=>holdHeight(programs).catch(campaignError));
+for(const button of document.querySelectorAll('#tab-programs .sort'))button.addEventListener('click',()=>{programSort=button.dataset.sort;programOffset=0;holdHeight(programs).catch(campaignError);});
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',async()=>{for(const tab of ['programs','history','replays'])document.getElementById('tab-'+tab).hidden=tab!==button.dataset.tab;for(const other of document.querySelectorAll('[data-tab]'))other.setAttribute('aria-selected',String(other===button));if(button.dataset.tab==='history')await history();if(button.dataset.tab==='replays')replays();});
 // Arrow keys, the spinner and the wheel step the batch and storage size fields by powers of two;
 // typed values are kept as entered. Keys are handled directly; spinner/wheel steps are any input that is

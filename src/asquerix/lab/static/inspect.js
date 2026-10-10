@@ -142,13 +142,15 @@ function niceTicks(low, high, count) {
 
 // Best-so-far training mean L per search method as step lines, with fixed controls as reference lines.
 function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed candidate evaluations", onSelect = () => {}, references = [], marker = null, xMax: xLimit = 0} = {}) {
+  // Measure before clearing: reading the size of an emptied chart forces a shorter page and the browser scrolls up.
+  const measured = target.clientWidth;
   target.replaceChildren();
   target.classList.add("progress-chart");
   if (!points.length) { target.append(element("p", "No completed, independently validated candidates yet. The curve appears after the first finished group.", "muted empty-chart")); return; }
   const arms = [...new Set(points.map(point => point.arm))];
   const seriesLabel = group => armLabel(group.arm) + (group.measure === "single" ? " best single" : "");
   const color = (arm, index) => SERIES_COLORS[arm] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-  const width = Math.max(560, target.clientWidth || 900), height = 340, margin = {left: 62, right: 64, top: 18, bottom: 44};
+  const width = Math.max(560, measured || 900), height = 340, margin = {left: 62, right: 64, top: 18, bottom: 44};
   const plotW = width - margin.left - margin.right, plotH = height - margin.top - margin.bottom;
   const ys = [...points.map(point => point[yKey]), ...references.map(item => item.value)];
   let yMin = Math.min(...ys), yMax = Math.max(...ys);
