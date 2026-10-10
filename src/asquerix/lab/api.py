@@ -76,7 +76,7 @@ class ContinueRequest(Model):
     name: Annotated[str, Field(min_length=1, max_length=160)] | None = None
     description: Annotated[str, Field(max_length=2000)] | None = None
     device: Annotated[str, Field(pattern=r"^cuda:[0-9]{1,2}$")] | None = None
-    batch_capacity: Annotated[int, Field(ge=1, le=65536)] | None = None
+    batch_capacity: Annotated[int, Field(ge=1, le=262144)] | None = None
     slice_sweeps: Annotated[int, Field(ge=1, le=128)] | None = None
     slice_dispatches: Annotated[int, Field(ge=1, le=256)] | None = None
     max_seconds: Annotated[float, Field(gt=0, le=86400)] | None = None

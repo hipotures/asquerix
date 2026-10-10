@@ -79,7 +79,7 @@ class Search(Model):
     candidate_budget_per_method: Annotated[StrictInt, Field(ge=1, le=1_000_000)] = 32
     initial_pool: Annotated[StrictInt, Field(ge=1, le=128)] = 8
     # 0 sizes each (1 + lambda) generation to fill the batch capacity (lambda = capacity // episodes per program).
-    lambda_: Annotated[StrictInt, Field(ge=0, le=4096)] = Field(default=8, alias="lambda")
+    lambda_: Annotated[StrictInt, Field(ge=0, le=16384)] = Field(default=8, alias="lambda")
     shared_initial_pool: Literal[True] = True
     # Search for this many seconds in total, split equally between methods; the candidate budget is then only a cap.
     time_budget_seconds: Annotated[float, Field(gt=0, le=86400)] | None = None
@@ -191,7 +191,7 @@ class Campaign(Model):
     n: Annotated[StrictInt, Field(ge=1)] = 11
     initial_side: Annotated[float, Field(gt=math.sqrt(2) + 0.00004, le=100)] = 10.0
     device: Annotated[str, Field(pattern=r"^cuda:[0-9]{1,2}$")] = "cuda:0"
-    batch_capacity: Annotated[StrictInt, Field(ge=1, le=65536)] = 4096
+    batch_capacity: Annotated[StrictInt, Field(ge=1, le=262144)] = 4096
     slice_sweeps: Annotated[StrictInt, Field(ge=1, le=128)] = 128
     slice_dispatches: Annotated[StrictInt, Field(ge=1, le=256)] = 32
     datasets: Datasets = Datasets()
@@ -248,7 +248,7 @@ class Campaign(Model):
         return self.datasets.training.valid_count * self.operator_replicates
 
     def effective_lambda(self) -> int:
-        return self.search.lambda_ or max(1, min(4096, GROUP_SLOT_FACTOR * self.batch_capacity // self.episodes_per_program()))
+        return self.search.lambda_ or max(1, min(16384, GROUP_SLOT_FACTOR * self.batch_capacity // self.episodes_per_program()))
 
     def random_group_size(self) -> int:
         """Independent programs are evaluated together in a stream several times the slot count."""
