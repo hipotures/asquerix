@@ -82,6 +82,11 @@ class Catalog:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.execute("PRAGMA busy_timeout=5000")
+        # WAL with NORMAL syncs at checkpoints only: a power loss can drop the last commits but never corrupts
+        # the catalog, which campaign files on disk can rebuild. Larger page cache and in-memory sort space.
+        self.db.execute("PRAGMA synchronous=NORMAL")
+        self.db.execute("PRAGMA cache_size=-65536")
+        self.db.execute("PRAGMA temp_store=MEMORY")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
         if version not in (0, 1, 2):
             self.db.close()
@@ -94,6 +99,7 @@ class Catalog:
 
     def close(self):
         with self.lock:
+            self.db.execute("PRAGMA optimize")
             self.db.close()
 
     @contextmanager
@@ -268,16 +274,30 @@ class Catalog:
         names which. Only improving candidates are returned, so the page stays light however many programs were tried.
         """
         self.get(campaign_id)
+        # Only the fields the chart needs are extracted in SQL; parsing every full candidate document in Python
+        # took seconds per refresh once a campaign had tens of thousands of programs.
+        score_keys = ("complete", "eligible", "mean_best_L", "best_L", "total_charged_work")
+        columns = ", ".join([f"json_extract(document,'$.score.{key}')" for key in score_keys]
+                            + [f"json_extract(document,'$.holdout_score.{key}')" for key in ("complete", "eligible", "mean_best_L", "best_L")]
+                            + [f"json_extract(document,'$.{key}')" for key in ("completed_at", "execution_elapsed_seconds", "arm_execution_elapsed_seconds")]
+                            + ["CASE WHEN arm IN ('controls','fixed') THEN json_extract(document,'$.program.authored.name') END"])
         with self.lock:
-            rows = self.db.execute("SELECT document FROM candidates WHERE campaign_id=?", (campaign_id,)).fetchall()
-        candidates = sorted((json.loads(row[0]) for row in rows), key=lambda item: (item.get("completed_at", 0), item["arm"], item["position"]))
-        fields = ("id", "arm", "position", "score", "holdout_score", "completed_at", "execution_elapsed_seconds", "arm_execution_elapsed_seconds")
+            rows = self.db.execute(f"SELECT id, arm, position, {columns} FROM candidates WHERE campaign_id=? "
+                                   "ORDER BY coalesce(json_extract(document,'$.completed_at'),0), arm, position", (campaign_id,)).fetchall()
+        candidates = []
+        for row in rows:
+            identifier, arm, position, *values = row
+            score = {key: value for key, value in zip(score_keys, values[:5]) if value is not None}
+            holdout = {key: value for key, value in zip(("complete", "eligible", "mean_best_L", "best_L"), values[5:9]) if value is not None}
+            candidates.append({"id": identifier, "arm": arm, "position": position, "score": score, "holdout_score": holdout,
+                               "completed_at": values[9] or 0, "execution_elapsed_seconds": values[10] or 0,
+                               "arm_execution_elapsed_seconds": values[11] or 0, "name": values[12]})
         result, totals, best, single = [], {}, {}, {}
         for candidate in candidates:
-            arm, score = candidate["arm"], candidate.get("score") or {}
-            slim = {key: candidate.get(key, {} if key.endswith("score") else 0) for key in fields}
+            arm, score = candidate["arm"], candidate["score"]
+            slim = {key: value for key, value in candidate.items() if key != "name"}
             if arm in ("controls", "fixed"):
-                result.append({**slim, "name": candidate["program"]["authored"].get("name")})
+                result.append({**slim, "name": candidate["name"]})
                 continue
             total = totals.setdefault(arm, {"evaluations": 0, "work": 0, "time": 0.0})
             total["evaluations"] += 1 if score.get("complete") else 0
