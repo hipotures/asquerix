@@ -522,6 +522,10 @@ class CampaignWorker:
                 clock = self.state.setdefault("arm_clock", {}).setdefault(method, self.elapsed())
                 controller = Controller(self.campaign, method, self.state["shared_pool"], self.identifier,
                                         state=self.state["controllers"].get(method), event=self.event)
+                # A continuation or resumed campaign shows its inherited counts before its first group finishes.
+                self.activity(phase="SEARCH", arm=method, generation=controller.generation,
+                              completed_candidates=sum(state["completed"] for state in self.state["controllers"].values()),
+                              training_incumbent=controller.winner()["score"] if controller.winner() else None)
                 while True:
                     if self.stopped():
                         return self.finish("PARTIAL")
