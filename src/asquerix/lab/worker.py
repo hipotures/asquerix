@@ -83,10 +83,14 @@ class CampaignWorker:
         self.elapsed_before = self.state["elapsed_execution_seconds"]
         self.last_activity = 0.0
         self.deadline_reached = False
+        self.time_cut = None  # execution-elapsed second at which a method's time budget ends, during its groups
         self.pool = None
 
     def elapsed(self):
         return self.elapsed_before + time.monotonic() - self.execution_start
+
+    def cut(self):
+        return self.time_cut is not None and self.elapsed() >= self.time_cut
 
     def stopped(self):
         if self.elapsed() >= self.campaign.limits.max_seconds:
@@ -245,11 +249,17 @@ class CampaignWorker:
                 # GPU slots are refilled as episodes finish, so long programs do not leave the GPU idle.
                 batch = StreamingBatch(self.campaign, programs, bank["poses"][initial_slots],
                                        bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
-                while not batch.advance(cancel=self.stopped()):
+                # An exhausted time budget cancels the group in flight; it is not admitted and stays pending.
+                cancelled = False
+                while True:
+                    cancel = self.stopped() or self.cut()
+                    cancelled = cancelled or cancel
+                    if batch.advance(cancel=cancel):
+                        break
                     self.activity(active_episodes=total)
                 for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
                     timing[key] += batch.timings.get(key, 0.0)
-                if not self.stopped():
+                if not cancelled and not self.stopped():
                     states, best, current = batch.collect()
                     validation_start = time.monotonic()
                     validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
@@ -539,9 +549,17 @@ class CampaignWorker:
                         break
                     self.state["controllers"][method] = controller.checkpoint()
                     self.checkpoint()
+                    self.time_cut = clock + share if share is not None else None
                     evaluated = self.evaluate(group, "training")
+                    self.time_cut = None
                     if self.stopped() and not all(candidate["score"]["complete"] for candidate in evaluated):
                         return self.finish("PARTIAL")  # the interrupted group stays pending and is repeated later
+                    if not all(candidate["score"]["complete"] for candidate in evaluated):
+                        controller.outcome = "TIME_BUDGET_REACHED"
+                        self.state["controllers"][method] = controller.checkpoint()
+                        self.event("TIME_BUDGET_REACHED", {"arm": method, "seconds": self.elapsed() - clock, "completed_candidates": controller.completed,
+                                                           "discarded_group_candidates": len(group)})
+                        break
                     controller.tell(evaluated)
                     self.state["controllers"][method] = controller.checkpoint()
                     self.activity(phase="SEARCH", arm=method, generation=controller.generation,
