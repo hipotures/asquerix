@@ -45,20 +45,21 @@ def continuation_spec(parent: dict, additional: int, overrides: dict) -> Campaig
 
 
 def compatibility(parent_directory: Path, campaign: Campaign) -> dict:
-    """Refuse a continuation whose episodes would not be computed by the parent's numerical code."""
+    """Check that a continuation can take over the parent's search.
+
+    Numerical code that changed since the parent ran is recorded in the provenance, not refused.
+    """
     environment = read_json(parent_directory / "environment.json.gz")
     summary = read_json(parent_directory / "summaries.json.gz")
     old, now = environment["executable_identity"], executable_identity()
     changed = [name for name in KERNEL_FILES if old["sources"].get(name) != now["sources"].get(name)]
     if old["dependencies"] != now["dependencies"] or old["python"] != now["python"]:
         changed.append("dependencies/python")
-    if changed:
-        raise ValueError(f"Numerical code changed since the parent ran ({', '.join(changed)}); start a new campaign instead")
     if summary.get("profile_hash") != digest(campaign.profile()):
         raise ValueError("Evaluation profile differs from the parent campaign")
     if summary.get("state") not in ("COMPLETED", "PARTIAL"):
         raise ValueError("Only finished (completed or partial) campaigns can be continued")
-    return {"parent_executable_hash": environment["executable_hash"],
+    return {"parent_executable_hash": environment["executable_hash"], "changed_numerical_files": changed,
             "differing_orchestration_files": sorted(name for name in set(old["sources"]) | set(now["sources"])
                                                     if name not in KERNEL_FILES and old["sources"].get(name) != now["sources"].get(name))}
 
