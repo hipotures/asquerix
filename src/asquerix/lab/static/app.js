@@ -7,12 +7,10 @@ const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common in
 // "Name · continued · continued" (older campaigns) and "Name · continuation 2" both read as base name + depth.
 function lineage(name){const match=/^(.*?)((?: · continued)+| · continuation (\d+))$/.exec(name);if(!match)return {base:name,depth:0};return {base:match[1],depth:match[3]?Number(match[3]):match[2].split(' · continued').length-1};}
 const PAGE=10;
-let shownPage={view:null,at:0,ids:null},parentCounts={},bestKnown=null,programTotal=0,lastUpdate=0,chartArgs=null,resizeTimer=null;
+let shownPage={view:null,at:0,ids:null},parentCounts={},bestKnown=null,programTotal=0,chartArgs=null,resizeTimer=null;
 addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(chartArgs&&!document.getElementById('detail').hidden)curve(document.getElementById('live-curve'),...chartArgs);},150);});
 function duration(seconds){if(typeof seconds!=='number')return '—';const s=Math.round(seconds);if(s<60)return `${s} s`;if(s<3600)return `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s`;return `${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;}
 function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length,winners=spec.search.methods.length*(spec.continuation_of?2:1);return ((candidates+fixed)*spec.datasets.training.valid_count+(winners+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
-function freshness(){const target=document.getElementById('campaign-freshness');if(!target||!lastUpdate)return;const seconds=Math.round((Date.now()-lastUpdate)/1000);target.textContent=ACTIVE.includes(selectedCampaign?.state)?`updated ${seconds<2?'just now':seconds+' s ago'}`:'';}
-setInterval(freshness,1000);
 let programSort='rank', catalogOffset=0, programOffset=0, currentCandidates=[], stream=null, refreshTimer=null, csrf=sessionStorage.getItem('asquerix-csrf')||'';
 const form=document.getElementById('campaign-form');
 const error=document.getElementById('error');
@@ -198,7 +196,7 @@ async function render(){
   // What the worker is doing right now (GPU simulation, CPU validation, disk writes...), with its duration.
   const stage=document.getElementById('campaign-stage');
   stage.textContent=active&&summary.stage?`Now: ${summary.stage}${summary.stage_total?` · ${summary.stage_done!=null?`${summary.stage_done} / `:''}${summary.stage_total}`:''}${summary.stage_since?` · for ${duration(Math.max(0,Date.now()/1000-summary.stage_since))}`:''}`:'';
-  lastUpdate=Date.now();freshness();
+
   const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
   const line=document.getElementById('campaign-provenance');
   line.replaceChildren(`${spec.device} · ${selectedCampaign.device_uuid||'GPU not resolved yet'} · profile ${(summary.profile_hash||spec.evaluation_profile).slice(0,12)} · GitHub: `);
