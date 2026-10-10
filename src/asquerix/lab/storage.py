@@ -26,8 +26,9 @@ from .config import Campaign, digest
 
 MAX_CHUNK_BYTES = 32 * 1024**2
 MAX_JSON_BYTES = 64 * 1024**2
-NUMERICAL_FILES = ("gpu.py", "geometry.py", "lab/config.py", "lab/strategy.py", "lab/gpu.py",
-                   "lab/storage.py", "lab/evaluation.py", "lab/search.py", "lab/worker.py")
+# Sources that determine episode results, rankings and proposed programs. Orchestration (worker, service,
+# storage, UI) may change during a campaign without mixing numerical code; its revision is still recorded.
+NUMERICAL_FILES = ("gpu.py", "geometry.py", "lab/gpu.py", "lab/strategy.py", "lab/evaluation.py", "lab/search.py")
 
 
 def sha256(path: Path) -> str:
