@@ -69,6 +69,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   target.classList.add("progress-chart");
   if (!points.length) { target.append(element("p", "No completed, independently validated candidates yet. The curve appears after the first finished group.", "muted empty-chart")); return; }
   const arms = [...new Set(points.map(point => point.arm))];
+  const seriesLabel = group => armLabel(group.arm) + (group.measure === "single" ? " best single" : "");
   const color = (arm, index) => SERIES_COLORS[arm] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
   const width = Math.max(560, target.clientWidth || 900), height = 340, margin = {left: 62, right: 190, top: 18, bottom: 44};
   const plotW = width - margin.left - margin.right, plotH = height - margin.top - margin.bottom;
@@ -84,7 +85,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   const xMax = Math.max(1, xLimit, ...points.map(point => point[xKey]));
   const x = value => margin.left + value / xMax * plotW, y = value => margin.top + (top - Math.min(value, top)) / (top - yMin) * plotH;
   const clipped = value => value > top;
-  const svg = svgNode("svg", {viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Best training mean side L so far for ${arms.join(" and ")} against ${xLabel}; lower is better`});
+  const svg = svgNode("svg", {viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Best training mean and best single-episode side L so far for ${arms.join(" and ")} against ${xLabel}; lower is better`});
   for (const tick of niceTicks(yMin, yMax, 5)) {
     svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(tick), y2: y(tick), class: "grid"}));
     svg.append(svgNode("text", {x: margin.left - 8, y: y(tick) + 4, "text-anchor": "end", class: "tick"}, tick.toFixed(3)));
@@ -92,7 +93,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   for (const tick of niceTicks(0, xMax, 8)) svg.append(svgNode("text", {x: x(tick), y: margin.top + plotH + 18, "text-anchor": "middle", class: "tick"}, compact(tick)));
   svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: margin.top + plotH, y2: margin.top + plotH, class: "axis"}));
   svg.append(svgNode("text", {x: margin.left + plotW / 2, y: height - 6, "text-anchor": "middle", class: "axis-label"}, xLabel));
-  svg.append(svgNode("text", {x: 14, y: margin.top + plotH / 2, transform: `rotate(-90 14 ${margin.top + plotH / 2})`, "text-anchor": "middle", class: "axis-label"}, "Best mean L (lower is better)"));
+  svg.append(svgNode("text", {x: 14, y: margin.top + plotH / 2, transform: `rotate(-90 14 ${margin.top + plotH / 2})`, "text-anchor": "middle", class: "axis-label"}, "Best L (lower is better)"));
   if (marker && marker.x > 0 && marker.x < xMax) {
     svg.append(svgNode("line", {x1: x(marker.x), x2: x(marker.x), y1: margin.top, y2: margin.top + plotH, class: "reference"}));
     svg.append(svgNode("text", {x: x(marker.x) + 6, y: margin.top + 12, class: "tick"}, marker.label));
@@ -103,10 +104,13 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
     svg.append(svgNode("line", {x1: margin.left, x2: margin.left + plotW, y1: y(item.value), y2: y(item.value), class: best ? "best-known" : "reference"}));
     labels.push({y: y(item.value), text: `${item.label} ${item.value.toFixed(4)}`, kind: best ? "best-known" : "reference"});
   }
-  const groups = arms.map((arm, index) => ({arm, color: color(arm, index), points: points.filter(point => point.arm === arm).sort((a, b) => a[xKey] - b[xKey])}));
+  // The best-single line shares its method's colour and is drawn dashed.
+  const groups = arms.flatMap((arm, index) => ["mean", "single"].map(measure => ({arm, measure, color: color(arm, index),
+    points: points.filter(point => point.arm === arm && (point.measure || "mean") === measure).sort((a, b) => a[xKey] - b[xKey])}))).filter(group => group.points.length);
   for (const group of groups) {
     const path = group.points.map((point, i) => i ? `H${x(point[xKey])}V${y(point[yKey])}` : `M${x(point[xKey])},${y(point[yKey])}`).join("");
     const line = svgNode("path", {d: path + `H${margin.left + plotW}`, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"});
+    if (group.measure === "single") line.setAttribute("stroke-dasharray", "7 4");
     line.style.stroke = group.color; svg.append(line);
     group.points.forEach((point, i) => {
       if (i && point[yKey] >= group.points[i - 1][yKey]) return;  // markers only where the incumbent improved
@@ -115,18 +119,19 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
         ? svgNode("path", {d: `M${cx - 5},${cy + 6}L${cx},${cy - 2}L${cx + 5},${cy + 6}Z`, class: "chart-point", tabindex: "0", role: "button"})
         : svgNode("circle", {cx, cy, r: 4.5, class: "chart-point", tabindex: "0", role: "button"});
       dot.style.fill = group.color;
-      dot.append(svgNode("title", {}, `${armLabel(group.arm)} ${i ? "improved to" : "started at"} ${point[yKey].toFixed(6)}${clipped(point[yKey]) ? " (above the shown range)" : ""} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
+      dot.append(svgNode("title", {}, `${seriesLabel(group)} ${i ? "improved to" : "started at"} ${point[yKey].toFixed(6)}${clipped(point[yKey]) ? " (above the shown range)" : ""} at ${compact(point[xKey])}; open program ${point.candidate_id}`));
       dot.addEventListener("click", () => onSelect(point));
       dot.addEventListener("keydown", event => { if (event.key === "Enter") onSelect(point); });
       svg.append(dot);
     });
     const last = group.points.at(-1);
-    labels.push({y: y(last[yKey]), text: `${armLabel(group.arm)} ${last[yKey].toFixed(4)}`, color: group.color});
+    labels.push({y: y(last[yKey]), text: `${seriesLabel(group)} ${last[yKey].toFixed(4)}`, color: group.color, dashed: group.measure === "single"});
   }
   labels.sort((a, b) => a.y - b.y);  // keep end labels from overlapping
   labels.forEach((label, i) => { if (i && label.y - labels[i - 1].y < 15) label.y = labels[i - 1].y + 15; });
   for (const label of labels) {
-    if (label.color) { const key = svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5}); key.style.fill = label.color; svg.append(key); }
+    if (label.dashed) { const key = svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, "stroke-width": 2, "stroke-dasharray": "4 2"}); key.style.stroke = label.color; svg.append(key); }
+    else if (label.color) { const key = svgNode("rect", {x: margin.left + plotW + 8, y: label.y - 2, width: 10, height: 3, rx: 1.5}); key.style.fill = label.color; svg.append(key); }
     else svg.append(svgNode("line", {x1: margin.left + plotW + 8, x2: margin.left + plotW + 18, y1: label.y, y2: label.y, class: label.kind}));
     svg.append(svgNode("text", {x: margin.left + plotW + 22, y: label.y + 4, class: label.color || label.kind === "best-known" ? "end-label" : "tick"}, label.text));
   }
@@ -143,7 +148,7 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
     for (const group of groups) {
       const current = group.points.filter(point => point[xKey] <= at).at(-1);
       const row = element("div"), key = element("i"); key.style.background = group.color;
-      row.append(key, element("span", `${armLabel(group.arm)}: ${current ? current[yKey].toFixed(6) : "—"}`));
+      row.append(key, element("span", `${seriesLabel(group)}: ${current ? current[yKey].toFixed(6) : "—"}`));
       tooltip.append(row);
     }
     for (const item of references) tooltip.append(element("div", `${item.label}: ${item.value.toFixed(6)}`, "muted"));
@@ -154,8 +159,9 @@ function curve(target, points, {xKey = "x", yKey = "y", xLabel = "Completed cand
   hit.addEventListener("mouseleave", () => { tooltip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   const legend = element("div", undefined, "legend");
   for (const group of groups) {
-    const item = element("span", armLabel(group.arm)), swatch = element("i");
-    swatch.style.background = group.color; item.prepend(swatch); legend.append(item);
+    const item = element("span", group.measure === "single" ? `${armLabel(group.arm)} best single episode` : `${armLabel(group.arm)} best mean`), swatch = element("i", undefined, group.measure === "single" ? "dashed-series" : undefined);
+    if (group.measure === "single") swatch.style.borderTopColor = group.color; else swatch.style.background = group.color;
+    item.prepend(swatch); legend.append(item);
   }
   if (references.some(item => item.kind !== "best-known")) { const item = element("span", "fixed controls"), swatch = element("i", undefined, "dashed"); item.prepend(swatch); legend.append(item); }
   if (references.some(item => item.kind === "best-known")) { const item = element("span", "best known upper bound"), swatch = element("i", undefined, "best-known"); item.prepend(swatch); legend.append(item); }

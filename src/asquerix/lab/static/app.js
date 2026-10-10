@@ -119,9 +119,12 @@ async function programs(){
   for(const button of document.querySelectorAll('.pager button'))button.disabled=Number(button.dataset.pages)<0||button.id==='program-first'?programOffset===0:programOffset>=last;
   const comparison=await api(`/campaigns/${selectedId}/comparison`),key=document.getElementById('live-curve-axis').value;
   // The server returns only improvements with their positions, plus per-method totals for the axis length.
+  // Each method has two step lines: the best mean L over the training starts, and the best single episode.
   const points=[];
   for(const candidate of comparison.candidates){if(['controls','fixed'].includes(candidate.arm))continue;
-    points.push({arm:candidate.arm,candidate_id:candidate.id,x:key==='evaluations'?candidate.x_evaluations:key==='work'?candidate.x_work:candidate.x_time,y:candidate.score.mean_best_L});}
+    const x=key==='evaluations'?candidate.x_evaluations:key==='work'?candidate.x_work:candidate.x_time,improves=candidate.improves||['mean'];
+    if(improves.includes('mean'))points.push({arm:candidate.arm,measure:'mean',candidate_id:candidate.id,x,y:candidate.score.mean_best_L});
+    if(improves.includes('single'))points.push({arm:candidate.arm,measure:'single',candidate_id:candidate.id,x,y:candidate.score.best_L});}
   const xTotal=Math.max(1,...Object.values(comparison.totals||{}).map(total=>key==='evaluations'?total.evaluations:key==='work'?total.work:total.time));
   const known=bestKnown?.entries.find(entry=>entry.n===selectedCampaign.spec.n),source=bestKnown?.source;
   const note=document.getElementById('best-known-source');note.textContent=known?`Best known upper bound s(${known.n}) ≤ ${known.printed}${known.author?` — ${known.author}`:''}${known.optimal_in_source?' (proved optimal there)':''}. Source: ${source.author}, “${source.title}”, ${source.citation}, Table 1. Display only; never used by the search.`:'';

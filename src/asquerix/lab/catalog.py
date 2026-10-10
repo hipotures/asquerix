@@ -248,14 +248,15 @@ class Catalog:
     def comparison(self, campaign_id: str) -> dict:
         """Search progress for the chart: controls, and each method's improvements with their x positions.
 
-        Only improving candidates are returned, so the page stays light however many programs were tried.
+        A candidate is returned when it improves its method's best mean L or best single-episode L; `improves`
+        names which. Only improving candidates are returned, so the page stays light however many programs were tried.
         """
         self.get(campaign_id)
         with self.lock:
             rows = self.db.execute("SELECT document FROM candidates WHERE campaign_id=?", (campaign_id,)).fetchall()
         candidates = sorted((json.loads(row[0]) for row in rows), key=lambda item: (item.get("completed_at", 0), item["arm"], item["position"]))
         fields = ("id", "arm", "position", "score", "holdout_score", "completed_at", "execution_elapsed_seconds", "arm_execution_elapsed_seconds")
-        result, totals, best = [], {}, {}
+        result, totals, best, single = [], {}, {}, {}
         for candidate in candidates:
             arm, score = candidate["arm"], candidate.get("score") or {}
             slim = {key: candidate.get(key, {} if key.endswith("score") else 0) for key in fields}
@@ -266,9 +267,17 @@ class Catalog:
             total["evaluations"] += 1 if score.get("complete") else 0
             total["work"] += score.get("total_charged_work") or 0
             total["time"] = max(total["time"], candidate.get("arm_execution_elapsed_seconds") or 0.0)
-            if score.get("eligible") and (arm not in best or score["mean_best_L"] < best[arm]):
+            if not score.get("eligible"):
+                continue
+            improves = []
+            if arm not in best or score["mean_best_L"] < best[arm]:
                 best[arm] = score["mean_best_L"]
-                result.append({**slim, "x_evaluations": total["evaluations"], "x_work": total["work"], "x_time": total["time"]})
+                improves.append("mean")
+            if score.get("best_L") is not None and (arm not in single or score["best_L"] < single[arm]):
+                single[arm] = score["best_L"]
+                improves.append("single")
+            if improves:
+                result.append({**slim, "improves": improves, "x_evaluations": total["evaluations"], "x_work": total["work"], "x_time": total["time"]})
         return {"candidates": result, "totals": totals,
                 "warning": "Equal candidate counts do not imply equal work. Mixed batch GPU times are not isolated program costs."}
 

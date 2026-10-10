@@ -139,17 +139,20 @@ class CampaignWorker:
         """Programs whose exact poses and episode rows are kept permanently in the group's files.
 
         With "important" evidence these are controls, fixed programs and every program that improved its
-        method's best; the current top programs of each method are kept separately in a replaceable file.
+        method's best mean or best single episode; the current top programs of each method are kept separately in a replaceable file.
         """
         if self.campaign.pose_evidence == "all" or bank_name != "training":
             return {candidate["id"] for candidate in candidates}
-        keep, best = set(), self.state.setdefault("arm_best", {})
+        keep, best, single = set(), self.state.setdefault("arm_best", {}), self.state.setdefault("arm_best_single", {})
         for candidate in candidates:
             score = scores[candidate["id"]]
             if candidate["arm"] in ("controls", "fixed"):
                 keep.add(candidate["id"])
             elif score.get("eligible") and (candidate["arm"] not in best or tuple(score["ranking_tuple"]) < tuple(best[candidate["arm"]])):
                 best[candidate["arm"]] = score["ranking_tuple"]
+                keep.add(candidate["id"])
+            if score.get("eligible") and score.get("best_L") is not None and (candidate["arm"] not in single or score["best_L"] < single[candidate["arm"]]):
+                single[candidate["arm"]] = score["best_L"]
                 keep.add(candidate["id"])
         return keep
 

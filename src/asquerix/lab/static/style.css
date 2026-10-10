@@ -96,6 +96,7 @@ header.stacked .gpu-monitor{grid-column:1/-1;grid-row:2;justify-self:center}
 .progress-chart .chart-point{stroke:var(--surface);stroke-width:2;cursor:pointer}
 .progress-chart .chart-point:hover,.progress-chart .chart-point:focus{r:6.5;outline:none}
 .legend i.dashed{height:0;border-top:2px dashed var(--reference);background:none}
+.legend i.dashed-series{height:0;border-top:2px dashed;background:none}
 .chart-tooltip{position:absolute;z-index:4;pointer-events:none;min-width:200px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);box-shadow:0 6px 18px var(--popover-shadow);font-size:12px;display:grid;gap:3px}
 .chart-tooltip div{display:flex;align-items:center;gap:6px}
 .chart-tooltip i{width:12px;height:3px;border-radius:2px}
