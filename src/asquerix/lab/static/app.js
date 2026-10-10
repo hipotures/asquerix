@@ -7,7 +7,7 @@ const PHASES={QUEUED:'Waiting for the GPU worker',PREPARING:'Preparing common in
 // "Name · continued · continued" (older campaigns) and "Name · continuation 2" both read as base name + depth.
 function lineage(name){const match=/^(.*?)((?: · continued)+| · continuation (\d+))$/.exec(name);if(!match)return {base:name,depth:0};return {base:match[1],depth:match[3]?Number(match[3]):match[2].split(' · continued').length-1};}
 const PAGE=10;
-let parentCounts={},bestKnown=null,programTotal=0,lastUpdate=0,chartArgs=null,resizeTimer=null;
+let shownPage={view:null,ids:null},parentCounts={},bestKnown=null,programTotal=0,lastUpdate=0,chartArgs=null,resizeTimer=null;
 addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(chartArgs&&!document.getElementById('detail').hidden)curve(document.getElementById('live-curve'),...chartArgs);},150);});
 function duration(seconds){if(typeof seconds!=='number')return '—';const s=Math.round(seconds);if(s<60)return `${s} s`;if(s<3600)return `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s`;return `${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;}
 function plannedEpisodes(spec){const candidates=spec.search.methods.length*spec.search.candidate_budget_per_method,fixed=spec.controls.length+spec.fixed_programs.length,winners=spec.search.methods.length*(spec.continuation_of?2:1);return ((candidates+fixed)*spec.datasets.training.valid_count+(winners+fixed)*spec.datasets.holdout.valid_count)*spec.operator_replicates;}
@@ -105,9 +105,12 @@ async function programs(){
   const page=await api(`/campaigns/${selectedId}/programs?limit=${PAGE}&offset=${programOffset}&sort=${programSort}`);currentCandidates=page.items;
   for(const header of document.querySelectorAll('#tab-programs th'))header.removeAttribute('aria-sort');
   document.querySelector(`#tab-programs .sort[data-sort=${programSort}]`).closest('th').setAttribute('aria-sort','ascending');
+  // Rows that entered the page shown since the last update glow briefly; changing page or sort shows no glow.
+  const view=`${selectedId}|${programSort}|${programOffset}`,previous=shownPage.view===view?shownPage.ids:null;shownPage={view,ids:new Set(page.items.map(item=>item.id))};
   const target=document.getElementById('program-table');target.replaceChildren();
   for(const candidate of page.items){
     const row=element('tr'),score=candidate.score||{},valid=score.validation_counts?.NUMERICALLY_VALIDATED||0;
+    if(previous&&!previous.has(candidate.id))row.classList.add('fresh');
     row.dataset.candidateId=candidate.id;row.classList.toggle('selected',selectedProgram?.id===candidate.id);
     const label=element('td',`${candidate.arm.replaceAll('_',' ')} · #${candidate.position}`);label.title=candidate.id;
     const validity=element('td',`${valid}/${score.expected_episodes||0}${score.eligible?' ✓':''}`);validity.title=score.eligible?'All episodes independently validated; eligible for ranking':'Incomplete or not all episodes validated';
