@@ -181,7 +181,7 @@ class Campaign(Model):
     schema_name: Literal["asquerix-lab-campaign-v1"] = Field(default=SCHEMA, alias="schema")
     name: Annotated[str, Field(min_length=1, max_length=160)]
     description: Annotated[str, Field(max_length=2000)] = ""
-    n: Annotated[StrictInt, Field(ge=1, le=32)] = 11
+    n: Annotated[StrictInt, Field(ge=1, le=1000)] = 11
     initial_side: Annotated[float, Field(gt=math.sqrt(2) + 0.00004, le=100)] = 10.0
     device: Annotated[str, Field(pattern=r"^cuda:[0-9]{1,2}$")] = "cuda:0"
     batch_capacity: Annotated[StrictInt, Field(ge=1, le=65536)] = 4096
@@ -287,7 +287,7 @@ def capabilities() -> dict:
             "operators": [op.name for op in Op if op.value <= 7],
             "selectors": [selector.name for selector in Selector],
             "methods": ["random_program_search", "one_plus_lambda"],
-            "profiles": ["rigid-square-lab-v1"], "square_count": [1, 32],
+            "profiles": ["rigid-square-lab-v1"], "square_count": [1, 1000],
             # New campaigns fill the GPU, keep exact poses for important programs and search for a time budget.
             "defaults": Campaign(name="New campaign", pose_evidence="important", batch_capacity=8192,
                                  search={"lambda": 0, "time_budget_seconds": 300, "candidate_budget_per_method": 1_000_000},

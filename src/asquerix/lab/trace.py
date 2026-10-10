@@ -23,7 +23,7 @@ EXTRA_DTYPES = {"best_side": "<f4", "pc": "<i4", "flags": "<i4", "mask": "<u4",
 
 def load_trace(path: Path) -> tuple[dict, dict]:
     metadata = read_json(path.with_suffix(".meta.json.gz"))
-    if metadata.get("schema") != SCHEMA or not 3 <= metadata.get("frame_count", 0) <= 256 or not 1 <= metadata.get("n", 0) <= 32:
+    if metadata.get("schema") != SCHEMA or not 3 <= metadata.get("frame_count", 0) <= 256 or not 1 <= metadata.get("n", 0) <= 1000:
         raise ValueError("Invalid strategy trace metadata bounds")
     uint64(metadata["trial_id"])
     uint64(metadata["seed"])
@@ -40,7 +40,7 @@ def load_trace(path: Path) -> tuple[dict, dict]:
         raise ValueError("Trace program hash mismatch")
     if np.any(arrays["pc"] < -1) or np.any(arrays["pc"] >= len(program.code)):
         raise ValueError("Trace instruction index out of range")
-    if np.any(arrays["mask"].astype(np.uint64) >= 2**n):
+    if np.any(arrays["mask"].astype(np.uint64) >= 2**min(n, 32)):
         raise ValueError("Trace mask exceeds square IDs")
     if np.any(arrays["flags"] < 0) or np.any(arrays["flags"] > 511):
         raise ValueError("Trace role flags invalid")

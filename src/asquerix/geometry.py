@@ -345,10 +345,10 @@ def validate_document(document: Any, tolerance: float = 1e-8) -> dict[str, Any]:
         return invalid("document is missing required field 'n'")
     declared_n = document["n"]
     if isinstance(declared_n, bool) or not isinstance(declared_n, Integral):
-        return invalid("document field 'n' must be an integer in [1, 32]")
+        return invalid("document field 'n' must be an integer in [1, 1000]")
     n = int(declared_n)
-    if not 1 <= n <= 32:
-        return invalid("document field 'n' must be an integer in [1, 32]")
+    if not 1 <= n <= 1000:
+        return invalid("document field 'n' must be an integer in [1, 1000]")
 
     if "poses" not in document:
         return invalid("document is missing required field 'poses'")

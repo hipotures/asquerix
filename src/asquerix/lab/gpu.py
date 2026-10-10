@@ -256,7 +256,7 @@ def initialize(cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dty
 def execute(cfg: Parameters, limits: Limits, code: wp.array2d(dtype=Instruction),
             lengths: wp.array(dtype=int), program_ids: wp.array(dtype=int),
             current: wp.array2d(dtype=wp.vec3), trial: wp.array2d(dtype=wp.vec3),
-            best: wp.array2d(dtype=wp.vec3), selected_ids: wp.array2d(dtype=int),
+            best: wp.array2d(dtype=wp.vec3), selected_ids: wp.array2d(dtype=int), selected: wp.array2d(dtype=int),
             states: wp.array(dtype=VM), slice_sweeps: int, slice_dispatches: int,
             cancel: int, recording: int, every: int, trace_poses: wp.array2d(dtype=wp.vec3),
             frames: wp.array(dtype=Frame), events: wp.array(dtype=Frame),
@@ -382,10 +382,15 @@ def execute(cfg: Parameters, limits: Limits, code: wp.array2d(dtype=Instruction)
                 if vm.termination != 0:
                     break
                 count = wp.min(ins.i1, cfg.n)
+                # Selection flags per square; the 32-bit mask only mirrors squares 0-31 for recorded frames.
+                for square in range(cfg.n):
+                    selected[square, world] = 0
                 if ins.i0 == 0:
                     count = cfg.n
                     for square in range(cfg.n):
-                        vm.mask = vm.mask | (wp.uint32(1) << wp.uint32(square))
+                        selected[square, world] = 1
+                        if square < 32:
+                            vm.mask = vm.mask | (wp.uint32(1) << wp.uint32(square))
                 elif ins.i0 == 1:
                     for square in range(cfg.n):
                         selected_ids[square, world] = square
@@ -397,7 +402,9 @@ def execute(cfg: Parameters, limits: Limits, code: wp.array2d(dtype=Instruction)
                         square = selected_ids[chosen, world]
                         selected_ids[chosen, world] = selected_ids[pick, world]
                         selected_ids[pick, world] = square
-                        vm.mask = vm.mask | (wp.uint32(1) << wp.uint32(square))
+                        selected[square, world] = 1
+                        if square < 32:
+                            vm.mask = vm.mask | (wp.uint32(1) << wp.uint32(square))
                 else:
                     for square in range(cfg.n):
                         p = current[square, world]
@@ -411,13 +418,15 @@ def execute(cfg: Parameters, limits: Limits, code: wp.array2d(dtype=Instruction)
                             if other_clearance < clearance or (other_clearance == clearance and other < square):
                                 rank += 1
                         if rank < count:
-                            vm.mask = vm.mask | (wp.uint32(1) << wp.uint32(square))
+                            selected[square, world] = 1
+                            if square < 32:
+                                vm.mask = vm.mask | (wp.uint32(1) << wp.uint32(square))
                 if count == 0:
                     vm = _complete(vm, 5)
                     continue
                 for square in range(cfg.n):
                     p = current[square, world]
-                    if (vm.mask & (wp.uint32(1) << wp.uint32(square))) != wp.uint32(0):
+                    if selected[square, world] != 0:
                         next_rng, draw = random_value(vm.rng)
                         vm.rng = next_rng
                         vm.rng_draws += wp.uint64(1)
@@ -661,6 +670,7 @@ class StrategyBatch:
         self.trial = wp.zeros_like(self.current)
         self.best = wp.zeros_like(self.current)
         self.selected_ids = wp.zeros((campaign.n, count), dtype=int, device=self.device)
+        self.selected = wp.zeros((campaign.n, count), dtype=int, device=self.device)
         self.states = wp.zeros(count, dtype=VM, device=self.device)
         self.frame_cap = campaign.recording.max_frames_per_trace if recording else 4
         self.recording = (1 if campaign.recording.mode == "accepted" else 2) if recording else 0
@@ -681,7 +691,7 @@ class StrategyBatch:
         start = perf_counter()
         wp.record_event(self.start_event)
         wp.launch(execute, dim=self.count, inputs=[self.cfg, self.limits, self.code, self.lengths,
-                  self.program_ids, self.current, self.trial, self.best, self.selected_ids, self.states,
+                  self.program_ids, self.current, self.trial, self.best, self.selected_ids, self.selected, self.states,
                   self.campaign.slice_sweeps, self.campaign.slice_dispatches, int(cancel), self.recording,
                   self.campaign.recording.every, self.trace_poses, self.frames, self.events,
                   self.capture, self.frame_cap], device=self.device, block_dim=32)

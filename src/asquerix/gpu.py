@@ -40,8 +40,8 @@ class Config:
             value = getattr(self, key)
             if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
                 raise ValueError(f"{key} must be an integer")
-        if not 1 <= self.n <= 32:
-            raise ValueError("n must be an integer from 1 through 32")
+        if not 1 <= self.n <= 1000:
+            raise ValueError("n must be an integer from 1 through 1000")
         if not 0 <= self.seed < 2**64:
             raise ValueError("seed must fit unsigned 64 bits")
         for key in ("initial_side", "step", "step_floor", "guard", "acceptance_tolerance",
