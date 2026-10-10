@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import Future, ProcessPoolExecutor
 import gzip
 import json
 import os
@@ -187,7 +187,13 @@ class CampaignWorker:
                 entries.setdefault(row["candidate_id"], {"rank": tuple(row["ranking_tuple"]), "rows": [], "indices": [], "source": "old"})
                 entries[row["candidate_id"]]["rows"].append(row)
                 entries[row["candidate_id"]]["indices"].append(index)
+            # Only this group's best RETAINED_PER_METHOD programs can enter the top list; skip the others' rows.
+            contenders = set(sorted((identifier for identifier, score in scores.items()
+                                     if score.get("eligible") and identifier.split(":")[-2] == arm),
+                                    key=lambda identifier: tuple(scores[identifier]["ranking_tuple"]))[:RETAINED_PER_METHOD])
             for index, row in enumerate(rows):
+                if row["candidate_id"] not in contenders:
+                    continue
                 score = scores.get(row["candidate_id"])
                 if row["arm"] != arm or not score or not score.get("eligible") or row["candidate_id"] in entries and entries[row["candidate_id"]]["source"] == "old":
                     continue
@@ -262,12 +268,22 @@ class CampaignWorker:
                 # GPU slots are refilled as episodes finish, so long programs do not leave the GPU idle.
                 batch = StreamingBatch(self.campaign, programs, bank["poses"][initial_slots],
                                        bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
-                # An exhausted time budget or a stop cancels the group in flight.
-                cancelled = False
+                # An exhausted time budget or a stop cancels the group in flight. Finished episodes are validated
+                # by the process pool while the GPU keeps simulating; validation is a pure function of each episode.
+                cancelled, waiting, futures = False, [], []
+                item = lambda index: (batch.states[index], batch.best[index], batch.current[index], candidates[int(pids[index])]["program"]["hash"],
+                                      bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
+                chunk = max(512, min(8192, total // (VALIDATION_PROCESSES * 4)))
                 while True:
                     cancel = self.stopped() or self.cut()
                     cancelled = cancelled or cancel
-                    if batch.advance(cancel=cancel):
+                    done = batch.advance(cancel=cancel)
+                    if not cancelled:
+                        waiting.extend(batch.newly.tolist())
+                        while len(waiting) >= chunk:
+                            indices, waiting = waiting[:chunk], waiting[chunk:]
+                            futures.append((indices, self.validate_async([item(index) for index in indices])))
+                    if done:
                         break
                     self.activity(active_episodes=total, stage="GPU: simulating episodes", stage_done=int(batch.collected.sum()), stage_total=total)
                 for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
@@ -292,13 +308,20 @@ class CampaignWorker:
                     else:
                         candidates = []
                 if not cancelled and not self.stopped():
-                    if not partial:
-                        states, best, current = batch.collect()
                     validation_start = time.monotonic()
                     self.activity(stage="CPU: validating poses", stage_total=total)
-                    validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
-                                                   bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
-                                                  for index in range(total)])
+                    by_index = {}
+                    if partial:  # validate the admitted programs' episodes, in their original stream order
+                        validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
+                                                       bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
+                                                      for index in range(total)])
+                    else:
+                        states, best, current = batch.collect()
+                        if waiting:
+                            futures.append((waiting, self.validate_async([item(index) for index in waiting])))
+                        for indices, future in futures:
+                            by_index.update(zip(indices, future.result()))
+                        validated = [by_index[index] for index in range(total)]
                     timing["validation_seconds"] += time.monotonic() - validation_start
                     for index, row in enumerate(validated):
                         candidate = candidates[int(pids[index])]
@@ -313,7 +336,11 @@ class CampaignWorker:
             executed = sum(row["termination"] != "CANCELLED" for row in rows)
             self.state["completed_episode_executions"] += executed
             self.activity(stage="CPU: scoring programs", stage_total=len(candidates))
+            scoring_start = time.monotonic()
             scores = self.scores(candidates, rows, episodes_per_candidate)
+            timing["scoring_seconds"] = time.monotonic() - scoring_start
+            # Program generation for this group happened before it started; it is reported with the group.
+            timing["generation_seconds"] = self.state.pop("generation_seconds", 0.0)
             keep = set()
             if len(rows) == total and executed == total:  # a group cut short by a stop is not admitted; a resume repeats it
                 keep = self.retained(candidates, scores, bank_name)
@@ -354,10 +381,13 @@ class CampaignWorker:
                     self.remember_chunk(receipt)
                 if bank_name == "training":
                     self.activity(stage="Disk: updating top programs")
+                    top_start = time.monotonic()
                     self.update_top(candidates, scores, rows, merged)
+                    timing["top_seconds"] = time.monotonic() - top_start
                 self.event("TASK_GROUP_COMPLETED", {"group": group_hash, "bank": bank_name, "episodes": total,
                                                     "retained_programs": len(keep), "timings": timing})
         evaluated = []
+        recording_start = time.monotonic()
         self.activity(stage="CPU: recording program results", stage_total=len(candidates))
         for candidate in candidates:
             result = {**candidate, "state": "EVALUATED" if scores[candidate["id"]]["complete"] else "INCOMPLETE",
@@ -372,9 +402,13 @@ class CampaignWorker:
                        {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name,
                         "score": {key: summary.get(key) for key in ("complete", "eligible", "mean_best_L", "best_L", "ranking_tuple")},
                         "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()})
+        recording_seconds = time.monotonic() - recording_start
         self.activity(stage="Disk: candidate log and checkpoint")
+        log_start = time.monotonic()
         self.remember(evaluated, keep)
         self.checkpoint()
+        self.event("TASK_GROUP_RECORDED", {"bank": bank_name, "candidates": len(evaluated), "recording_seconds": recording_seconds,
+                                           "log_checkpoint_seconds": time.monotonic() - log_start})
         return evaluated
 
     def scores(self, candidates: list[dict], rows: list[dict], episodes_per_candidate: int) -> dict:
@@ -427,6 +461,17 @@ class CampaignWorker:
         size = max(1, -(-len(items) // (VALIDATION_PROCESSES * 4)))
         chunks = [items[start:start + size] for start in range(0, len(items), size)]
         return [row for rows in self.pool.map(_result_chunk, [self.campaign] * len(chunks), chunks) for row in rows]
+
+    def validate_async(self, items: list[tuple]):
+        """Start validating a chunk of episodes in the process pool; the result keeps the items' order."""
+        if VALIDATION_PROCESSES < 2:
+            future = Future()
+            future.set_result(_result_chunk(self.campaign, items))
+            return future
+        if self.pool is None:
+            import multiprocessing
+            self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"))
+        return self.pool.submit(_result_chunk, self.campaign, items)
 
     def close(self):
         if self.pool is not None:
@@ -586,7 +631,9 @@ class CampaignWorker:
                                                            "completed_candidates": controller.completed})
                         break
                     self.activity(stage="CPU: generating programs")
+                    generation_start = time.monotonic()
                     group = controller.ask()
+                    self.state["generation_seconds"] = time.monotonic() - generation_start
                     if not group:
                         break
                     self.state["controllers"][method] = controller.checkpoint()

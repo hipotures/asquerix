@@ -277,6 +277,41 @@ def initialize_slots(slots: wp.array(dtype=int), cfg: Parameters, operator_seed:
 
 
 @wp.kernel
+def gather_slots(slots: wp.array(dtype=int), best: wp.array2d(dtype=wp.vec3), current: wp.array2d(dtype=wp.vec3),
+                 out_best: wp.array2d(dtype=wp.vec3), out_current: wp.array2d(dtype=wp.vec3)):
+    """Copy the poses of the listed slots into compact arrays, so only finished episodes cross to the host."""
+    square, index = wp.tid()
+    out_best[square, index] = best[square, slots[index]]
+    out_current[square, index] = current[square, slots[index]]
+
+
+@wp.kernel
+def terminations(states: wp.array(dtype=VM), out: wp.array(dtype=int)):
+    out[wp.tid()] = states[wp.tid()].termination
+
+
+@wp.kernel
+def gather_states(slots: wp.array(dtype=int), states: wp.array(dtype=VM), out: wp.array(dtype=VM)):
+    out[wp.tid()] = states[slots[wp.tid()]]
+
+
+@wp.kernel
+def scatter_slots(slots: wp.array(dtype=int), poses: wp.array2d(dtype=wp.vec3), initial_results: wp.array(dtype=Result),
+                  ids: wp.array(dtype=wp.uint64), replicates: wp.array(dtype=wp.uint64), program_ids: wp.array(dtype=int),
+                  out_inputs: wp.array2d(dtype=wp.vec3), out_initial_results: wp.array(dtype=Result),
+                  out_ids: wp.array(dtype=wp.uint64), out_replicates: wp.array(dtype=wp.uint64), out_program_ids: wp.array(dtype=int)):
+    """Write the task data of new episodes into the listed slots; only these slots' data is uploaded."""
+    square, index = wp.tid()
+    slot = slots[index]
+    out_inputs[square, slot] = poses[square, index]
+    if square == 0:
+        out_initial_results[slot] = initial_results[index]
+        out_ids[slot] = ids[index]
+        out_replicates[slot] = replicates[index]
+        out_program_ids[slot] = program_ids[index]
+
+
+@wp.kernel
 def execute(cfg: Parameters, limits: Limits, code: wp.array2d(dtype=Instruction),
             lengths: wp.array(dtype=int), program_ids: wp.array(dtype=int),
             current: wp.array2d(dtype=wp.vec3), trial: wp.array2d(dtype=wp.vec3),
@@ -712,6 +747,14 @@ class StrategyBatch:
         self.latest = None
 
     def advance(self, *, cancel: bool = False) -> bool:
+        self.step(cancel=cancel)
+        start = perf_counter()
+        self.latest = self.states.numpy().copy()
+        self.timings["transfer_seconds"] += perf_counter() - start
+        return bool(np.all(self.latest["termination"] != 0))
+
+    def step(self, *, cancel: bool = False):
+        """Run one bounded slice on the device without reading anything back."""
         start = perf_counter()
         wp.record_event(self.start_event)
         wp.launch(execute, dim=self.count, inputs=[self.cfg, self.limits, self.code, self.lengths,
@@ -726,10 +769,6 @@ class StrategyBatch:
         self.timings["device_seconds"] += wp.get_event_elapsed_time(self.start_event, self.end_event) / 1000
         self.timings["max_slice_seconds"] = max(self.timings["max_slice_seconds"], elapsed)
         self.timings["slice_count"] += 1
-        start = perf_counter()
-        self.latest = self.states.numpy().copy()
-        self.timings["transfer_seconds"] += perf_counter() - start
-        return bool(np.all(self.latest["termination"] != 0))
 
     def collect(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         if self.latest is None or np.any(self.latest["termination"] == 0):
@@ -780,21 +819,35 @@ class StreamingBatch:
         self.collected = np.zeros(total, dtype=bool)
         self.timings = self.batch.timings
         self.running = []  # episodes still running in slots after each slice, a load measure
+        self.newly = np.empty(0, dtype=np.int64)  # episodes collected by the latest advance
 
     def advance(self, *, cancel: bool = False) -> bool:
         batch = self.batch
-        batch.advance(cancel=cancel)
-        states = batch.latest
-        self.running.append(int(((states["termination"] == 0) & (self.slot_episode >= 0)).sum()))
-        finished = np.flatnonzero((states["termination"] != 0) & (self.slot_episode >= 0))
+        batch.step(cancel=cancel)
+        # Only the termination codes cross every slice; full VM states are copied for finished slots only.
+        start = perf_counter()
+        codes = wp.empty(self.slots, dtype=int, device=batch.device)
+        wp.launch(terminations, dim=self.slots, inputs=[batch.states, codes], device=batch.device)
+        termination = codes.numpy()
+        self.timings["transfer_seconds"] += perf_counter() - start
+        self.running.append(int(((termination == 0) & (self.slot_episode >= 0)).sum()))
+        finished = np.flatnonzero((termination != 0) & (self.slot_episode >= 0))
+        self.newly = self.slot_episode[finished].copy()
         if len(finished):
             start = perf_counter()
-            best = batch.best.numpy()
-            current = batch.current.numpy()
+            # Only the finished slots' poses are copied to the host and only refilled slots' tasks are uploaded;
+            # copying whole slot arrays both ways dominated transfer time at large batch capacities.
+            n, k = self.campaign.n, len(finished)
+            finished_slots = wp.array(finished.astype(np.int32), dtype=int, device=batch.device)
+            out_best = wp.empty((n, k), dtype=wp.vec3, device=batch.device)
+            out_current = wp.empty((n, k), dtype=wp.vec3, device=batch.device)
+            wp.launch(gather_slots, dim=(n, k), inputs=[finished_slots, batch.best, batch.current, out_best, out_current], device=batch.device)
+            finished_states = wp.empty(k, dtype=VM, device=batch.device)
+            wp.launch(gather_states, dim=k, inputs=[finished_slots, batch.states, finished_states], device=batch.device)
             episodes = self.slot_episode[finished]
-            self.states[episodes] = states[finished]
-            self.best[episodes] = np.transpose(best[:, finished], (1, 0, 2))
-            self.current[episodes] = np.transpose(current[:, finished], (1, 0, 2))
+            self.states[episodes] = finished_states.numpy()
+            self.best[episodes] = np.transpose(out_best.numpy(), (1, 0, 2))
+            self.current[episodes] = np.transpose(out_current.numpy(), (1, 0, 2))
             self.collected[episodes] = True
             self.slot_episode[finished] = -1
             refill = finished[:max(0, min(len(finished), self.total - self.next_episode))]
@@ -802,15 +855,14 @@ class StreamingBatch:
                 episodes = np.arange(self.next_episode, self.next_episode + len(refill))
                 self.next_episode += len(refill)
                 self.slot_episode[refill] = episodes
-                inputs = batch.inputs.numpy()
-                inputs[:, refill] = np.transpose(self.poses[episodes], (1, 0, 2))
-                batch.inputs.assign(inputs)
-                for name, values in (("initial_results", self.initial_results), ("ids", self.ids),
-                                     ("replicates", self.replicates), ("program_ids", self.program_ids)):
-                    array = getattr(batch, name).numpy()
-                    array[refill] = values[episodes]
-                    getattr(batch, name).assign(array)
                 slot_array = wp.array(refill.astype(np.int32), dtype=int, device=batch.device)
+                wp.launch(scatter_slots, dim=(n, len(refill)), inputs=[
+                    slot_array, wp.array(np.transpose(self.poses[episodes], (1, 0, 2)).copy(), dtype=wp.vec3, device=batch.device),
+                    wp.array(self.initial_results[episodes], dtype=Result, device=batch.device),
+                    wp.array(self.ids[episodes], dtype=wp.uint64, device=batch.device),
+                    wp.array(self.replicates[episodes], dtype=wp.uint64, device=batch.device),
+                    wp.array(self.program_ids[episodes], dtype=int, device=batch.device),
+                    batch.inputs, batch.initial_results, batch.ids, batch.replicates, batch.program_ids], device=batch.device)
                 wp.launch(initialize_slots, dim=len(refill), inputs=[slot_array, batch.cfg, wp.uint64(int(self.campaign.operator_seed)),
                           batch.inputs, batch.initial_results, batch.ids, batch.replicates, batch.program_ids,
                           batch.code, batch.lengths, batch.current, batch.trial, batch.best, batch.states,
