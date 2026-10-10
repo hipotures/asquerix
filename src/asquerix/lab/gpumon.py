@@ -1,4 +1,4 @@
-"""Live GPU telemetry and power limits for the browser, sampled only while computing.
+"""Live GPU and CPU telemetry and GPU power limits for the browser, sampled only while computing.
 
 Telemetry comes from one `nvidia-smi --query-gpu` call per interval (about
 30 ms for all GPUs); it never creates a CUDA context. A monitoring session
@@ -89,6 +89,64 @@ def set_power_limit(index: int, watts: float, gpus: list[dict]) -> dict:
     return {"index": index, "uuid": gpu["uuid"], "previous_w": gpu["power_limit_w"], "requested_w": watts}
 
 
+class CpuSampler:
+    """CPU load of the host and of this server's process tree (worker and validation pool included), from /proc.
+
+    `app_cores` is CPU time used per second (2.0 means two cores fully busy); `busy_threads` counts the tree's
+    threads that ran more than half of the interval.
+    """
+
+    def __init__(self, root_pid: int | None = None):
+        self.root = root_pid or os.getpid()
+        self.tick = os.sysconf("SC_CLK_TCK")
+        self.cores = os.cpu_count() or 1
+        self.previous = None
+
+    @staticmethod
+    def _fields(path: str) -> list[str]:
+        with open(path, encoding="ascii", errors="replace") as stream:
+            text = stream.read()
+        return text[text.rindex(")") + 2:].split()  # the command name may contain spaces
+
+    def _tree(self) -> list[int]:
+        parents = {}
+        for entry in os.scandir("/proc"):
+            if entry.name.isdigit():
+                try:
+                    parents[int(entry.name)] = int(self._fields(f"/proc/{entry.name}/stat")[1])
+                except (OSError, ValueError, IndexError):
+                    continue
+        tree, frontier = [self.root], [self.root]
+        while frontier:
+            frontier = [pid for pid, parent in parents.items() if parent in frontier]
+            tree += frontier
+        return tree
+
+    def sample(self) -> dict | None:
+        with open("/proc/stat", encoding="ascii") as stream:
+            values = [int(value) for value in stream.readline().split()[1:]]
+        idle, total = values[3] + values[4], sum(values[:8])
+        threads = {}
+        for pid in self._tree():
+            try:
+                for task in os.scandir(f"/proc/{pid}/task"):
+                    fields = self._fields(f"/proc/{pid}/task/{task.name}/stat")
+                    threads[(pid, task.name)] = int(fields[11]) + int(fields[12])
+            except (OSError, ValueError, IndexError):
+                continue
+        now, previous = time.monotonic(), self.previous
+        self.previous = (now, idle, total, threads)
+        if previous is None:
+            return None
+        then, idle_before, total_before, threads_before = previous
+        seconds = max(now - then, 1e-3)
+        deltas = [(ticks - threads_before.get(key, ticks)) / self.tick for key, ticks in threads.items()]
+        busy = total - total_before
+        return {"load_percent": round(100 * (1 - (idle - idle_before) / busy), 1) if busy else None,
+                "app_cores": round(sum(deltas) / seconds, 2), "busy_threads": sum(delta > 0.5 * seconds for delta in deltas),
+                "app_processes": len({key[0] for key in threads}), "cores": self.cores}
+
+
 class GpuMonitor:
     def __init__(self, computing: Callable[[], str | None], *, interval: float = 1.0, sampler=query):
         self.computing, self.interval, self.sampler = computing, interval, sampler
@@ -102,6 +160,8 @@ class GpuMonitor:
         self.gpus: list[dict] = []
         self.samples: list[dict] = []
         self.error = None
+        self.cpu_sampler = CpuSampler()
+        self.cpu = None
 
     def start(self):
         self.thread = Thread(target=self._run, name="asquerix-gpu-monitor", daemon=True)
@@ -132,6 +192,10 @@ class GpuMonitor:
         if not self.live:
             return
         try:
+            cpu = self.cpu_sampler.sample()
+        except (OSError, ValueError):
+            cpu = None
+        try:
             gpus = self.sampler()
         except (OSError, subprocess.SubprocessError, ValueError) as error:
             with self.lock:
@@ -139,8 +203,9 @@ class GpuMonitor:
             return
         with self.lock:
             self.gpus = gpus
+            self.cpu = cpu
             self.error = None
-            self.samples.append({"t": time.time(), "gpus": [
+            self.samples.append({"t": time.time(), "cpu": [cpu["load_percent"], cpu["app_cores"]] if cpu else None, "gpus": [
                 [gpu["temperature_c"], gpu["fan_percent"], gpu["power_w"], gpu["utilization_percent"], gpu["memory_percent"]]
                 for gpu in gpus]})
             del self.samples[:-HISTORY]
@@ -150,4 +215,5 @@ class GpuMonitor:
             return {"session": self.session, "live": self.live, "campaign_id": self.campaign_id,
                     "started": self.started, "finished": self.finished, "interval_seconds": self.interval,
                     "sample_fields": ["temperature_c", "fan_percent", "power_w", "utilization_percent", "memory_percent"],
+                    "cpu_fields": ["load_percent", "app_cores"], "cpu": self.cpu,
                     "gpus": list(self.gpus), "samples": list(self.samples), "error": self.error}

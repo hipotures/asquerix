@@ -57,8 +57,21 @@ function render(data) {
   if (!visible) { layout(); return; }
   if (session !== data.session) { session = data.session; openLimit = null; }
   root.classList.toggle('frozen', !data.live);
-  root.dataset.count = String(data.gpus.length);
+  root.dataset.count = String(data.gpus.length + (data.cpu ? 1 : 0));
   root.replaceChildren();
+  // Host CPU next to the GPUs: validation and bookkeeping run on the CPU while the GPU waits.
+  if (data.cpu) {
+    const cpu = data.cpu, tile = el('div', 'gpu-tile cpu-tile'), head = el('div', 'gpu-head'), stats = el('div', 'gpu-stats');
+    head.append(el('span', 'gpu-name', 'CPU'), el('span', 'gpu-tag', `${cpu.cores} threads`));
+    const app = el('span', undefined, `app ${cpu.app_cores.toFixed(1)} cores`);
+    app.title = `This server, its CUDA worker and validation processes (${cpu.app_processes} processes) used ${cpu.app_cores.toFixed(2)} cores of CPU time per second`;
+    const busy = el('span', undefined, `busy ${cpu.busy_threads}/${cpu.cores}`);
+    busy.title = 'Threads of this application that ran for more than half of the last second';
+    stats.append(el('span', undefined, `load ${value(cpu.load_percent, '%')}`), app, busy);
+    const spark = el('canvas', 'gpu-spark'); spark.setAttribute('aria-label', 'Host CPU load history');
+    tile.append(head, stats, spark); root.append(tile);
+    sparkline(spark, data.samples.map(sample => sample.cpu ? sample.cpu[0] : null));
+  }
   data.gpus.forEach((gpu, position) => {
     const history = data.samples.map(sample => sample.gpus[position] || [null, null, null, null, null]);
     const tile = el('div', 'gpu-tile');
