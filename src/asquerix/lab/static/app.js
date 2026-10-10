@@ -21,7 +21,7 @@ const value=name=>field(name).value;
 const numeric=name=>Number(value(name));
 const checked=name=>field(name).checked;
 function fail(message){error.textContent=message;error.hidden=false;}
-function view(name){for(const id of ['catalog','create','detail'])document.getElementById(id).hidden=id!==name;error.hidden=true;}
+function view(name){for(const id of ['catalog','create','detail'])document.getElementById(id).hidden=id!==name;error.hidden=true;if(name!=='detail')animateFavicon(false);}
 async function api(path,{method='GET',body,key}={}){
   const response=await fetch('/api/v1'+path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-Asquerix-Client':'lab-v1',...(csrf?{'X-CSRF-Token':csrf}:{}),...(method==='POST'?{'Idempotency-Key':key||crypto.randomUUID()}:{})},body:body===undefined?undefined:JSON.stringify(body)});
   const data=await response.json();
@@ -178,6 +178,7 @@ async function render(){
   const scope=document.getElementById('campaign-scope');scope.textContent=`${spec.datasets.training.valid_count} training and ${spec.datasets.holdout.valid_count} holdout starts`;
   if(spec.continuation_of){const link=element('a','the previous campaign');link.href='#'+spec.continuation_of;link.addEventListener('click',event=>{event.preventDefault();openCampaign(spec.continuation_of);});scope.append(' · continues ',link);}
   notifyState(selectedId,spec,state,summary);
+  animateFavicon(ACTIVE.includes(state)||state==='STOP_REQUESTED');
   const badge=document.getElementById('campaign-state');badge.dataset.state=state;badge.textContent=state.charAt(0)+state.slice(1).toLowerCase().replaceAll('_',' ');
   const metrics=document.getElementById('campaign-metrics');metrics.replaceChildren();
   for(const [label,text] of [[spec.search.time_budget_seconds?'Programs tried':'Programs tried / candidate budget',spec.search.time_budget_seconds?String(summary.completed_candidates||0):`${summary.completed_candidates||0} / ${spec.search.methods.length*spec.search.candidate_budget_per_method}`],['Scientific episodes',String(summary.completed_episode_executions||0)],['Best mean L (training)',number(summary.training_incumbent?.mean_best_L)],['GPU execution time',duration(summary.elapsed_execution_seconds)],['Speed',speed(spec,summary)]]){const box=element('div',undefined,'metric'),[main,...detail]=text.split('\n');box.append(element('small',label),element('strong',main));if(detail.length)box.append(element('small',detail.join(' ')));metrics.append(box);}
@@ -318,6 +319,19 @@ function notifyState(identifier,spec,state,summary){
   const body=`n=${spec.n} · ${spec.name}${summary.training_incumbent?.mean_best_L?` · best mean L ${summary.training_incumbent.mean_best_L.toFixed(4)}`:''}${summary.error?`\n${summary.error}`:''}`;
   const note=new Notification(title,{body,tag:'asquerix-'+identifier,requireInteraction:state!=='COMPLETED'});
   note.onclick=()=>{window.focus();note.close();};
+}
+// While the open campaign computes, the tab icon's squares turn one after another (frames swapped by a timer;
+// browsers do not animate SVG favicons themselves). Background tabs run the timer about once a second.
+let faviconTimer=null;
+function faviconFrame(step){
+  const squares=[[2.5,2.5],[9,2.5],[9,9],[2.5,9]].map(([x,y],index)=>{const angle=index===step%4?((step>>2)%2?-1:1)*(25+20*Math.sin(step)):0;
+    return `<rect x="${x}" y="${y}" width="4.5" height="4.5" transform="rotate(${angle.toFixed(1)} ${x+2.25} ${y+2.25})"/>`;}).join('');
+  return 'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#2764ad"/><g fill="none" stroke="#e8eef3" stroke-width="1.4">${squares}</g></svg>`);
+}
+function animateFavicon(on){
+  const link=document.querySelector('link[rel=icon]');
+  if(on&&!faviconTimer){let step=0;faviconTimer=setInterval(()=>{link.href=faviconFrame(step++);},250);}
+  if(!on&&faviconTimer){clearInterval(faviconTimer);faviconTimer=null;link.href='/favicon.ico';}
 }
 function toast(message){const note=element('div',message,'toast');document.body.append(note);setTimeout(()=>note.remove(),2500);}
 async function start(){capabilities=await api('/capabilities');field('n').removeAttribute('max');try{bestKnown=await api('/references/best-known');}catch{bestKnown=null;}defaults=capabilities.defaults;inventory=await api('/devices');buildAdvanced();field('device').replaceChildren();for(const device of inventory.items){const option=element('option',`${device.name} · ${device.uuid}`);option.value=device.device;field('device').append(option);}document.getElementById('device-summary').textContent=inventory.items.length?inventory.items.map(item=>item.name).join(', '):'No accessible CUDA GPU';document.getElementById('launch-campaign').disabled=!inventory.items.length;document.getElementById('resource-warning').textContent=inventory.items.map(item=>`${item.device}: ${item.memory_used_mib}/${item.memory_total_mib} MiB in use, ${item.utilization_percent}% device activity. ${item.warning}`).join(' ');const identifier=location.hash.slice(1);if(/^[a-f0-9]{32}$/.test(identifier))await openCampaign(identifier);else await catalog();}
