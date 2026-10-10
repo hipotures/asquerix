@@ -18,20 +18,71 @@ const describe = instruction => {
   return "Return protected best; finalization does not compress";
 };
 
+// Authored (source) form: the tree that mutations edit, with REPEAT and IF as blocks.
+const describeSource = node => {
+  if (node.op === "COMPRESS") return `${node.target_reduction === null ? "legacy adaptive compression" : `${number(node.target_reduction * 100)}% reduction at entry`}; ${node.attempt_limit} attempts, ${node.sweep_limit} sweeps per attempt`;
+  if (node.op === "EXPAND") return `${number(node.fraction * 100)}% larger container; centers stay fixed`;
+  if (["MOVE", "ROTATE"].includes(node.op)) return `${node.selector.kind}${node.selector.kind === "ALL" ? "" : `(${node.selector.k})`}; maximum ${number(node.op === "MOVE" ? node.max_distance : node.max_angle_rad)} ${node.op === "MOVE" ? "unit lengths" : "radians"}; ${node.repair_sweeps} joint repair sweeps`;
+  if (node.op === "RELAX") return "Already feasible: no geometric change";
+  if (node.op === "RESTORE_BEST") return "Restore protected best; RNG and work are preserved";
+  if (node.op === "STOP") return "Return protected best; finalization does not compress";
+  return "";
+};
+let programMode = "compiled";
+try { programMode = localStorage.getItem("asquerix-program-view") || "compiled"; } catch {}
+
+function sourceList(items, path, mutated) {
+  const list = element("ol", undefined, "source-list");
+  items.forEach((node, index) => {
+    const nodePath = `${path}[${index}]`, row = element("li");
+    if (nodePath === mutated) row.classList.add("mutated");
+    const head = element("div", undefined, "source-node");
+    if (node.op === "REPEAT") head.append(element("strong", `${index}  REPEAT ${node.count}×`));
+    else if (node.op === "IF") head.append(element("strong", `${index}  IF ${node.predicate}`));
+    else head.append(element("strong", `${index}  ${node.op}`), element("span", describeSource(node)));
+    if (nodePath === mutated) head.title = "Node changed by this candidate's mutation";
+    row.append(head);
+    if (node.op === "REPEAT") row.append(sourceList(node.body, `${nodePath}.body`, mutated));
+    if (node.op === "IF") {
+      row.append(sourceList(node.then, `${nodePath}.then`, mutated));
+      if (node.else?.length) { row.append(element("div", "ELSE", "source-else")); row.append(sourceList(node.else, `${nodePath}.else`, mutated)); }
+    }
+    list.append(row);
+  });
+  return list;
+}
+
 function programView(target, candidate, candidates = []) {
   target.replaceChildren();
   const program = candidate.program;
   target.append(element("h3", program.authored.name || "World strategy"));
   target.append(element("p", `${candidate.origin || "Immutable program"} · ${candidate.state || "COMPILED"} · ${candidate.score?.eligible ? "Eligible" : "Unvalidated / ineligible"}`, "muted"));
   const hash = element("p", program.hash, "hash"); target.append(hash);
-  const list = element("ol", undefined, "program-list");
-  for (const instruction of program.instructions) {
-    const row = element("li");
-    row.append(element("strong", `${instruction.pc}  ${instruction.op}`), element("span", describe(instruction)), element("small", instruction.source_node, "muted"));
-    row.title = `Exact FP32 bits: ${instruction.fp32_bits.join(" ")}`;
-    list.append(row);
+  const toggle = element("div", undefined, "view-toggle"), holder = element("div");
+  const show = mode => {
+    programMode = mode;
+    try { localStorage.setItem("asquerix-program-view", mode); } catch {}
+    for (const button of toggle.children) button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+    holder.replaceChildren();
+    if (mode === "source") {
+      const tree = sourceList(program.authored.body, "body", candidate.mutation?.node_path);
+      tree.classList.add("source-root"); holder.append(tree); return;
+    }
+    const list = element("ol", undefined, "program-list");
+    for (const instruction of program.instructions) {
+      const row = element("li");
+      row.append(element("strong", `${instruction.pc}  ${instruction.op}`), element("span", describe(instruction)), element("small", instruction.source_node, "muted"));
+      row.title = `Exact FP32 bits: ${instruction.fp32_bits.join(" ")}`;
+      list.append(row);
+    }
+    holder.append(list);
+  };
+  for (const [mode, label, title] of [["compiled", "Compiled", "Instructions as the GPU executes them: REPEAT unrolled, IF as jumps"], ["source", "Source", "The authored program tree that mutations edit"]]) {
+    const button = element("button", label); button.type = "button"; button.dataset.mode = mode; button.title = title;
+    button.addEventListener("click", () => show(mode)); toggle.append(button);
   }
-  target.append(list);
+  target.append(toggle, holder);
+  show(programMode);
   if (candidate.mutation) {
     target.append(element("h4", `${candidate.mutation.type} at ${candidate.mutation.node_path}`));
     const diff = element("div", undefined, "diff");

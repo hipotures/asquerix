@@ -171,3 +171,8 @@ label > input[inputmode=numeric]{align-self:flex-start;width:22ch;font-variant-n
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:20;padding:10px 16px;border-radius:6px;background:var(--strong-bg);color:var(--strong-ink);font-size:13px;box-shadow:0 6px 18px var(--popover-shadow)}
 header .mark{cursor:default;user-select:none}
+.view-toggle{display:inline-flex;margin:4px 0 6px}.view-toggle button{border-radius:0;padding:5px 12px}.view-toggle button:first-child{border-radius:5px 0 0 5px}.view-toggle button:last-child{border-radius:0 5px 5px 0;border-left:0}.view-toggle button[aria-pressed=true]{background:var(--strong-bg);color:var(--strong-ink);border-color:var(--strong-bg)}
+.source-list{list-style:none;padding:0;margin:0}.source-root{max-height:470px;overflow:auto;margin:8px 0}.source-list .source-list{margin:0 0 0 22px;border-left:1px dashed var(--line);padding-left:10px}
+.source-node{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;border-left:3px solid var(--blue);padding:9px 12px;margin:8px 0;background:var(--subtle);font-size:13px}.source-node strong{font:600 12px ui-monospace,monospace}
+.source-list li.mutated>.source-node{border-left-color:var(--warning);outline:1px solid var(--warning)}.source-else{font:600 12px ui-monospace,monospace;color:var(--muted);margin:6px 0 0 22px}
+@media(max-width:600px){.source-node{grid-template-columns:1fr}}
