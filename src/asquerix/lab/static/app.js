@@ -202,6 +202,9 @@ async function openCampaign(identifier){
 }
 function stopRule(){for(const label of form.querySelectorAll('[data-stop]'))label.hidden=label.dataset.stop!==value('stop_rule');}
 field('stop_rule').addEventListener('change',()=>{stopRule();plan();});
+// The initial side follows n (2·√n, at least 10) until it is edited by hand.
+field('initial_side').addEventListener('input',()=>{field('initial_side').dataset.manual='1';});
+field('n').addEventListener('input',()=>{const n=numeric('n');if(n>0&&!field('initial_side').dataset.manual)field('initial_side').value=String(Math.max(10,Math.ceil(2*Math.sqrt(n))));plan();});
 function create(){stopRule();if(stream)stream.close();selectedId=null;location.hash='';view('create');for(const input of form.querySelectorAll('input[data-step]'))stepperState(input);plan();}
 for(const name of ['pause','resume','stop'])document.getElementById(name+'-campaign').addEventListener('click',async()=>{try{await api(`/campaigns/${selectedId}/${name}`,{method:'POST'});await refresh();}catch(e){fail(e.message);}});
 document.getElementById('new-campaign').addEventListener('click',create);document.getElementById('cancel-create').addEventListener('click',()=>{view('catalog');catalog();});document.getElementById('back-catalog').addEventListener('click',()=>{if(stream)stream.close();selectedId=null;location.hash='';view('catalog');catalog();});

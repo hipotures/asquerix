@@ -66,6 +66,11 @@ class Datasets(Model):
 RETAINED_PER_METHOD = 50
 
 
+def suggested_side(n: int) -> float:
+    """Initial container side that leaves room to place random non-overlapping starts (about 25% cover)."""
+    return float(max(10, math.ceil(2 * math.sqrt(n))))
+
+
 class Search(Model):
     methods: list[Literal["random_program_search", "one_plus_lambda"]] = ["random_program_search", "one_plus_lambda"]
     seed: str = "8001"
@@ -217,6 +222,9 @@ class Campaign(Model):
             compile_program(program)
         if any(not 0 < threshold <= self.initial_side for threshold in self.thresholds):
             raise ValueError("thresholds must be finite, positive, and no larger than initial side")
+        if self.n > 0.3 * self.initial_side ** 2:
+            raise ValueError(f"{self.n} squares cover {self.n / self.initial_side ** 2:.0%} of a {self.initial_side:g} x {self.initial_side:g} "
+                             f"container; random starts need at most 30%. Use an initial side of at least {suggested_side(self.n):g}.")
         if self.search.time_budget_seconds and self.limits.max_seconds < self.search.time_budget_seconds:
             raise ValueError("the hard time limit must not be shorter than the search time budget")
         if self.plan()["estimated_native_bytes"] > self.limits.max_artifact_mib * 1024**2:

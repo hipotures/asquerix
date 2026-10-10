@@ -175,7 +175,9 @@ def prepare_banks(campaign: Campaign, directory: Path, *, stop=lambda: False, pr
                       "rejected": len(rejected)})
         if len(ids) != requested.valid_count:
             write_json(directory / "initialization-failure.json.gz", {"bank": kind, "rejected": rejected, "valid": len(ids)})
-            raise ValueError("Initializer could not complete the common bank within four times its requested count")
+            raise ValueError(f"Random starts did not fit: too few of {campaign.n} squares could be placed without overlap in a "
+                             f"{campaign.initial_side:g} x {campaign.initial_side:g} container. Increase the initial container side "
+                             f"(for example to {max(campaign.initial_side + 2, 2 * campaign.n ** 0.5):.0f}).")
         initial_results = np.asarray(rows, dtype=rows[0].dtype)
         arrays = {"ids": np.asarray(ids, dtype=np.uint64), "poses": np.asarray(poses, dtype=np.float32)}
         arrays.update({"initial_" + name: initial_results[name].copy() for name in initial_results.dtype.names})
