@@ -753,7 +753,8 @@ class CampaignWorker:
                    "stop_drain_seconds": max(0, time.time() - self.signal_since.value) if self.signal.value >= 2 else None,
                    "continuation": self.state.get("continuation"),
                    "pose_evidence": self.campaign.pose_evidence, "time_budget_seconds": self.campaign.search.time_budget_seconds,
-                   "evaluated_programs": sum(state["count"] for state in self.state["controllers"].values()),
+                   "evaluated_programs": sum(state["completed"] for state in self.state["controllers"].values()),
+                   "generated_programs": sum(state["count"] for state in self.state["controllers"].values()),
                    "retained_programs": len(self.state["candidates"]),
                    "scientific_caveat": "Functional pilot; no claim of optimality or statistically established method superiority."}
         write_json(self.directory / "summaries.json.gz", summary)
