@@ -98,14 +98,30 @@ class Catalog:
 
     @contextmanager
     def transaction(self):
+        """One transaction; nested calls (a batch of worker messages) become savepoints inside it."""
         with self.lock:
+            depth = getattr(self, "_depth", 0)
+            self._depth = depth + 1
             try:
-                self.db.execute("BEGIN IMMEDIATE")
-                yield self.db
-                self.db.commit()
-            except BaseException:
-                self.db.rollback()
-                raise
+                if depth:
+                    self.db.execute("SAVEPOINT nested")
+                    try:
+                        yield self.db
+                        self.db.execute("RELEASE nested")
+                    except BaseException:
+                        self.db.execute("ROLLBACK TO nested")
+                        self.db.execute("RELEASE nested")
+                        raise
+                    return
+                try:
+                    self.db.execute("BEGIN IMMEDIATE")
+                    yield self.db
+                    self.db.commit()
+                except BaseException:
+                    self.db.rollback()
+                    raise
+            finally:
+                self._depth = depth
 
     def backup(self, destination: Path):
         destination.parent.mkdir(parents=True, exist_ok=True)

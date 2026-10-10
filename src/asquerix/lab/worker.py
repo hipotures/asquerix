@@ -242,6 +242,8 @@ class CampaignWorker:
                 self.emit({"type": "chunk", "campaign_id": self.identifier, "records": part["records_path"]})
                 self.remember_chunk(part)
         else:
+            if self.stopped():  # a stop before the group starts: nothing to record, the group stays pending
+                return [{**candidate, "score": {"complete": False}} for candidate in candidates]
             rows, arrays = [], []
             programs = [compile_program(candidate["program"]["authored"]) for candidate in candidates]
             attempt = self.state["group_attempts"].get(group_hash, 0) + 1
