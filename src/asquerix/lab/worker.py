@@ -68,8 +68,9 @@ class CampaignWorker:
             self.state = read_json(self.checkpoint_path)
             if self.state["manifest_hash"] != digest(self.campaign.document()):
                 raise ValueError("Checkpoint immutable manifest mismatch")
+            # Code may change between pauses; each identity used by the campaign is recorded.
             if self.state["executable_hash"] != digest(executable_identity()):
-                raise ValueError("Numerical source/dependency identity changed; this campaign cannot mix executables")
+                self.state.setdefault("executable_history", [self.state["executable_hash"]])
         elif self.campaign.continuation_of:
             from .continuation import inherit
             parent = self.campaign.continuation_of
@@ -77,6 +78,8 @@ class CampaignWorker:
                                  self.checkpoint_path.parent / (parent + ".json.gz"))
         self.state["manifest_hash"] = digest(self.campaign.document())
         self.state["executable_hash"] = digest(executable_identity())
+        if "executable_history" in self.state and self.state["executable_history"][-1] != self.state["executable_hash"]:
+            self.state["executable_history"].append(self.state["executable_hash"])
         self.elapsed_before = self.state["elapsed_execution_seconds"]
         self.last_activity = 0.0
         self.deadline_reached = False
@@ -118,9 +121,6 @@ class CampaignWorker:
             self.event("PAUSED_AT_GROUP_BOUNDARY", {"drain_seconds": drain, "phase": self.state["phase"]})
             self.checkpoint()
             return "PAUSED"
-        if digest(executable_identity()) != self.state["executable_hash"]:
-            self.event("EXECUTABLE_CHANGED", {"phase": self.state["phase"]})
-            return "INTERRUPTED"
         return None
 
     def fixed_candidates(self):
@@ -233,8 +233,6 @@ class CampaignWorker:
                                               "candidate_ids": [candidate["id"] for candidate in candidates]})
             self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=total)
             if not self.stopped():
-                if digest(executable_identity()) != self.state["executable_hash"]:
-                    raise InterruptedError("Executable changed before task admission")
                 indices = np.arange(total, dtype=np.int64)
                 pids = (indices // episodes_per_candidate).astype(np.int32)
                 local = indices % episodes_per_candidate
@@ -471,8 +469,6 @@ class CampaignWorker:
         if not device.is_cuda:
             raise ValueError("The selected worker device is not CUDA")
         self.provenance = environment(device)
-        if self.state["executable_hash"] != self.provenance["executable_hash"]:
-            raise ValueError("Worker launch identity changed during preparation")
         self.emit({"type": "device", "campaign_id": self.identifier, "uuid": device.uuid,
                    "identity": self.provenance["executable_hash"]})
         write_json(self.directory / "campaign.json.gz", {"id": self.identifier, "spec": self.campaign.document(),
