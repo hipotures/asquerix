@@ -256,6 +256,16 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
                                   "recent_events": service.catalog.recent_events(campaign_id)}
         return report
 
+    @app.post("/api/v1/debug")
+    def debug_file(campaign_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None, page: dict | None = None):
+        """Write the diagnostic document to /tmp and return its path, which is short enough to paste."""
+        report = debug(campaign_id)
+        if page:
+            report["page"] = page
+        path = Path("/tmp") / f"asquerix-debug-{time.strftime('%Y%m%d-%H%M%S')}{'-' + campaign_id[:8] if campaign_id else ''}.json"
+        path.write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
+        return {"path": str(path), "bytes": path.stat().st_size}
+
     @app.post("/api/v1/programs/validate")
     def validate(program: ProgramRequest):
         return compile_program(program.program).document()

@@ -272,15 +272,14 @@ document.getElementById('clone-program').addEventListener('click',()=>{fixedDraf
 field('fixed_control').addEventListener('change',()=>{fixedDraft=null;});
 document.getElementById('clone-campaign').addEventListener('click',async()=>{try{const clone=await api(`/campaigns/${selectedId}/clone`,{method:'POST'});const draft=await api(`/campaigns/${clone.id}`);defaults=draft.spec;field('name').value=defaults.name;field('n').value=defaults.n;field('training_count').value=defaults.datasets.training.valid_count;field('holdout_count').value=defaults.datasets.holdout.valid_count;field('candidate_budget').value=defaults.search.candidate_budget_per_method;field('initial_pool').value=defaults.search.initial_pool;field('lambda').value=defaults.search.lambda;buildAdvanced();create();}catch(e){fail(e.message);}});
 document.getElementById('login-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await api('/session',{method:'POST',body:{token:document.getElementById('access-token').value}});csrf=result.csrf_token;sessionStorage.setItem('asquerix-csrf',csrf);document.getElementById('access-token').value='';document.getElementById('login').hidden=true;await start();}catch(e){fail(e.message);}});
-// Double-click the logo: copy a diagnostic document (server, GPU, current campaign with errors and recent events).
+// Double-click the logo: write a diagnostic document to /tmp and copy its path (server, GPU, campaign, errors, events).
 document.querySelector('header .mark').addEventListener('dblclick',async()=>{
   try{
-    const report=await api(`/debug${selectedId?`?campaign_id=${selectedId}`:''}`);
-    report.page={url:location.href,view:['catalog','create','detail'].find(id=>!document.getElementById(id).hidden),
+    const page={url:location.href,view:['catalog','create','detail'].find(id=>!document.getElementById(id).hidden),
       shown_error:error.hidden?null:error.textContent,user_agent:navigator.userAgent,theme:document.documentElement.dataset.theme||'system'};
-    const text=JSON.stringify(report,null,2);
-    try{await navigator.clipboard.writeText(text);}catch{const area=document.createElement('textarea');area.value=text;document.body.append(area);area.select();document.execCommand('copy');area.remove();}
-    toast(`Debug info copied (${Math.round(text.length/1024)} KB)`);
+    const saved=await api(`/debug${selectedId?`?campaign_id=${selectedId}`:''}`,{method:'POST',body:page});
+    try{await navigator.clipboard.writeText(saved.path);}catch{const area=document.createElement('textarea');area.value=saved.path;document.body.append(area);area.select();document.execCommand('copy');area.remove();}
+    toast(`Debug file path copied: ${saved.path} (${Math.round(saved.bytes/1024)} KB)`);
   }catch(e){fail(`Debug info could not be collected: ${e.message}`);}
 });
 function toast(message){const note=element('div',message,'toast');document.body.append(note);setTimeout(()=>note.remove(),2500);}
