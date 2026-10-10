@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asquerix trajectory</title>
+<style>
+:root {
+  color-scheme: dark;
+  --ink: #e7e5df;
+  --muted: #a5aaa7;
+  --line: #334147;
+  --panel: #151c20;
+  --panel-2: #1c262b;
+  --accent: #e2b35c;
+  --accent-2: #78d6c3;
+  --danger: #e88475;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-width: 880px;
+  background: #0d1215;
+  color: var(--ink);
+}
+main { max-width: 1500px; margin: 0 auto; padding: 28px 30px 40px; }
+.eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+h1 { margin: 7px 0 5px; font: 700 31px/1.05 Georgia, "Times New Roman", serif; letter-spacing: -.03em; }
+.subhead { margin: 0; color: var(--muted); font-size: 12px; }
+.status-strip {
+  display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 1px;
+  margin: 23px 0 16px; border: 1px solid var(--line); background: var(--line);
+}
+.status-card { min-height: 60px; padding: 10px 13px; background: var(--panel); }
+.status-card .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.status-card .value { margin-top: 6px; color: var(--accent-2); font-size: 13px; overflow-wrap: anywhere; }
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.panel { min-width: 0; border: 1px solid var(--line); background: var(--panel); }
+.panel-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 10px 13px 9px; }
+.panel-head h2 { margin: 0; font: 600 14px/1.2 Georgia, "Times New Roman", serif; }
+.panel-head span { color: var(--muted); font-size: 10px; }
+.panel-view-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 54px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.panel-view-controls button { padding: 4px 7px; }
+.panel-view-controls input { width: 72px; }
+.canvas-wrap { aspect-ratio: 1.45; min-height: 300px; padding: 13px; background: #10171a; }
+canvas { display: block; width: 100%; height: 100%; background: #0b1012; border: 1px solid #2a373c; }
+#current-canvas { touch-action: none; cursor: grab; }
+#current-canvas.dragging { cursor: grabbing; }
+.controls { margin-top: 14px; padding: 13px; border: 1px solid var(--line); background: var(--panel); }
+.button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+button, select { border: 1px solid #526168; background: var(--panel-2); color: var(--ink); padding: 7px 10px; font: inherit; font-size: 11px; cursor: pointer; }
+button:hover, select:hover { border-color: var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { border-color: var(--accent); color: var(--accent); }
+input[type="number"] { border: 1px solid #526168; background: var(--panel-2); color: var(--ink); padding: 4px 5px; font: inherit; }
+input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
+.frame-slider-area { flex: 1 1 230px; min-width: 180px; }
+.marker-track { position: relative; height: 24px; margin: 0 8px 4px; }
+.marker-band { position: absolute; top: 11px; height: 4px; background: var(--accent-2); opacity: .5; }
+.range-marker { position: absolute; top: 0; transform: translateX(-50%); padding: 2px 4px; color: var(--accent-2); border-color: var(--accent-2); font-size: 10px; touch-action: none; cursor: ew-resize; }
+.range-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; color: var(--muted); font-size: 11px; }
+.range-controls input { width: 65px; }
+.range-controls button, .range-controls select { padding: 5px 8px; }
+.frame-line { display: flex; align-items: center; gap: 10px; margin-top: 11px; color: var(--muted); font-size: 11px; }
+.frame-line output { color: var(--ink); white-space: nowrap; }
+.options { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-top: 12px; color: var(--muted); font-size: 11px; }
+.legend-title { margin: 14px 0 7px; color: var(--muted); font-size: 11px; }
+.square-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.legend-key { display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px; }
+.legend-key[aria-pressed="true"] { border-color: var(--square-color); color: var(--square-color); }
+.legend-swatch { display: inline-block; width: 10px; height: 10px; background: var(--square-color); }
+label { cursor: pointer; }
+label input { accent-color: var(--accent-2); vertical-align: -1px; }
+.details { display: grid; grid-template-columns: 1.2fr 1fr; gap: 13px; margin-top: 14px; }
+.detail-box { border: 1px solid var(--line); padding: 12px 13px; background: var(--panel); }
+.detail-box h3 { margin: 0 0 9px; color: var(--accent); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.detail-box p { margin: 5px 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.detail-box strong { color: var(--ink); font-weight: 500; }
+.provisional { color: var(--danger) !important; }
+@media (max-width: 980px) { body { min-width: 0; } main { padding: 20px 15px 30px; } .panels, .details { grid-template-columns: 1fr; } .status-strip { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Asquerix / diagnostic playback</div>
+  <h1>Selected trajectory</h1>
+  <p class="subhead" id="trial-line">A bounded CUDA replay of one accepted compression run.</p>
+
+  <section class="status-strip" aria-label="Replay status">
+    <div class="status-card"><div class="label">Replay comparison</div><div class="value" id="comparison-status">—</div></div>
+    <div class="status-card"><div class="label">Termination</div><div class="value" id="termination-status">—</div></div>
+    <div class="status-card"><div class="label">Current frame</div><div class="value" id="frame-status">—</div></div>
+    <div class="status-card"><div class="label">Current validation</div><div class="value" id="validation-status">—</div></div>
+  </section>
+
+  <section class="panels" aria-label="Trajectory panels">
+    <article class="panel">
+      <div class="panel-head"><h2>Initial arrangement</h2><span id="initial-caption">frame 1 / fixed reference</span></div>
+      <div class="panel-view-controls">Fixed initial scale · current panel zooms independently</div>
+      <div class="canvas-wrap"><canvas id="initial-canvas" aria-label="Initial arrangement"></canvas></div>
+    </article>
+    <article class="panel">
+      <div class="panel-head"><h2>Current recorded frame</h2><span id="current-caption">paused at start</span></div>
+      <div class="panel-view-controls">
+        <button type="button" id="zoom-out" aria-label="Zoom current panel out">−</button>
+        <label>Zoom × <input id="current-zoom" type="number" min="0.25" max="65536" step="any" value="1" aria-label="Current panel zoom"></label>
+        <button type="button" id="zoom-in" aria-label="Zoom current panel in">+</button>
+        <button type="button" id="fit-current">Fit container</button>
+        <button type="button" id="fit-trajectory">Fit full trajectory</button>
+        <button type="button" id="focus-trail">Focus selected ID</button>
+        <button type="button" id="reset-view">Reset view</button>
+        <span>Wheel to zoom · drag to pan</span>
+      </div>
+      <div class="canvas-wrap"><canvas id="current-canvas" aria-label="Current recorded frame" title="Wheel to zoom at the pointer; drag to pan. Enter a zoom up to ×65536 to inspect micromovements."></canvas></div>
+    </article>
+  </section>
+
+  <section class="controls" aria-label="Playback controls">
+    <div class="button-row">
+      <button type="button" id="first-frame" title="First frame">|&lt;</button>
+      <button type="button" id="previous-frame" title="Previous frame">&lt;</button>
+      <button type="button" id="play-pause" class="primary">Play</button>
+      <button type="button" id="next-frame" title="Next frame">&gt;</button>
+      <button type="button" id="last-frame" title="Last frame">&gt;|</button>
+      <select id="speed" aria-label="Playback speed">
+        <option value="1">1 fps</option><option value="2">2 fps</option><option value="4" selected>4 fps</option><option value="8">8 fps</option><option value="16">16 fps</option>
+      </select>
+      <button type="button" id="export-svg">Export current SVG</button>
+    </div>
+    <div class="frame-line"><div class="frame-slider-area"><div class="marker-track" id="marker-track"><div id="marker-band" class="marker-band"></div><button id="start-marker" class="range-marker" type="button" aria-label="Drag start marker A">A</button><button id="end-marker" class="range-marker" type="button" aria-label="Drag end marker B">B</button></div><input id="frame-slider" type="range" min="0" value="0" step="1" aria-label="Recorded frame"></div><output id="frame-output">Frame 1 / 1</output></div>
+    <div class="range-controls">
+      <label>A: <input id="range-start" type="number" min="0" step="1" value="0" aria-label="Start frame index"></label>
+      <button type="button" id="set-range-start">Set A here</button>
+      <label>B: <input id="range-end" type="number" min="0" step="1" value="0" aria-label="End frame index"></label>
+      <button type="button" id="set-range-end">Set B here</button>
+      <select id="playback-mode" aria-label="Playback mode"><option value="once">Play range once</option><option value="loop">Loop range</option></select>
+      <button type="button" id="reset-range">Full range</button>
+      <span>Drag A/B markers or set them here · frame indices start at 0</span>
+    </div>
+    <div class="options">
+      <label><input id="show-squares" type="checkbox" checked> show squares</label>
+      <label><input id="show-container" type="checkbox" checked> show container boundary</label>
+      <label><input id="show-ids" type="checkbox" checked> show square IDs</label>
+      <label><input id="show-orientation" type="checkbox" checked> show orientation marks</label>
+      <label><input id="show-trails" type="checkbox" checked> show center trails</label>
+      <select id="trail-square" aria-label="Center trail square"><option value="all">all square trails</option></select>
+      <label><input id="only-selected-trail" type="checkbox"> only selected trail</label>
+      <label>Trail frames <input id="trail-history" type="number" min="0" max="4096" step="1" value="0" aria-label="Center trail history length" style="width:65px"> (0 = full history)</label>
+      <span>Playback visits saved frames only; no interpolation.</span>
+    </div>
+    <p class="legend-title">Square colors · click an ID to inspect its center trail</p>
+    <div id="square-legend" class="square-legend" aria-label="Square color legend"></div>
+  </section>
+
+  <section class="details">
+    <div class="detail-box"><h3>Recorded state</h3><p id="algorithm-line">—</p><p id="side-line">—</p><p id="trail-detail">Center trails connect recorded centers up to the current frame. Dots mark saved positions; connecting lines do not reconstruct skipped states or intermediate motion.</p><p id="validation-detail">—</p></div>
+    <div class="detail-box"><h3>Evidence and sampling</h3><p id="comparison-detail">—</p><p id="sampling-detail">—</p><p id="provenance-detail">—</p></div>
+  </section>
+</main>
+
+<script id="trajectory-data" type="application/json">{"schema":"asquerix-trajectory-v1","arrays":{"poses":{"dtype":"\u003cf4","shape":[47,51,3],"base64":"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"},"side":{"dtype":"\u003cf4","shape":[47],"base64":"AABwQc3MbEGamWlBZ2ZmQTQzY0EBAGBBzsxcQZuZWUFoZlZBNTNTQQIAUEHPzExBnJlJQWlmRkE2M0NBAwBAQdDMPEGdmTlBamY2QTczM0EEADBB0cwsQZ6ZKUFrZiZBODMjQQUAIEHSzBxBn5kZQZ+ZGUEFABhBBQAYQTgzF0E4MxdB0swWQdLMFkGfmRZBn5kWQZ+ZFkGfmRZBn5kWQZ+ZFkGfmRZB0pgWQdKYFkHSmBZB0pgWQdKYFkE="},"sequence":{"dtype":"\u003ci8","shape":[47],"base64":"AAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAwAAAAAAAAAEAAAAAAAAAAUAAAAAAAAABgAAAAAAAAAHAAAAAAAAAAgAAAAAAAAACQAAAAAAAAAKAAAAAAAAAAsAAAAAAAAADAAAAAAAAAANAAAAAAAAAA4AAAAAAAAADwAAAAAAAAAQAAAAAAAAABEAAAAAAAAAEgAAAAAAAAATAAAAAAAAABQAAAAAAAAAFQAAAAAAAAAWAAAAAAAAABcAAAAAAAAAGAAAAAAAAAAZAAAAAAAAABoAAAAAAAAAGwAAAAAAAAAcAAAAAAAAAB0AAAAAAAAAHgAAAAAAAAAfAAAAAAAAACAAAAAAAAAAIQAAAAAAAAAiAAAAAAAAACMAAAAAAAAAJAAAAAAAAAAlAAAAAAAAACYAAAAAAAAAJwAAAAAAAAAoAAAAAAAAACkAAAAAAAAAKgAAAAAAAAArAAAAAAAAACwAAAAAAAAALQAAAAAAAAAuAAAAAAAAAA=="},"attempt":{"dtype":"\u003ci4","shape":[47],"base64":"/////wEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAAUAAAAFQAAABYAAAAXAAAAGAAAABkAAAAaAAAAGwAAABwAAAAdAAAAHgAAAB8AAAAgAAAAIQAAACIAAAAjAAAAJAAAACUAAAAmAAAAJwAAACgAAAApAAAAKgAAACsAAAAsAAAAKgAAAAAAAAA="},"sweep":{"dtype":"\u003ci4","shape":[47],"base64":"/////wcAAAAHAAAABwAAAA0AAAAPAAAAEQAAABEAAAAfAAAAIAAAACsAAAA1AAAANQAAADQAAAA6AAAAOgAAADoAAABJAAAAVgAAAGYAAABaAAAAagAAAHMAAABwAAAAhwAAAJMAAAD+AAAA/wAAAOABAADWAAAA4AEAAKYBAADgAQAAtAEAAOABAADMAQAA4AEAAOABAADgAQAA4AEAAOABAADgAQAAywAAAOABAADgAQAAywAAAAAAAAA="},"sweep_total":{"dtype":"\u003ci4","shape":[47],"base64":"AAAAAAcAAAAOAAAAFQAAACIAAAAxAAAAQgAAAFMAAAByAAAAkgAAAL0AAADyAAAAJwEAAFsBAACVAQAAzwEAAAkCAABSAgAAqAIAAA4DAABoAwAA0gMAAEUEAAC1BAAAPAUAAM8FAADNBgAAzAcAAKwJAACCCgAAYgwAAAgOAADoDwAAnBEAAHwTAABIFQAAKBcAAAgZAADoGgAAyBwAAKgeAACIIAAAUyEAADMjAAATJQAAEyUAABMlAAA="},"phase":{"dtype":"|u1","shape":[47],"base64":"AAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwUDBQMFAwUDBQUFBQUFAwUFAwY="},"roles":{"dtype":"|u1","shape":[47],"base64":"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI="},"square_ids":{"dtype":"\u003ci4","shape":[51],"base64":"AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAAUAAAAFQAAABYAAAAXAAAAGAAAABkAAAAaAAAAGwAAABwAAAAdAAAAHgAAAB8AAAAgAAAAIQAAACIAAAAjAAAAJAAAACUAAAAmAAAAJwAAACgAAAApAAAAKgAAACsAAAAsAAAALQAAAC4AAAAvAAAAMAAAADEAAAAyAAAA"}},"metadata":{"schema":"asquerix-trajectory-v1","n":51,"trial_id":"100000","seed":"20261009","episode_key":"e7b6eec192aad62f18888f28653c1bcf074c24ca8866ecb37a4cbe8aede387d0","frame_count":47,"initial_identity":{"bank_hash":"9d14c408a8eaf81ce51d943983794688d7ac0750fe5a558ab27207af5e194b91","initial_id":"100000","replicate":"0"},"sampling":{"observed":47,"retained":47,"suppressed":0,"effective_stride":1,"max_frames":256,"mode":"accepted"},"comparison":{"status":"REPLAY_MATCHED","scope":"All saved defined VM/result fields, exact best/current FP32 arrays, RNG state and counters; no intermediate-state proof.","compared_fields":["result.side","result.min_gap","result.min_wall","result.max_penetration","result.termination","result.feasible","result.attempts","result.sweeps","result.accepted","result.rejected","result.proposals","result.final_step","pc","phase","termination","finalized","dispatches","op_attempt","op_sweep","stagnant","stalled","last_outcome","last_improved","op_improved","entry_side","target_side","trial_side","effective_floor","best_side","best_pc","best_attempt","best_sweep","best_gap","best_wall","best_feasible","rng","rng_draws","work","checks","proposal_count","mask","sequence","best_poses","current_poses"],"mismatches":[],"missing_fields":[]},"provenance":{"schema":"asquerix-lab-environment-v1","source_revision":"44784d755a3e05c5a7184409b8eb33dbcd250b29","executable_identity":{"sources":{"gpu.py":"b38c9cdb7a25fb17d500751c66acbc96c9be06705b3b04821600e88649b2b3b5","geometry.py":"fea94d10df45afb48eeba23f3c7ede1bdafb6fd035904539f757fc99f63c37be","lab/gpu.py":"072b2601f4fe051f809999dedfefaf97fe91d22db4deee5a7954cca6ba1521b5","lab/strategy.py":"29fc202ae8221c61e5cc7df1c524a3dbc4ac03ec8068bc7083d15655a5a8d862","lab/evaluation.py":"08df66701ae712377a79537a24c9a37a5016f0a1fcfb1555e461aad67c8855fe","lab/search.py":"35b4b745bfce66b459de7ca99f81b9bfa94744d48026a349142257a00bebd420"},"dependencies":{"numpy":"2.5.3","warp-lang":"1.18.0"},"python":"3.14.7"},"executable_hash":"4782aa21eea5eff93cc0b0408bd1a8cc01fd481456826e56b778476c6ef537ca","dependencies":{"numpy":"2.5.3","warp-lang":"1.18.0","rich":"14.3.4","fastapi":"0.143.0","uvicorn":"0.54.0"},"platform":"Linux-7.2.9-1-cachyos-x86_64-with-glibc2.44","python":"3.14.7","device":{"selector":"cuda:0","uuid":"GPU-64d50ac7-f623-65a8-8784-b9ec14d16527","name":"NVIDIA GeForce RTX 4070 Ti"},"reproducibility_scope":"Defined bytes on this GPU architecture, locked Warp/NumPy and source/profile identity; no cross-toolchain guarantee."},"evaluation_profile":{"name":"rigid-square-lab-v1","n":51,"initial_side":15.0,"precision":"FP32","fast_math":false,"operator_version":"rigid-operators-v1","solver":{"step":0.2,"step_floor":0.0001,"step_reduction":0.5,"guard":2e-05,"acceptance_tolerance":2e-06,"motion_tolerance":1e-07,"rotation_mobility":0.3,"relaxation":0.8,"max_translation":0.1,"max_rotation":0.08,"stagnation_sweeps":4,"proposals_per_square":2000},"work_limits":{"dispatches":256,"compression_attempts":128,"contact_sweeps":61440,"constraint_visits":176262912},"maximum_side":30.0,"cpu_validation_tolerance":1e-09,"scoring_version":"eligible-f64-mean-median-work-size-hash-v1","rng_version":"splitmix64-operator-world-v1","work_policy":"Prepaid conservative constraint visits, copies, selectors and dispatches; actual sweeps recorded separately; no refunds."},"profile_hash":"1218ea9c9657cf6886f63a5c451a8b8be793d952f5fe99e6016c4fd8a78b8005","termination_reason":"STOPPED","replay_termination":1,"timings":{"jit_seconds":0.00034477899316698313,"device_seconds":6.577882585525513,"simulation_seconds":6.586218979908153,"transfer_seconds":0.043889282969757915,"slice_count":75,"max_slice_seconds":0.0931761929532513,"upload_initialize_seconds":0.0018428139737807214},"validations":[{"frame":0,"validation":{"status":"NUMERICALLY_VALIDATED","min_pair_separation":0.0370777784443439,"max_penetration":0.0,"min_wall_clearance":0.050949875142314305,"nonfinite":false,"tolerance":1e-09,"validator_version":"cpu-f64-projection-v2"}},{"frame":45,"validation":{"status":"NUMERICALLY_VALIDATED","min_pair_separation":1.8063430710868467e-05,"max_penetration":0.0,"min_wall_clearance":1.857347583644753e-05,"nonfinite":false,"tolerance":1e-09,"validator_version":"cpu-f64-projection-v2"}},{"frame":46,"validation":{"status":"NUMERICALLY_VALIDATED","min_pair_separation":1.8063430710868467e-05,"max_penetration":0.0,"min_wall_clearance":1.857347583644753e-05,"nonfinite":false,"tolerance":1e-09,"validator_version":"cpu-f64-projection-v2"}}],"strategy":{"program":{"schema":"asquerix-strategy-v1","operator_version":"rigid-operators-v1","hash":"b0929a8d0c22e63b93796409c46798e4ba40f28e50c4a3d3d05f59f5dd2ef851","authored":{"body":[{"attempt_limit":128,"op":"COMPRESS","sweep_limit":480,"target_reduction":null},{"op":"STOP"}],"name":"legacy_compress","schema":"asquerix-strategy-v1"},"instruction_count":2,"source_map":["body[0]","body[1]"],"instructions":[{"pc":0,"op":"COMPRESS","words":[1,128,480,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[0]"},{"pc":1,"op":"STOP","words":[7,0,0,0,0.0,0.0,0.0,0.0],"fp32_bits":["00000000","00000000","00000000","00000000"],"source_node":"body[1]"}]},"frames":[{"best_side":15.0,"pc":0,"flags":0,"mask":0,"work":"0","rng_draws":"0","outcome":0,"vm_sequence":"0","side":15.0,"attempt":-1,"sweep":-1,"sweep_total":0,"outcome_name":"NONE"},{"best_side":14.800000190734863,"pc":0,"flags":36,"mask":0,"work":"20147","rng_draws":"0","outcome":2,"vm_sequence":"9","side":14.800000190734863,"attempt":1,"sweep":7,"sweep_total":7,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":14.600000381469727,"pc":0,"flags":36,"mask":0,"work":"40293","rng_draws":"0","outcome":2,"vm_sequence":"17","side":14.600000381469727,"attempt":2,"sweep":7,"sweep_total":14,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":14.40000057220459,"pc":0,"flags":36,"mask":0,"work":"60439","rng_draws":"0","outcome":2,"vm_sequence":"25","side":14.40000057220459,"attempt":3,"sweep":7,"sweep_total":21,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":14.200000762939453,"pc":0,"flags":36,"mask":0,"work":"97721","rng_draws":"0","outcome":2,"vm_sequence":"39","side":14.200000762939453,"attempt":4,"sweep":13,"sweep_total":34,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":14.000000953674316,"pc":0,"flags":36,"mask":0,"work":"140715","rng_draws":"0","outcome":2,"vm_sequence":"55","side":14.000000953674316,"attempt":5,"sweep":15,"sweep_total":49,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":13.80000114440918,"pc":0,"flags":36,"mask":0,"work":"189421","rng_draws":"0","outcome":2,"vm_sequence":"73","side":13.80000114440918,"attempt":6,"sweep":17,"sweep_total":66,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":13.600001335144043,"pc":0,"flags":36,"mask":0,"work":"238127","rng_draws":"0","outcome":2,"vm_sequence":"91","side":13.600001335144043,"attempt":7,"sweep":17,"sweep_total":83,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":13.400001525878906,"pc":0,"flags":36,"mask":0,"work":"326817","rng_draws":"0","outcome":2,"vm_sequence":"123","side":13.400001525878906,"attempt":8,"sweep":31,"sweep_total":114,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":13.20000171661377,"pc":0,"flags":36,"mask":0,"work":"418363","rng_draws":"0","outcome":2,"vm_sequence":"156","side":13.20000171661377,"attempt":9,"sweep":32,"sweep_total":146,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":13.000001907348633,"pc":0,"flags":36,"mask":0,"work":"541325","rng_draws":"0","outcome":2,"vm_sequence":"200","side":13.000001907348633,"attempt":10,"sweep":43,"sweep_total":189,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":12.800002098083496,"pc":0,"flags":36,"mask":0,"work":"692847","rng_draws":"0","outcome":2,"vm_sequence":"254","side":12.800002098083496,"attempt":11,"sweep":53,"sweep_total":242,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":12.60000228881836,"pc":0,"flags":36,"mask":0,"work":"844369","rng_draws":"0","outcome":2,"vm_sequence":"308","side":12.60000228881836,"attempt":12,"sweep":53,"sweep_total":295,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":12.400002479553223,"pc":0,"flags":36,"mask":0,"work":"993035","rng_draws":"0","outcome":2,"vm_sequence":"361","side":12.400002479553223,"attempt":13,"sweep":52,"sweep_total":347,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":12.200002670288086,"pc":0,"flags":36,"mask":0,"work":"1158837","rng_draws":"0","outcome":2,"vm_sequence":"420","side":12.200002670288086,"attempt":14,"sweep":58,"sweep_total":405,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":12.00000286102295,"pc":0,"flags":36,"mask":0,"work":"1324639","rng_draws":"0","outcome":2,"vm_sequence":"479","side":12.00000286102295,"attempt":15,"sweep":58,"sweep_total":463,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":11.800003051757812,"pc":0,"flags":36,"mask":0,"work":"1490441","rng_draws":"0","outcome":2,"vm_sequence":"538","side":11.800003051757812,"attempt":16,"sweep":58,"sweep_total":521,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":11.600003242492676,"pc":0,"flags":36,"mask":0,"work":"1699083","rng_draws":"0","outcome":2,"vm_sequence":"612","side":11.600003242492676,"attempt":17,"sweep":73,"sweep_total":594,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":11.400003433227539,"pc":0,"flags":36,"mask":0,"work":"1944853","rng_draws":"0","outcome":2,"vm_sequence":"699","side":11.400003433227539,"attempt":18,"sweep":86,"sweep_total":680,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":11.200003623962402,"pc":0,"flags":36,"mask":0,"work":"2236319","rng_draws":"0","outcome":2,"vm_sequence":"802","side":11.200003623962402,"attempt":19,"sweep":102,"sweep_total":782,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":11.000003814697266,"pc":0,"flags":36,"mask":0,"work":"2493513","rng_draws":"0","outcome":2,"vm_sequence":"893","side":11.000003814697266,"attempt":20,"sweep":90,"sweep_total":872,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":10.800004005432129,"pc":0,"flags":36,"mask":0,"work":"2796403","rng_draws":"0","outcome":2,"vm_sequence":"1000","side":10.800004005432129,"attempt":21,"sweep":106,"sweep_total":978,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":10.600004196166992,"pc":0,"flags":36,"mask":0,"work":"3124997","rng_draws":"0","outcome":2,"vm_sequence":"1116","side":10.600004196166992,"attempt":22,"sweep":115,"sweep_total":1093,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":10.400004386901855,"pc":0,"flags":36,"mask":0,"work":"3445023","rng_draws":"0","outcome":2,"vm_sequence":"1229","side":10.400004386901855,"attempt":23,"sweep":112,"sweep_total":1205,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":10.200004577636719,"pc":0,"flags":36,"mask":0,"work":"3830737","rng_draws":"0","outcome":2,"vm_sequence":"1365","side":10.200004577636719,"attempt":24,"sweep":135,"sweep_total":1340,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":10.000004768371582,"pc":0,"flags":36,"mask":0,"work":"4250723","rng_draws":"0","outcome":2,"vm_sequence":"1513","side":10.000004768371582,"attempt":25,"sweep":147,"sweep_total":1487,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.800004959106445,"pc":0,"flags":36,"mask":0,"work":"4976301","rng_draws":"0","outcome":2,"vm_sequence":"1768","side":9.800004959106445,"attempt":26,"sweep":254,"sweep_total":1741,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.600005149841309,"pc":0,"flags":36,"mask":0,"work":"5704735","rng_draws":"0","outcome":2,"vm_sequence":"2024","side":9.600005149841309,"attempt":27,"sweep":255,"sweep_total":1996,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.600005149841309,"pc":0,"flags":16,"mask":0,"work":"7075769","rng_draws":"0","outcome":4,"vm_sequence":"2505","side":9.600005149841309,"attempt":28,"sweep":480,"sweep_total":2476,"outcome_name":"REJECTED"},{"best_side":9.500004768371582,"pc":0,"flags":36,"mask":0,"work":"7687107","rng_draws":"0","outcome":2,"vm_sequence":"2720","side":9.500004768371582,"attempt":29,"sweep":214,"sweep_total":2690,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.500004768371582,"pc":0,"flags":16,"mask":0,"work":"9058141","rng_draws":"0","outcome":4,"vm_sequence":"3201","side":9.500004768371582,"attempt":30,"sweep":480,"sweep_total":3170,"outcome_name":"REJECTED"},{"best_side":9.450004577636719,"pc":0,"flags":36,"mask":0,"work":"10263527","rng_draws":"0","outcome":2,"vm_sequence":"3624","side":9.450004577636719,"attempt":31,"sweep":422,"sweep_total":3592,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.450004577636719,"pc":0,"flags":16,"mask":0,"work":"11634561","rng_draws":"0","outcome":4,"vm_sequence":"4105","side":9.450004577636719,"attempt":32,"sweep":480,"sweep_total":4072,"outcome_name":"REJECTED"},{"best_side":9.425004959106445,"pc":0,"flags":36,"mask":0,"work":"12879931","rng_draws":"0","outcome":2,"vm_sequence":"4542","side":9.425004959106445,"attempt":33,"sweep":436,"sweep_total":4508,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.425004959106445,"pc":0,"flags":16,"mask":0,"work":"14250965","rng_draws":"0","outcome":4,"vm_sequence":"5023","side":9.425004959106445,"attempt":34,"sweep":480,"sweep_total":4988,"outcome_name":"REJECTED"},{"best_side":9.412505149841309,"pc":0,"flags":36,"mask":0,"work":"15564879","rng_draws":"0","outcome":2,"vm_sequence":"5484","side":9.412505149841309,"attempt":35,"sweep":460,"sweep_total":5448,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.412505149841309,"pc":0,"flags":16,"mask":0,"work":"16935913","rng_draws":"0","outcome":4,"vm_sequence":"5965","side":9.412505149841309,"attempt":36,"sweep":480,"sweep_total":5928,"outcome_name":"REJECTED"},{"best_side":9.412505149841309,"pc":0,"flags":16,"mask":0,"work":"18306947","rng_draws":"0","outcome":4,"vm_sequence":"6446","side":9.412505149841309,"attempt":37,"sweep":480,"sweep_total":6408,"outcome_name":"REJECTED"},{"best_side":9.412505149841309,"pc":0,"flags":16,"mask":0,"work":"19677981","rng_draws":"0","outcome":4,"vm_sequence":"6927","side":9.412505149841309,"attempt":38,"sweep":480,"sweep_total":6888,"outcome_name":"REJECTED"},{"best_side":9.412505149841309,"pc":0,"flags":16,"mask":0,"work":"21049015","rng_draws":"0","outcome":4,"vm_sequence":"7408","side":9.412505149841309,"attempt":39,"sweep":480,"sweep_total":7368,"outcome_name":"REJECTED"},{"best_side":9.412505149841309,"pc":0,"flags":16,"mask":0,"work":"22420049","rng_draws":"0","outcome":4,"vm_sequence":"7889","side":9.412505149841309,"attempt":40,"sweep":480,"sweep_total":7848,"outcome_name":"REJECTED"},{"best_side":9.412505149841309,"pc":0,"flags":16,"mask":0,"work":"23791083","rng_draws":"0","outcome":4,"vm_sequence":"8370","side":9.412505149841309,"attempt":41,"sweep":480,"sweep_total":8328,"outcome_name":"REJECTED"},{"best_side":9.412309646606445,"pc":0,"flags":36,"mask":0,"work":"24371005","rng_draws":"0","outcome":2,"vm_sequence":"8574","side":9.412309646606445,"attempt":42,"sweep":203,"sweep_total":8531,"outcome_name":"PARTIAL_PROGRESS"},{"best_side":9.412309646606445,"pc":0,"flags":16,"mask":0,"work":"25742039","rng_draws":"0","outcome":4,"vm_sequence":"9055","side":9.412309646606445,"attempt":43,"sweep":480,"sweep_total":9011,"outcome_name":"REJECTED"},{"best_side":9.412309646606445,"pc":0,"flags":16,"mask":0,"work":"27113073","rng_draws":"0","outcome":4,"vm_sequence":"9536","side":9.412309646606445,"attempt":44,"sweep":480,"sweep_total":9491,"outcome_name":"REJECTED"},{"best_side":9.412309646606445,"pc":0,"flags":32,"mask":0,"work":"27113074","rng_draws":"0","outcome":3,"vm_sequence":"9537","side":9.412309646606445,"attempt":42,"sweep":203,"sweep_total":9491,"outcome_name":"NO_PROGRESS"},{"best_side":9.412309646606445,"pc":1,"flags":128,"mask":0,"work":"27113074","rng_draws":"0","outcome":3,"vm_sequence":"9537","side":9.412309646606445,"attempt":0,"sweep":0,"sweep_total":9491,"outcome_name":"NO_PROGRESS"}],"best_frame":45,"events":[{"side":15.0,"best_side":15.0,"pc":0,"phase":0,"flags":0,"attempt":0,"sweep":0,"sweep_total":0,"outcome":0,"mask":0,"work":"0","sequence":"0","rng_draws":"0"},{"side":15.0,"best_side":15.0,"pc":0,"phase":3,"flags":256,"attempt":0,"sweep":0,"sweep_total":0,"outcome":0,"mask":0,"work":"1","sequence":"1","rng_draws":"0"},{"side":14.800000190734863,"best_side":15.0,"pc":0,"phase":1,"flags":1,"attempt":1,"sweep":0,"sweep_total":0,"outcome":0,"mask":0,"work":"155","sequence":"2","rng_draws":"0"},{"side":14.800000190734863,"best_side":14.800000190734863,"pc":0,"phase":3,"flags":36,"attempt":1,"sweep":7,"sweep_total":7,"outcome":2,"mask":0,"work":"20147","sequence":"9","rng_draws":"0"},{"side":14.600000381469727,"best_side":14.800000190734863,"pc":0,"phase":1,"flags":1,"attempt":2,"sweep":0,"sweep_total":7,"outcome":2,"mask":0,"work":"20301","sequence":"10","rng_draws":"0"},{"side":14.600000381469727,"best_side":14.600000381469727,"pc":0,"phase":3,"flags":36,"attempt":2,"sweep":7,"sweep_total":14,"outcome":2,"mask":0,"work":"40293","sequence":"17","rng_draws":"0"},{"side":14.40000057220459,"best_side":14.600000381469727,"pc":0,"phase":1,"flags":1,"attempt":3,"sweep":0,"sweep_total":14,"outcome":2,"mask":0,"work":"40447","sequence":"18","rng_draws":"0"},{"side":14.40000057220459,"best_side":14.40000057220459,"pc":0,"phase":3,"flags":36,"attempt":3,"sweep":7,"sweep_total":21,"outcome":2,"mask":0,"work":"60439","sequence":"25","rng_draws":"0"},{"side":14.200000762939453,"best_side":14.40000057220459,"pc":0,"phase":1,"flags":1,"attempt":4,"sweep":0,"sweep_total":21,"outcome":2,"mask":0,"work":"60593","sequence":"26","rng_draws":"0"},{"side":14.200000762939453,"best_side":14.200000762939453,"pc":0,"phase":3,"flags":36,"attempt":4,"sweep":13,"sweep_total":34,"outcome":2,"mask":0,"work":"97721","sequence":"39","rng_draws":"0"},{"side":14.000000953674316,"best_side":14.200000762939453,"pc":0,"phase":1,"flags":1,"attempt":5,"sweep":0,"sweep_total":34,"outcome":2,"mask":0,"work":"97875","sequence":"40","rng_draws":"0"},{"side":14.000000953674316,"best_side":14.000000953674316,"pc":0,"phase":3,"flags":36,"attempt":5,"sweep":15,"sweep_total":49,"outcome":2,"mask":0,"work":"140715","sequence":"55","rng_draws":"0"},{"side":13.80000114440918,"best_side":14.000000953674316,"pc":0,"phase":1,"flags":1,"attempt":6,"sweep":0,"sweep_total":49,"outcome":2,"mask":0,"work":"140869","sequence":"56","rng_draws":"0"},{"side":13.80000114440918,"best_side":13.80000114440918,"pc":0,"phase":3,"flags":36,"attempt":6,"sweep":17,"sweep_total":66,"outcome":2,"mask":0,"work":"189421","sequence":"73","rng_draws":"0"},{"side":13.600001335144043,"best_side":13.80000114440918,"pc":0,"phase":1,"flags":1,"attempt":7,"sweep":0,"sweep_total":66,"outcome":2,"mask":0,"work":"189575","sequence":"74","rng_draws":"0"},{"side":13.600001335144043,"best_side":13.600001335144043,"pc":0,"phase":3,"flags":36,"attempt":7,"sweep":17,"sweep_total":83,"outcome":2,"mask":0,"work":"238127","sequence":"91","rng_draws":"0"},{"side":13.400001525878906,"best_side":13.600001335144043,"pc":0,"phase":1,"flags":1,"attempt":8,"sweep":0,"sweep_total":83,"outcome":2,"mask":0,"work":"238281","sequence":"92","rng_draws":"0"},{"side":13.400001525878906,"best_side":13.400001525878906,"pc":0,"phase":3,"flags":36,"attempt":8,"sweep":31,"sweep_total":114,"outcome":2,"mask":0,"work":"326817","sequence":"123","rng_draws":"0"},{"side":13.20000171661377,"best_side":13.400001525878906,"pc":0,"phase":1,"flags":1,"attempt":9,"sweep":0,"sweep_total":114,"outcome":2,"mask":0,"work":"326971","sequence":"124","rng_draws":"0"},{"side":13.20000171661377,"best_side":13.20000171661377,"pc":0,"phase":3,"flags":36,"attempt":9,"sweep":32,"sweep_total":146,"outcome":2,"mask":0,"work":"418363","sequence":"156","rng_draws":"0"},{"side":13.000001907348633,"best_side":13.20000171661377,"pc":0,"phase":1,"flags":1,"attempt":10,"sweep":0,"sweep_total":146,"outcome":2,"mask":0,"work":"418517","sequence":"157","rng_draws":"0"},{"side":13.000001907348633,"best_side":13.000001907348633,"pc":0,"phase":3,"flags":36,"attempt":10,"sweep":43,"sweep_total":189,"outcome":2,"mask":0,"work":"541325","sequence":"200","rng_draws":"0"},{"side":12.800002098083496,"best_side":13.000001907348633,"pc":0,"phase":1,"flags":1,"attempt":11,"sweep":0,"sweep_total":189,"outcome":2,"mask":0,"work":"541479","sequence":"201","rng_draws":"0"},{"side":12.800002098083496,"best_side":12.800002098083496,"pc":0,"phase":3,"flags":36,"attempt":11,"sweep":53,"sweep_total":242,"outcome":2,"mask":0,"work":"692847","sequence":"254","rng_draws":"0"},{"side":12.60000228881836,"best_side":12.800002098083496,"pc":0,"phase":1,"flags":1,"attempt":12,"sweep":0,"sweep_total":242,"outcome":2,"mask":0,"work":"693001","sequence":"255","rng_draws":"0"},{"side":12.60000228881836,"best_side":12.60000228881836,"pc":0,"phase":3,"flags":36,"attempt":12,"sweep":53,"sweep_total":295,"outcome":2,"mask":0,"work":"844369","sequence":"308","rng_draws":"0"},{"side":12.400002479553223,"best_side":12.60000228881836,"pc":0,"phase":1,"flags":1,"attempt":13,"sweep":0,"sweep_total":295,"outcome":2,"mask":0,"work":"844523","sequence":"309","rng_draws":"0"},{"side":12.400002479553223,"best_side":12.400002479553223,"pc":0,"phase":3,"flags":36,"attempt":13,"sweep":52,"sweep_total":347,"outcome":2,"mask":0,"work":"993035","sequence":"361","rng_draws":"0"},{"side":12.200002670288086,"best_side":12.400002479553223,"pc":0,"phase":1,"flags":1,"attempt":14,"sweep":0,"sweep_total":347,"outcome":2,"mask":0,"work":"993189","sequence":"362","rng_draws":"0"},{"side":12.200002670288086,"best_side":12.200002670288086,"pc":0,"phase":3,"flags":36,"attempt":14,"sweep":58,"sweep_total":405,"outcome":2,"mask":0,"work":"1158837","sequence":"420","rng_draws":"0"},{"side":12.00000286102295,"best_side":12.200002670288086,"pc":0,"phase":1,"flags":1,"attempt":15,"sweep":0,"sweep_total":405,"outcome":2,"mask":0,"work":"1158991","sequence":"421","rng_draws":"0"},{"side":12.00000286102295,"best_side":12.00000286102295,"pc":0,"phase":3,"flags":36,"attempt":15,"sweep":58,"sweep_total":463,"outcome":2,"mask":0,"work":"1324639","sequence":"479","rng_draws":"0"},{"side":11.800003051757812,"best_side":12.00000286102295,"pc":0,"phase":1,"flags":1,"attempt":16,"sweep":0,"sweep_total":463,"outcome":2,"mask":0,"work":"1324793","sequence":"480","rng_draws":"0"},{"side":11.800003051757812,"best_side":11.800003051757812,"pc":0,"phase":3,"flags":36,"attempt":16,"sweep":58,"sweep_total":521,"outcome":2,"mask":0,"work":"1490441","sequence":"538","rng_draws":"0"},{"side":11.600003242492676,"best_side":11.800003051757812,"pc":0,"phase":1,"flags":1,"attempt":17,"sweep":0,"sweep_total":521,"outcome":2,"mask":0,"work":"1490595","sequence":"539","rng_draws":"0"},{"side":11.600003242492676,"best_side":11.600003242492676,"pc":0,"phase":3,"flags":36,"attempt":17,"sweep":73,"sweep_total":594,"outcome":2,"mask":0,"work":"1699083","sequence":"612","rng_draws":"0"},{"side":11.400003433227539,"best_side":11.600003242492676,"pc":0,"phase":1,"flags":1,"attempt":18,"sweep":0,"sweep_total":594,"outcome":2,"mask":0,"work":"1699237","sequence":"613","rng_draws":"0"},{"side":11.400003433227539,"best_side":11.400003433227539,"pc":0,"phase":3,"flags":36,"attempt":18,"sweep":86,"sweep_total":680,"outcome":2,"mask":0,"work":"1944853","sequence":"699","rng_draws":"0"},{"side":11.200003623962402,"best_side":11.400003433227539,"pc":0,"phase":1,"flags":1,"attempt":19,"sweep":0,"sweep_total":680,"outcome":2,"mask":0,"work":"1945007","sequence":"700","rng_draws":"0"},{"side":11.200003623962402,"best_side":11.200003623962402,"pc":0,"phase":3,"flags":36,"attempt":19,"sweep":102,"sweep_total":782,"outcome":2,"mask":0,"work":"2236319","sequence":"802","rng_draws":"0"},{"side":11.000003814697266,"best_side":11.200003623962402,"pc":0,"phase":1,"flags":1,"attempt":20,"sweep":0,"sweep_total":782,"outcome":2,"mask":0,"work":"2236473","sequence":"803","rng_draws":"0"},{"side":11.000003814697266,"best_side":11.000003814697266,"pc":0,"phase":3,"flags":36,"attempt":20,"sweep":90,"sweep_total":872,"outcome":2,"mask":0,"work":"2493513","sequence":"893","rng_draws":"0"},{"side":10.800004005432129,"best_side":11.000003814697266,"pc":0,"phase":1,"flags":1,"attempt":21,"sweep":0,"sweep_total":872,"outcome":2,"mask":0,"work":"2493667","sequence":"894","rng_draws":"0"},{"side":10.800004005432129,"best_side":10.800004005432129,"pc":0,"phase":3,"flags":36,"attempt":21,"sweep":106,"sweep_total":978,"outcome":2,"mask":0,"work":"2796403","sequence":"1000","rng_draws":"0"},{"side":10.600004196166992,"best_side":10.800004005432129,"pc":0,"phase":1,"flags":1,"attempt":22,"sweep":0,"sweep_total":978,"outcome":2,"mask":0,"work":"2796557","sequence":"1001","rng_draws":"0"},{"side":10.600004196166992,"best_side":10.600004196166992,"pc":0,"phase":3,"flags":36,"attempt":22,"sweep":115,"sweep_total":1093,"outcome":2,"mask":0,"work":"3124997","sequence":"1116","rng_draws":"0"},{"side":10.400004386901855,"best_side":10.600004196166992,"pc":0,"phase":1,"flags":1,"attempt":23,"sweep":0,"sweep_total":1093,"outcome":2,"mask":0,"work":"3125151","sequence":"1117","rng_draws":"0"},{"side":10.400004386901855,"best_side":10.400004386901855,"pc":0,"phase":3,"flags":36,"attempt":23,"sweep":112,"sweep_total":1205,"outcome":2,"mask":0,"work":"3445023","sequence":"1229","rng_draws":"0"},{"side":10.200004577636719,"best_side":10.400004386901855,"pc":0,"phase":1,"flags":1,"attempt":24,"sweep":0,"sweep_total":1205,"outcome":2,"mask":0,"work":"3445177","sequence":"1230","rng_draws":"0"},{"side":10.200004577636719,"best_side":10.200004577636719,"pc":0,"phase":3,"flags":36,"attempt":24,"sweep":135,"sweep_total":1340,"outcome":2,"mask":0,"work":"3830737","sequence":"1365","rng_draws":"0"},{"side":10.000004768371582,"best_side":10.200004577636719,"pc":0,"phase":1,"flags":1,"attempt":25,"sweep":0,"sweep_total":1340,"outcome":2,"mask":0,"work":"3830891","sequence":"1366","rng_draws":"0"},{"side":10.000004768371582,"best_side":10.000004768371582,"pc":0,"phase":3,"flags":36,"attempt":25,"sweep":147,"sweep_total":1487,"outcome":2,"mask":0,"work":"4250723","sequence":"1513","rng_draws":"0"},{"side":9.800004959106445,"best_side":10.000004768371582,"pc":0,"phase":1,"flags":1,"attempt":26,"sweep":0,"sweep_total":1487,"outcome":2,"mask":0,"work":"4250877","sequence":"1514","rng_draws":"0"},{"side":9.800004959106445,"best_side":9.800004959106445,"pc":0,"phase":3,"flags":36,"attempt":26,"sweep":254,"sweep_total":1741,"outcome":2,"mask":0,"work":"4976301","sequence":"1768","rng_draws":"0"},{"side":9.600005149841309,"best_side":9.800004959106445,"pc":0,"phase":1,"flags":1,"attempt":27,"sweep":0,"sweep_total":1741,"outcome":2,"mask":0,"work":"4976455","sequence":"1769","rng_draws":"0"},{"side":9.600005149841309,"best_side":9.600005149841309,"pc":0,"phase":3,"flags":36,"attempt":27,"sweep":255,"sweep_total":1996,"outcome":2,"mask":0,"work":"5704735","sequence":"2024","rng_draws":"0"},{"side":9.400005340576172,"best_side":9.600005149841309,"pc":0,"phase":1,"flags":1,"attempt":28,"sweep":0,"sweep_total":1996,"outcome":2,"mask":0,"work":"5704889","sequence":"2025","rng_draws":"0"},{"side":9.400005340576172,"best_side":9.600005149841309,"pc":0,"phase":4,"flags":8,"attempt":28,"sweep":480,"sweep_total":2476,"outcome":4,"mask":0,"work":"7075769","sequence":"2505","rng_draws":"0"},{"side":9.600005149841309,"best_side":9.600005149841309,"pc":0,"phase":5,"flags":16,"attempt":28,"sweep":480,"sweep_total":2476,"outcome":4,"mask":0,"work":"7075769","sequence":"2505","rng_draws":"0"},{"side":9.500004768371582,"best_side":9.600005149841309,"pc":0,"phase":1,"flags":1,"attempt":29,"sweep":0,"sweep_total":2476,"outcome":4,"mask":0,"work":"7075923","sequence":"2506","rng_draws":"0"},{"side":9.500004768371582,"best_side":9.500004768371582,"pc":0,"phase":3,"flags":36,"attempt":29,"sweep":214,"sweep_total":2690,"outcome":2,"mask":0,"work":"7687107","sequence":"2720","rng_draws":"0"},{"side":9.400004386901855,"best_side":9.500004768371582,"pc":0,"phase":1,"flags":1,"attempt":30,"sweep":0,"sweep_total":2690,"outcome":2,"mask":0,"work":"7687261","sequence":"2721","rng_draws":"0"},{"side":9.400004386901855,"best_side":9.500004768371582,"pc":0,"phase":4,"flags":8,"attempt":30,"sweep":480,"sweep_total":3170,"outcome":4,"mask":0,"work":"9058141","sequence":"3201","rng_draws":"0"},{"side":9.500004768371582,"best_side":9.500004768371582,"pc":0,"phase":5,"flags":16,"attempt":30,"sweep":480,"sweep_total":3170,"outcome":4,"mask":0,"work":"9058141","sequence":"3201","rng_draws":"0"},{"side":9.450004577636719,"best_side":9.500004768371582,"pc":0,"phase":1,"flags":1,"attempt":31,"sweep":0,"sweep_total":3170,"outcome":4,"mask":0,"work":"9058295","sequence":"3202","rng_draws":"0"},{"side":9.450004577636719,"best_side":9.450004577636719,"pc":0,"phase":3,"flags":36,"attempt":31,"sweep":422,"sweep_total":3592,"outcome":2,"mask":0,"work":"10263527","sequence":"3624","rng_draws":"0"},{"side":9.400004386901855,"best_side":9.450004577636719,"pc":0,"phase":1,"flags":1,"attempt":32,"sweep":0,"sweep_total":3592,"outcome":2,"mask":0,"work":"10263681","sequence":"3625","rng_draws":"0"},{"side":9.400004386901855,"best_side":9.450004577636719,"pc":0,"phase":4,"flags":8,"attempt":32,"sweep":480,"sweep_total":4072,"outcome":4,"mask":0,"work":"11634561","sequence":"4105","rng_draws":"0"},{"side":9.450004577636719,"best_side":9.450004577636719,"pc":0,"phase":5,"flags":16,"attempt":32,"sweep":480,"sweep_total":4072,"outcome":4,"mask":0,"work":"11634561","sequence":"4105","rng_draws":"0"},{"side":9.425004959106445,"best_side":9.450004577636719,"pc":0,"phase":1,"flags":1,"attempt":33,"sweep":0,"sweep_total":4072,"outcome":4,"mask":0,"work":"11634715","sequence":"4106","rng_draws":"0"},{"side":9.425004959106445,"best_side":9.425004959106445,"pc":0,"phase":3,"flags":36,"attempt":33,"sweep":436,"sweep_total":4508,"outcome":2,"mask":0,"work":"12879931","sequence":"4542","rng_draws":"0"},{"side":9.400005340576172,"best_side":9.425004959106445,"pc":0,"phase":1,"flags":1,"attempt":34,"sweep":0,"sweep_total":4508,"outcome":2,"mask":0,"work":"12880085","sequence":"4543","rng_draws":"0"},{"side":9.400005340576172,"best_side":9.425004959106445,"pc":0,"phase":4,"flags":8,"attempt":34,"sweep":480,"sweep_total":4988,"outcome":4,"mask":0,"work":"14250965","sequence":"5023","rng_draws":"0"},{"side":9.425004959106445,"best_side":9.425004959106445,"pc":0,"phase":5,"flags":16,"attempt":34,"sweep":480,"sweep_total":4988,"outcome":4,"mask":0,"work":"14250965","sequence":"5023","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.425004959106445,"pc":0,"phase":1,"flags":1,"attempt":35,"sweep":0,"sweep_total":4988,"outcome":4,"mask":0,"work":"14251119","sequence":"5024","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":3,"flags":36,"attempt":35,"sweep":460,"sweep_total":5448,"outcome":2,"mask":0,"work":"15564879","sequence":"5484","rng_draws":"0"},{"side":9.400005340576172,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":36,"sweep":0,"sweep_total":5448,"outcome":2,"mask":0,"work":"15565033","sequence":"5485","rng_draws":"0"},{"side":9.400005340576172,"best_side":9.412505149841309,"pc":0,"phase":4,"flags":8,"attempt":36,"sweep":480,"sweep_total":5928,"outcome":4,"mask":0,"work":"16935913","sequence":"5965","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":5,"flags":16,"attempt":36,"sweep":480,"sweep_total":5928,"outcome":4,"mask":0,"work":"16935913","sequence":"5965","rng_draws":"0"},{"side":9.406254768371582,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":37,"sweep":0,"sweep_total":5928,"outcome":4,"mask":0,"work":"16936067","sequence":"5966","rng_draws":"0"},{"side":9.406254768371582,"best_side":9.412505149841309,"pc":0,"phase":4,"flags":8,"attempt":37,"sweep":480,"sweep_total":6408,"outcome":4,"mask":0,"work":"18306947","sequence":"6446","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":5,"flags":16,"attempt":37,"sweep":480,"sweep_total":6408,"outcome":4,"mask":0,"work":"18306947","sequence":"6446","rng_draws":"0"},{"side":9.409379959106445,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":38,"sweep":0,"sweep_total":6408,"outcome":4,"mask":0,"work":"18307101","sequence":"6447","rng_draws":"0"},{"side":9.409379959106445,"best_side":9.412505149841309,"pc":0,"phase":4,"flags":8,"attempt":38,"sweep":480,"sweep_total":6888,"outcome":4,"mask":0,"work":"19677981","sequence":"6927","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":5,"flags":16,"attempt":38,"sweep":480,"sweep_total":6888,"outcome":4,"mask":0,"work":"19677981","sequence":"6927","rng_draws":"0"},{"side":9.410943031311035,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":39,"sweep":0,"sweep_total":6888,"outcome":4,"mask":0,"work":"19678135","sequence":"6928","rng_draws":"0"},{"side":9.410943031311035,"best_side":9.412505149841309,"pc":0,"phase":4,"flags":8,"attempt":39,"sweep":480,"sweep_total":7368,"outcome":4,"mask":0,"work":"21049015","sequence":"7408","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":5,"flags":16,"attempt":39,"sweep":480,"sweep_total":7368,"outcome":4,"mask":0,"work":"21049015","sequence":"7408","rng_draws":"0"},{"side":9.411724090576172,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":40,"sweep":0,"sweep_total":7368,"outcome":4,"mask":0,"work":"21049169","sequence":"7409","rng_draws":"0"},{"side":9.411724090576172,"best_side":9.412505149841309,"pc":0,"phase":4,"flags":8,"attempt":40,"sweep":480,"sweep_total":7848,"outcome":4,"mask":0,"work":"22420049","sequence":"7889","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":5,"flags":16,"attempt":40,"sweep":480,"sweep_total":7848,"outcome":4,"mask":0,"work":"22420049","sequence":"7889","rng_draws":"0"},{"side":9.412114143371582,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":41,"sweep":0,"sweep_total":7848,"outcome":4,"mask":0,"work":"22420203","sequence":"7890","rng_draws":"0"},{"side":9.412114143371582,"best_side":9.412505149841309,"pc":0,"phase":4,"flags":8,"attempt":41,"sweep":480,"sweep_total":8328,"outcome":4,"mask":0,"work":"23791083","sequence":"8370","rng_draws":"0"},{"side":9.412505149841309,"best_side":9.412505149841309,"pc":0,"phase":5,"flags":16,"attempt":41,"sweep":480,"sweep_total":8328,"outcome":4,"mask":0,"work":"23791083","sequence":"8370","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412505149841309,"pc":0,"phase":1,"flags":1,"attempt":42,"sweep":0,"sweep_total":8328,"outcome":4,"mask":0,"work":"23791237","sequence":"8371","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412309646606445,"pc":0,"phase":3,"flags":36,"attempt":42,"sweep":203,"sweep_total":8531,"outcome":2,"mask":0,"work":"24371005","sequence":"8574","rng_draws":"0"},{"side":9.412114143371582,"best_side":9.412309646606445,"pc":0,"phase":1,"flags":1,"attempt":43,"sweep":0,"sweep_total":8531,"outcome":2,"mask":0,"work":"24371159","sequence":"8575","rng_draws":"0"},{"side":9.412114143371582,"best_side":9.412309646606445,"pc":0,"phase":4,"flags":8,"attempt":43,"sweep":480,"sweep_total":9011,"outcome":4,"mask":0,"work":"25742039","sequence":"9055","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412309646606445,"pc":0,"phase":5,"flags":16,"attempt":43,"sweep":480,"sweep_total":9011,"outcome":4,"mask":0,"work":"25742039","sequence":"9055","rng_draws":"0"},{"side":9.412209510803223,"best_side":9.412309646606445,"pc":0,"phase":1,"flags":1,"attempt":44,"sweep":0,"sweep_total":9011,"outcome":4,"mask":0,"work":"25742193","sequence":"9056","rng_draws":"0"},{"side":9.412209510803223,"best_side":9.412309646606445,"pc":0,"phase":4,"flags":8,"attempt":44,"sweep":480,"sweep_total":9491,"outcome":4,"mask":0,"work":"27113073","sequence":"9536","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412309646606445,"pc":0,"phase":5,"flags":16,"attempt":44,"sweep":480,"sweep_total":9491,"outcome":4,"mask":0,"work":"27113073","sequence":"9536","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412309646606445,"pc":1,"phase":3,"flags":256,"attempt":0,"sweep":0,"sweep_total":9491,"outcome":3,"mask":0,"work":"27113074","sequence":"9537","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412309646606445,"pc":0,"phase":3,"flags":32,"attempt":0,"sweep":0,"sweep_total":9491,"outcome":3,"mask":0,"work":"27113074","sequence":"9537","rng_draws":"0"},{"side":9.412309646606445,"best_side":9.412309646606445,"pc":1,"phase":6,"flags":128,"attempt":0,"sweep":0,"sweep_total":9491,"outcome":3,"mask":0,"work":"27113074","sequence":"9537","rng_draws":"0"}],"event_policy":"All bounded semantic boundaries; sampled sweeps; start/best/final geometry reserved."},"numeric_sha256":"881bb6b64a96e78571520be13e005a95f53e393f27211e688e7d1b66dbf06188"}}</script>
+<script>
+(() => {
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("trajectory-data").textContent);
+  const A = {};
+  const PHASES = ["INITIAL", "TRIAL", "RELAXING", "ACCEPTED", "REJECTED", "ROLLBACK", "FINAL"];
+  const COLORS = ["#e2b35c", "#78d6c3", "#d88978", "#a5c66f", "#b49be5", "#e1a1c9", "#77b5de", "#e5d08a", "#eb8650", "#58c9e2", "#e66fad", "#78a9ef", "#d6e761", "#bf9472", "#95d4ef", "#c6a8d2", "#6eb894", "#efb8a2", "#99a7cc", "#d4cbbc", "#e6cc58", "#9ee0d8", "#df776d", "#96b768", "#d28eed", "#efaddb", "#5c9ac2", "#cebf75", "#c887a0", "#a4c8ad", "#8fbcea", "#c5d094"];
+  const endpoint = DATA.metadata.comparison || {};
+  const sampling = DATA.metadata.sampling || {};
+  const provenance = DATA.metadata.provenance || {};
+  const originalProvenance = provenance.original || {};
+  const replayProvenance = provenance.replay || {};
+  const validationRecords = Array.isArray(DATA.metadata.validations) ? DATA.metadata.validations : [];
+
+  function decodeBase64(spec) {
+    const text = atob(spec.base64);
+    const bytes = new Uint8Array(text.length);
+    for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i);
+    const count = spec.shape.reduce((a, b) => a * b, 1);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const out = spec.dtype === "<f4" ? new Float32Array(count)
+      : spec.dtype === "<i4" ? new Int32Array(count)
+      : spec.dtype === "<i8" ? new Array(count)
+      : new Uint8Array(count);
+    for (let i = 0; i < count; i += 1) {
+      if (spec.dtype === "<f4") out[i] = view.getFloat32(i * 4, true);
+      else if (spec.dtype === "<i4") out[i] = view.getInt32(i * 4, true);
+      else if (spec.dtype === "<i8") out[i] = view.getBigInt64(i * 8, true);
+      else out[i] = view.getUint8(i);
+    }
+    return out;
+  }
+  for (const [name, spec] of Object.entries(DATA.arrays)) A[name] = decodeBase64(spec);
+  const F = DATA.arrays.poses.shape[0];
+  const N = DATA.arrays.poses.shape[1];
+  const strategy = DATA.metadata.strategy || null;
+  let strategyPanel = null;
+  let strategyRows = [];
+  if (strategy) {
+    strategyPanel = document.createElement("section");
+    strategyPanel.className = "panel";
+    strategyPanel.style.margin = "16px 0";
+    strategyPanel.innerHTML = '<div class="panel-head"><h2>World strategy</h2><span id="strategy-position"></span></div><div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:16px;padding:14px"><ol id="strategy-code" style="max-height:190px;overflow:auto;margin:0;padding-left:32px"></ol><div><canvas id="strategy-graph" style="width:100%;height:105px" aria-label="Current and protected best side against consumed work"></canvas><p id="strategy-state"></p><p id="strategy-selection"></p><button id="go-best" type="button">Go to best state</button> <button id="go-final-current" type="button">Go to final current</button></div></div>';
+    document.querySelector(".panels").before(strategyPanel);
+    strategyRows = strategy.program.instructions.map(instruction => {
+      const row = document.createElement("li");
+      row.textContent = `${instruction.pc}: ${instruction.op} · ${instruction.source_node}`;
+      row.title = `Operands: ${JSON.stringify(instruction.words.slice(1))}. Exact FP32 words: ${instruction.fp32_bits.join(" ")}`;
+      row.style.padding = "4px";
+      document.getElementById("strategy-code").append(row);
+      return row;
+    });
+  }
+  let frame = 0;
+  let playing = false;
+  let lastTick = 0;
+  let speed = 4;
+  let showSquares = true;
+  let showContainer = true;
+  let showIds = true;
+  let showOrientation = true;
+  let showTrails = true;
+  let trailSquare = "all";
+  let onlySelectedTrail = false;
+  let trailHistory = 0;
+  let currentZoom = 1;
+  let currentCenter = [0, 0];
+  let baseScale = 1;
+  let rangeStart = 0;
+  let rangeEnd = F - 1;
+  let loopRange = false;
+  let playbackGeneration = 0;
+  const initialSideValue = Number(A.side[0]);
+  const initialSide = Number.isFinite(initialSideValue) && initialSideValue > 0 ? initialSideValue : 1;
+  const retainedCount = sampling.retained ?? sampling.retained_frames ?? F;
+  const observedCount = sampling.observed ?? sampling.events_seen ?? F;
+  const suppressedCount = sampling.suppressed ?? sampling.suppressed_frames ?? 0;
+  const effectiveStride = sampling.effective_stride ?? 1;
+  const frameCap = sampling.max_frames ?? F;
+  const initialCanvas = document.getElementById("initial-canvas");
+  const currentCanvas = document.getElementById("current-canvas");
+  const slider = document.getElementById("frame-slider");
+  const trailSelect = document.getElementById("trail-square");
+  const legend = document.getElementById("square-legend");
+  const legendKeys = [];
+  for (let square = 0; square < N; square += 1) {
+    const option = document.createElement("option");
+    option.value = String(square); option.textContent = `focus square ${String(A.square_ids[square])}`;
+    trailSelect.appendChild(option);
+    const key = document.createElement("button"), swatch = document.createElement("span"), label = document.createElement("span");
+    key.type = "button"; key.className = "legend-key"; key.dataset.squareIndex = String(square);
+    key.style.setProperty("--square-color", COLORS[square]);
+    key.setAttribute("aria-label", `Show center trail for square ${String(A.square_ids[square])}`);
+    swatch.className = "legend-swatch"; swatch.setAttribute("aria-hidden", "true"); label.textContent = String(A.square_ids[square]);
+    key.append(swatch, label); legend.appendChild(key); legendKeys.push(key);
+    key.addEventListener("click", () => selectSquare(square));
+  }
+  slider.max = String(Math.max(0, F - 1));
+  document.getElementById("range-start").max = String(F - 1);
+  document.getElementById("range-end").max = String(F - 1);
+  document.getElementById("trial-line").textContent = `Trial ${String(DATA.metadata.trial_id)} · ${N} unit squares · seed ${String(DATA.metadata.seed)}`;
+  document.getElementById("initial-caption").textContent = `L = ${Number.isFinite(initialSideValue) && initialSideValue > 0 ? initialSideValue.toPrecision(7) : "invalid diagnostic value"} · frame 1 / fixed reference`;
+  document.getElementById("comparison-status").textContent = String(endpoint.status || "REFERENCE_INCOMPLETE");
+  document.getElementById("termination-status").textContent = String(DATA.metadata.termination_reason || "UNKNOWN");
+  document.getElementById("sampling-detail").textContent = `Sampling: ${String(retainedCount)} retained / ${String(observedCount)} observed; ${String(suppressedCount)} suppressed; effective stride ${String(effectiveStride)}; cap ${String(frameCap)}.`;
+  document.getElementById("comparison-detail").textContent = `This is a newly recorded replay. Endpoint/result comparison scope: ${String(endpoint.scope || "defined saved endpoint fields")} — intermediate states are not proven identical.`;
+  const replayRevision = replayProvenance.source_revision || replayProvenance.revision || provenance.replay_revision || provenance.source_revision || "unrecorded";
+  const replayDevice = replayProvenance.device_uuid || replayProvenance.device_name || replayProvenance.gpu_uuid || replayProvenance.gpu_model || provenance.replay_gpu_uuid || "unrecorded";
+  const provenanceStatus = provenance.status || endpoint.provenance_status || "unrecorded";
+  document.getElementById("provenance-detail").textContent = `Provenance: ${String(provenanceStatus)} · replay revision ${String(replayRevision)} · replay device ${String(replayDevice)} · original revision ${String(originalProvenance.source_revision || originalProvenance.revision || "unrecorded")}.`;
+
+  function dimensions(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(160, Math.floor(rect.width || 500));
+    const height = Math.max(160, Math.floor(rect.height || 350));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) { canvas.width = width * dpr; canvas.height = height * dpr; }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, width, height };
+  }
+  function mapPoint(x, y, width, height, scale, center = [0, 0]) { return [width / 2 + (x - center[0]) * scale, height / 2 - (y - center[1]) * scale]; }
+  function poseAt(index, square) {
+    const offset = (index * N + square) * 3;
+    return [Number(A.poses[offset]), Number(A.poses[offset + 1]), Number(A.poses[offset + 2])];
+  }
+  function trailSegments(index, square) {
+    const segments = []; let segment = [];
+    for (let saved = trailStart(index); saved <= index; saved += 1) {
+      const [x, y] = poseAt(saved, square);
+      if (Number.isFinite(x) && Number.isFinite(y)) segment.push([x, y]);
+      else if (segment.length) { segments.push(segment); segment = []; }
+    }
+    if (segment.length) segments.push(segment);
+    return segments;
+  }
+  function trailStart(index) { return trailHistory > 0 ? Math.max(0, index - trailHistory + 1) : 0; }
+  function trailSquares() {
+    return onlySelectedTrail && trailSquare !== "all" ? [Number(trailSquare)] : Array.from({length: N}, (_, square) => square);
+  }
+  function trailStyle(square) { return trailSquare === "all" ? [0.65, 1.25] : trailSquare === String(square) ? [0.95, 2] : [0.12, 1]; }
+  function selectSquare(square) {
+    trailSquare = square === null ? "all" : String(square); trailSelect.value = trailSquare;
+    showTrails = true; document.getElementById("show-trails").checked = true; trailSelect.disabled = false; render();
+  }
+  function drawTrails(ctx, index, width, height, scale, center) {
+    ctx.save(); ctx.lineJoin = "round";
+    for (const square of trailSquares()) {
+      [ctx.globalAlpha, ctx.lineWidth] = trailStyle(square);
+      ctx.strokeStyle = COLORS[square % COLORS.length]; ctx.fillStyle = ctx.strokeStyle;
+      for (const segment of trailSegments(index, square)) {
+        const points = segment.map(([x, y]) => mapPoint(x, y, width, height, scale, center));
+        ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
+        for (let saved = 1; saved < points.length; saved += 1) ctx.lineTo(points[saved][0], points[saved][1]);
+        ctx.stroke();
+        for (const [x, y] of points) { ctx.beginPath(); ctx.arc(x, y, 1.5, 0, 2 * Math.PI); ctx.fill(); }
+      }
+      const [startX, startY] = poseAt(trailStart(index), square);
+      if (Number.isFinite(startX) && Number.isFinite(startY)) {
+        const [x, y] = mapPoint(startX, startY, width, height, scale, center);
+        ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 2 * Math.PI); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  function labelLayout(ctx, square) {
+    const text = String(A.square_ids[square]);
+    ctx.font = "11px ui-monospace, monospace";
+    return {text, halfWidth: ctx.measureText(text).width / 2 + 3, halfHeight: 8};
+  }
+  function orientationPoints(center, theta, scale, label) {
+    const dx = Math.cos(theta), dy = -Math.sin(theta);
+    const clearance = showIds ? Math.min(label.halfWidth / Math.max(Math.abs(dx), 1e-12), label.halfHeight / Math.max(Math.abs(dy), 1e-12)) + 3 : 0;
+    const start = Math.max(0.28 * scale, clearance), end = 0.44 * scale;
+    if (start >= end) return null;
+    return [[center[0] + start * dx, center[1] + start * dy], [center[0] + end * dx, center[1] + end * dy]];
+  }
+  function drawPanel(canvas, index, isInitial, sharedScale, viewCenter = [0, 0]) {
+    const {ctx, width, height} = dimensions(canvas);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#0b1012"; ctx.fillRect(0, 0, width, height);
+    const side = Number(A.side[index]);
+    const validSide = Number.isFinite(side) && side > 0;
+    if (showContainer && validSide) {
+      const [left, top] = mapPoint(-side / 2, side / 2, width, height, sharedScale, viewCenter);
+      ctx.strokeStyle = "#62727a"; ctx.lineWidth = 1.4; ctx.strokeRect(left, top, side * sharedScale, side * sharedScale);
+    }
+    let omittedSquares = 0;
+    for (let square = 0; square < N; square += 1) {
+      const [x, y, theta] = poseAt(index, square);
+      if (![x, y, theta].every(Number.isFinite)) { omittedSquares += 1; continue; }
+      if (!showSquares) continue;
+      const ux = Math.cos(theta), uy = Math.sin(theta), vx = -uy, vy = ux;
+      const corners = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => {
+        return mapPoint(x + 0.5 * (sx * ux + sy * vx), y + 0.5 * (sx * uy + sy * vy), width, height, sharedScale, viewCenter);
+      });
+      ctx.beginPath(); ctx.moveTo(corners[0][0], corners[0][1]);
+      for (let k = 1; k < corners.length; k += 1) ctx.lineTo(corners[k][0], corners[k][1]);
+      ctx.closePath(); ctx.fillStyle = COLORS[square % COLORS.length] + "99"; ctx.fill();
+      const selected = strategy && !isInitial && (BigInt(strategy.frames[index].mask) & (1n << BigInt(square))) !== 0n;
+      ctx.strokeStyle = selected ? "#ffffff" : COLORS[square % COLORS.length]; ctx.lineWidth = selected ? 2.8 : 1.15; ctx.stroke();
+    }
+    if (showTrails && !isInitial) drawTrails(ctx, index, width, height, sharedScale, viewCenter);
+    for (let square = 0; square < N; square += 1) {
+      const [x, y, theta] = poseAt(index, square);
+      if (![x, y, theta].every(Number.isFinite)) continue;
+      const center = mapPoint(x, y, width, height, sharedScale, viewCenter);
+      const label = labelLayout(ctx, square);
+      const marker = orientationPoints(center, theta, sharedScale, label);
+      if (showOrientation && marker) { ctx.beginPath(); ctx.moveTo(...marker[0]); ctx.lineTo(...marker[1]); ctx.strokeStyle = "#f2eee4"; ctx.lineWidth = 1.5; ctx.stroke(); }
+      if (showIds) {
+        ctx.fillStyle = "#0b1012"; ctx.fillRect(center[0] - label.halfWidth, center[1] - label.halfHeight, 2 * label.halfWidth, 2 * label.halfHeight);
+        ctx.fillStyle = "#f2eee4"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label.text, center[0], center[1]);
+      }
+    }
+    ctx.fillStyle = "#a5aaa7"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    if (omittedSquares) {
+      ctx.fillStyle = "#e88475";
+      ctx.fillText(`non-finite poses: ${omittedSquares} square(s) omitted`, 9, 8);
+    }
+  }
+  function validationFor(index) {
+    return validationRecords.find((item) => {
+      const candidate = item.frame ?? item.frame_index;
+      const numeric = typeof candidate === "string" && /^\d+$/.test(candidate) ? Number(candidate) : candidate;
+      return Number.isInteger(numeric) && numeric === index;
+    }) || null;
+  }
+  function validationDetails(record, provisional, restored) {
+    const values = record.validation && typeof record.validation === "object" ? record.validation : record;
+    const outcomes = {NUMERICALLY_VALIDATED: "constraints passed", INVALID: "constraint violation detected", INDETERMINATE: "result indeterminate within numerical tolerance"};
+    const parts = [provisional ? "Provisional geometry measurements" : `${restored ? "Restored accepted state" : "Independent numerical check"}: ${outcomes[values.status || record.status] || "checked"}`];
+    for (const [field, label] of [["max_penetration", "Maximum overlap depth"], ["min_pair_separation", "Minimum square separation"], ["min_wall_clearance", "Minimum wall clearance"], ["tolerance", "Check tolerance"]]) {
+      const value = values[field];
+      if (typeof value === "number" && Number.isFinite(value)) parts.push(`${label}: ${value === 0 ? "0" : value.toPrecision(5)} unit lengths`);
+    }
+    if (values.nonfinite) parts.push("Non-finite coordinates detected");
+    if (provisional) parts.push("These measurements do not mark the state as accepted");
+    return parts.join(" · ") + ".";
+  }
+  function render() {
+    const first = dimensions(initialCanvas);
+    const current = dimensions(currentCanvas);
+    const scale = Math.max(1, Math.min((first.width - 28) / initialSide, (first.height - 28) / initialSide, (current.width - 28) / initialSide, (current.height - 28) / initialSide));
+    baseScale = scale;
+    drawPanel(initialCanvas, 0, true, scale);
+    drawPanel(currentCanvas, frame, false, scale * currentZoom, currentCenter);
+    document.getElementById("current-zoom").value = String(Number(currentZoom.toPrecision(7)));
+    document.getElementById("only-selected-trail").disabled = trailSquare === "all";
+    document.getElementById("trail-detail").textContent = `Center trails: ${trailHistory ? `last ${trailHistory} saved frames` : "full history"}, from index ${trailStart(frame)} through ${frame}. Dots mark recorded centers, not physical speed; connecting lines do not reconstruct skipped motion.`;
+    updateMarkers();
+    const phase = Number(A.phase[frame]);
+    const validation = validationFor(frame);
+    const isProvisional = phase === 1 || phase === 2 || phase === 4;
+    const isRestoredAccepted = phase === 5;
+    const phaseLabel = PHASES[phase] || "UNKNOWN";
+    const sequence = A.sequence[frame];
+    const sequenceText = typeof sequence === "bigint" ? sequence.toString() : String(sequence);
+    document.getElementById("frame-status").textContent = `${frame + 1} / ${F} · ${phaseLabel}`;
+    document.getElementById("frame-output").textContent = `Frame ${frame + 1} / ${F}`;
+    document.getElementById("algorithm-line").textContent = `Algorithm sequence ${sequenceText} · attempt ${String(A.attempt[frame])} · sweep ${String(A.sweep[frame])} within attempt · cumulative sweeps ${String(A.sweep_total[frame])} · phase ${phaseLabel}.`;
+    const side = Number(A.side[frame]);
+    document.getElementById("current-caption").textContent = `L = ${Number.isFinite(side) && side > 0 ? side.toPrecision(7) : "invalid diagnostic value"} · ${phaseLabel.toLowerCase()} · ${playing ? "playing" : "paused"}`;
+    legendKeys.forEach((key, square) => key.setAttribute("aria-pressed", String(showTrails && trailSquare === String(square))));
+    document.getElementById("side-line").textContent = `Container side L = ${Number.isFinite(side) ? side.toPrecision(9) : "non-finite diagnostic value"}.`;
+    const validationValue = validation && validation.validation;
+    const validationStatus = validationValue && typeof validationValue === "object" ? validationValue.status : validationValue || (validation && validation.status) || "CHECKED";
+    const validationLabels = {NUMERICALLY_VALIDATED: "Numerically validated", INVALID: "Constraint violation", INDETERMINATE: "Numerically indeterminate", CHECKED: "Checked"};
+    document.getElementById("validation-status").textContent = isProvisional ? "PROVISIONAL · measured diagnostics" : isRestoredAccepted ? "RESTORED ACCEPTED" : (validation ? validationLabels[validationStatus] || "Check available" : "NOT CHECKED");
+    document.getElementById("validation-detail").textContent = validation ? validationDetails(validation, isProvisional, isRestoredAccepted) : (isProvisional ? "No accepted/CPU validation badge is inherited by this provisional state." : isRestoredAccepted ? "Rollback restored the previously accepted pose; no new CPU validation record was retained for this frame." : "No per-frame validation record was retained.");
+    document.getElementById("validation-status").classList.toggle("provisional", isProvisional);
+    if (strategy) renderStrategy();
+  }
+  function renderStrategy() {
+    const item = strategy.frames[frame];
+    const instruction = strategy.program.instructions[item.pc];
+    strategyRows.forEach((row, pc) => {
+      row.style.background = pc === item.pc ? "#30454d" : "transparent";
+      row.setAttribute("aria-current", String(pc === item.pc));
+    });
+    document.getElementById("strategy-position").textContent = instruction ? `${instruction.op} · ${instruction.source_node}` : "Initial protected state";
+    const labels = [[1,"proposal"],[2,"repair"],[4,"commit"],[8,"rejection"],[16,"rollback"],[32,"best snapshot"],[64,"discontinuous restore"],[128,"finalization"],[256,"invocation"]];
+    const markers = labels.filter(([flag]) => item.flags & flag).map(([,label]) => label).join(" · ");
+    document.getElementById("strategy-state").textContent = `Current L ${Number(item.side).toPrecision(8)} · protected best L ${Number(item.best_side).toPrecision(8)} · body work ${item.work} · ${item.outcome_name} · ${markers}`;
+    const ids = Array.from({length:N}, (_,square) => square).filter(square => (BigInt(item.mask) & (1n << BigInt(square))) !== 0n);
+    document.getElementById("strategy-selection").textContent = `Selected square IDs: ${ids.length ? ids.join(", ") : "none"}. Attempt ${item.attempt}, sweep ${item.sweep}; operator RNG draws ${item.rng_draws}. Fractions multiply the side at operation entry; squares retain unit side.`;
+    const graph = document.getElementById("strategy-graph"), ctx = graph.getContext("2d");
+    graph.width = Math.max(300, graph.clientWidth * devicePixelRatio); graph.height = 105 * devicePixelRatio;
+    const width = graph.width, height = graph.height, margin = 14 * devicePixelRatio;
+    const maxWork = Math.max(1, ...strategy.frames.map(value => Number(value.work)));
+    const minSide = Math.min(...strategy.frames.flatMap(value => [value.side, value.best_side]));
+    const maxSide = Math.max(...strategy.frames.flatMap(value => [value.side, value.best_side]));
+    const x = value => margin + Number(value.work) / maxWork * (width - 2 * margin);
+    const y = value => margin + (maxSide - value) / Math.max(1e-8, maxSide - minSide) * (height - 2 * margin);
+    ctx.clearRect(0, 0, width, height);
+    for (const [key, color] of [["side","#e2b35c"],["best_side","#78d6c3"]]) {
+      ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5 * devicePixelRatio;
+      strategy.frames.forEach((value, index) => {
+        if (index === 0 || (key === "side" && value.flags & (16 | 64))) ctx.moveTo(x(value), y(value[key]));
+        else ctx.lineTo(x(value), y(value[key]));
+      });
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(x(item), margin); ctx.lineTo(x(item), height - margin); ctx.stroke();
+    graph.title = `Current L ${item.side}; best L ${item.best_side}; body work ${item.work}. Amber: current; teal: protected best. Click to seek by work.`;
+  }
+  function setFrame(value) { frame = Math.max(0, Math.min(F - 1, Number(value) || 0)); slider.value = String(frame); render(); }
+  function seekFrame(value) { if (playing) setPlaying(false); setFrame(value); }
+  function setPlaying(value) {
+    playing = Boolean(value); playbackGeneration += 1;
+    document.getElementById("play-pause").textContent = playing ? "Pause" : "Play";
+    if (playing) { if (frame < rangeStart || frame >= rangeEnd) setFrame(rangeStart); lastTick = 0; const generation = playbackGeneration; requestAnimationFrame(now => tick(now, generation)); }
+    render();
+  }
+  function tick(now, generation) {
+    if (!playing || generation !== playbackGeneration) return;
+    if (!lastTick) lastTick = now;
+    if (now - lastTick >= 1000 / speed) {
+      lastTick = now;
+      if (frame >= rangeEnd) { if (loopRange) setFrame(rangeStart); else { setPlaying(false); return; } }
+      else setFrame(frame + 1);
+    }
+    requestAnimationFrame(next => tick(next, generation));
+  }
+  function updateMarkers() {
+    document.getElementById("range-start").value = String(rangeStart); document.getElementById("range-end").value = String(rangeEnd);
+    const start = 100 * rangeStart / Math.max(1, F - 1), end = 100 * rangeEnd / Math.max(1, F - 1);
+    document.getElementById("start-marker").style.left = `${start}%`; document.getElementById("end-marker").style.left = `${end}%`;
+    document.getElementById("marker-band").style.left = `${start}%`; document.getElementById("marker-band").style.width = `${end - start}%`;
+  }
+  function setMarker(which, value) {
+    if (playing) setPlaying(false);
+    const index = Math.max(0, Math.min(F - 1, Math.round(Number(value) || 0)));
+    if (which === "start") { rangeStart = index; if (rangeEnd < index) rangeEnd = index; }
+    else { rangeEnd = index; if (rangeStart > index) rangeStart = index; }
+    updateMarkers();
+  }
+  function clampZoom(value) { return Math.max(0.25, Math.min(65536, Number(value) || 1)); }
+  function zoomTo(value, point = null) {
+    const {width, height} = dimensions(currentCanvas), next = clampZoom(value);
+    if (point) {
+      const dx = point[0] - width / 2, dy = point[1] - height / 2;
+      currentCenter = [currentCenter[0] + dx / (baseScale * currentZoom) - dx / (baseScale * next), currentCenter[1] - dy / (baseScale * currentZoom) + dy / (baseScale * next)];
+    }
+    currentZoom = next; render();
+  }
+  function fitTrajectory() {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const include = (x, y) => { if (Number.isFinite(x) && Number.isFinite(y)) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); } };
+    for (let saved = 0; saved < F; saved += 1) {
+      const side = Number(A.side[saved]);
+      if (showContainer && Number.isFinite(side) && side > 0) { include(-side / 2, -side / 2); include(side / 2, side / 2); }
+      for (const square of (showSquares ? Array.from({length: N}, (_, index) => index) : trailSquares())) {
+        const [x, y, theta] = poseAt(saved, square); include(x, y);
+        if (showSquares && Number.isFinite(theta)) {
+          const extent = 0.5 * (Math.abs(Math.cos(theta)) + Math.abs(Math.sin(theta)));
+          include(x - extent, y - extent); include(x + extent, y + extent);
+        }
+      }
+    }
+    if (!Number.isFinite(minX)) return;
+    const {width, height} = dimensions(currentCanvas);
+    currentCenter = [minX + (maxX - minX) / 2, minY + (maxY - minY) / 2];
+    zoomTo(Math.min((width - 28) / Math.max(1e-6, maxX - minX), (height - 28) / Math.max(1e-6, maxY - minY)) / baseScale);
+  }
+  function selectAt(point) {
+    const {width, height} = dimensions(currentCanvas), scale = baseScale * currentZoom;
+    const worldX = currentCenter[0] + (point[0] - width / 2) / scale, worldY = currentCenter[1] - (point[1] - height / 2) / scale;
+    for (let square = N - 1; square >= 0; square -= 1) {
+      const [x, y, theta] = poseAt(frame, square); if (![x, y, theta].every(Number.isFinite)) continue;
+      const dx = worldX - x, dy = worldY - y;
+      if (showSquares ? Math.abs(dx * Math.cos(theta) + dy * Math.sin(theta)) <= 0.5 && Math.abs(-dx * Math.sin(theta) + dy * Math.cos(theta)) <= 0.5 : showIds && Math.hypot(dx, dy) * scale <= 12) { selectSquare(square); return; }
+    }
+    selectSquare(null);
+  }
+  document.getElementById("zoom-in").addEventListener("click", () => zoomTo(currentZoom * 2));
+  document.getElementById("zoom-out").addEventListener("click", () => zoomTo(currentZoom / 2));
+  document.getElementById("current-zoom").addEventListener("change", event => zoomTo(event.target.value));
+  document.getElementById("reset-view").addEventListener("click", () => { currentCenter = [0, 0]; zoomTo(1); });
+  document.getElementById("fit-current").addEventListener("click", () => { const side = Number(A.side[frame]); if (Number.isFinite(side) && side > 0) { currentCenter = [0, 0]; zoomTo(initialSide / side); } });
+  document.getElementById("fit-trajectory").addEventListener("click", fitTrajectory);
+  document.getElementById("focus-trail").addEventListener("click", () => { if (trailSquare !== "all") { const [x, y] = poseAt(frame, Number(trailSquare)); if (Number.isFinite(x) && Number.isFinite(y)) { currentCenter = [x, y]; render(); } } });
+  currentCanvas.addEventListener("wheel", event => { event.preventDefault(); const rect = currentCanvas.getBoundingClientRect(); zoomTo(currentZoom * Math.exp(-event.deltaY * 0.002), [event.clientX - rect.left, event.clientY - rect.top]); }, {passive: false});
+  let sceneDrag = null;
+  currentCanvas.addEventListener("pointerdown", event => { if (event.button !== 0) return; sceneDrag = {x: event.clientX, y: event.clientY, center: [...currentCenter], moved: false}; currentCanvas.setPointerCapture(event.pointerId); });
+  currentCanvas.addEventListener("pointermove", event => {
+    if (!sceneDrag) return;
+    const dx = event.clientX - sceneDrag.x, dy = event.clientY - sceneDrag.y;
+    if (Math.hypot(dx, dy) > 3) sceneDrag.moved = true;
+    if (sceneDrag.moved) { const scale = baseScale * currentZoom; currentCenter = [sceneDrag.center[0] - dx / scale, sceneDrag.center[1] + dy / scale]; currentCanvas.classList.add("dragging"); render(); }
+  });
+  currentCanvas.addEventListener("pointerup", event => { if (sceneDrag && !sceneDrag.moved) { const rect = currentCanvas.getBoundingClientRect(); selectAt([event.clientX - rect.left, event.clientY - rect.top]); } sceneDrag = null; currentCanvas.classList.remove("dragging"); });
+  currentCanvas.addEventListener("pointercancel", () => { sceneDrag = null; currentCanvas.classList.remove("dragging"); });
+  for (const which of ["start", "end"]) {
+    document.getElementById(`range-${which}`).addEventListener("change", event => setMarker(which, event.target.value));
+    document.getElementById(`set-range-${which}`).addEventListener("click", () => setMarker(which, frame));
+    const marker = document.getElementById(`${which}-marker`); let dragging = false;
+    marker.addEventListener("pointerdown", event => { if (event.button !== 0) return; dragging = true; event.preventDefault(); marker.setPointerCapture(event.pointerId); });
+    marker.addEventListener("pointermove", event => { if (!dragging) return; const rect = document.getElementById("marker-track").getBoundingClientRect(); setMarker(which, (event.clientX - rect.left) / rect.width * (F - 1)); });
+    marker.addEventListener("pointerup", () => { dragging = false; }); marker.addEventListener("pointercancel", () => { dragging = false; });
+  }
+  document.getElementById("playback-mode").addEventListener("change", event => { loopRange = event.target.value === "loop"; });
+  document.getElementById("reset-range").addEventListener("click", () => { if (playing) setPlaying(false); rangeStart = 0; rangeEnd = F - 1; updateMarkers(); });
+  document.getElementById("first-frame").addEventListener("click", () => seekFrame(0));
+  document.getElementById("previous-frame").addEventListener("click", () => seekFrame(frame - 1));
+  document.getElementById("next-frame").addEventListener("click", () => seekFrame(frame + 1));
+  document.getElementById("last-frame").addEventListener("click", () => seekFrame(F - 1));
+  document.getElementById("play-pause").addEventListener("click", () => setPlaying(!playing));
+  slider.addEventListener("input", (event) => seekFrame(event.target.value));
+  document.getElementById("speed").addEventListener("change", (event) => { speed = Number(event.target.value) || 4; });
+  document.getElementById("show-squares").addEventListener("change", (event) => { showSquares = event.target.checked; render(); });
+  document.getElementById("show-container").addEventListener("change", (event) => { showContainer = event.target.checked; render(); });
+  document.getElementById("show-ids").addEventListener("change", (event) => { showIds = event.target.checked; render(); });
+  document.getElementById("show-orientation").addEventListener("change", (event) => { showOrientation = event.target.checked; render(); });
+  document.getElementById("show-trails").addEventListener("change", (event) => { showTrails = event.target.checked; trailSelect.disabled = !showTrails; render(); });
+  trailSelect.addEventListener("change", (event) => { trailSquare = event.target.value; render(); });
+  document.getElementById("only-selected-trail").addEventListener("change", event => { onlySelectedTrail = event.target.checked; render(); });
+  document.getElementById("trail-history").addEventListener("change", event => { trailHistory = Math.max(0, Math.min(4096, Math.round(Number(event.target.value) || 0))); event.target.value = String(trailHistory); render(); });
+  window.addEventListener("resize", render);
+
+  function xml(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function exportCurrentSvg() {
+    const width = 900, height = 700, margin = 70, scale = Math.min((width - 2 * margin) / initialSide, (height - 2 * margin) / initialSide) * currentZoom;
+    const side = Number(A.side[frame]);
+    const validSide = Number.isFinite(side) && side > 0;
+    const map = (x, y) => mapPoint(x, y, width, height, scale, currentCenter);
+    const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-zoom="${currentZoom}" data-view-x="${currentCenter[0]}" data-view-y="${currentCenter[1]}" data-trail-start="${trailStart(frame)}"><title>Asquerix trajectory frame ${frame + 1}</title>`, `<rect width="${width}" height="${height}" fill="#0b1012"/>`];
+    if (showContainer && validSide) { const [left, top] = map(-side / 2, side / 2); parts.push(`<rect data-container-boundary="true" x="${left}" y="${top}" width="${side * scale}" height="${side * scale}" fill="none" stroke="#62727a"/>`); }
+    let omittedSquares = 0;
+    for (let square = 0; square < N; square += 1) { const [x, y, theta] = poseAt(frame, square); if (![x, y, theta].every(Number.isFinite)) { omittedSquares += 1; continue; } if (!showSquares) continue; const ux = Math.cos(theta), uy = Math.sin(theta), vx = -uy, vy = ux; const points = [[1,1],[-1,1],[-1,-1],[1,-1]].map(([sx, sy]) => map(x + .5 * (sx * ux + sy * vx), y + .5 * (sx * uy + sy * vy))).map(([px, py]) => `${px},${py}`).join(" "); parts.push(`<polygon points="${points}" fill="${COLORS[square % COLORS.length]}99" stroke="${COLORS[square % COLORS.length]}"/>`); }
+    if (showTrails) {
+      for (const square of trailSquares()) {
+        const color = COLORS[square % COLORS.length];
+        const [opacity, lineWidth] = trailStyle(square);
+        parts.push(`<g data-center-trail="${xml(A.square_ids[square])}" fill="${color}" stroke="${color}" opacity="${opacity}" stroke-width="${lineWidth}">`);
+        for (const segment of trailSegments(frame, square)) {
+          const points = segment.map(([x, y]) => map(x, y));
+          parts.push(`<polyline points="${points.map(([x, y]) => `${x},${y}`).join(" ")}" fill="none" stroke-linejoin="round"/>`);
+          for (const [x, y] of points) parts.push(`<circle cx="${x}" cy="${y}" r="1.5" stroke="none"/>`);
+        }
+        const [startX, startY] = poseAt(trailStart(frame), square);
+        if (Number.isFinite(startX) && Number.isFinite(startY)) { const [x, y] = map(startX, startY); parts.push(`<circle cx="${x}" cy="${y}" r="3.5" fill="none"/>`); }
+        parts.push("</g>");
+      }
+    }
+    const measureContext = currentCanvas.getContext("2d");
+    for (let square = 0; square < N; square += 1) {
+      const [x, y, theta] = poseAt(frame, square);
+      if (![x, y, theta].every(Number.isFinite)) continue;
+      const center = map(x, y), label = labelLayout(measureContext, square);
+      const marker = orientationPoints(center, theta, scale, label);
+      if (showOrientation && marker) parts.push(`<line data-orientation="${xml(A.square_ids[square])}" x1="${marker[0][0]}" y1="${marker[0][1]}" x2="${marker[1][0]}" y2="${marker[1][1]}" stroke="#f2eee4" stroke-width="1.5"/>`);
+      if (showIds) parts.push(`<rect data-label="${xml(A.square_ids[square])}" x="${center[0] - label.halfWidth}" y="${center[1] - label.halfHeight}" width="${2 * label.halfWidth}" height="${2 * label.halfHeight}" fill="#0b1012"/><text x="${center[0]}" y="${center[1]}" text-anchor="middle" dominant-baseline="middle" fill="#f2eee4" font-family="ui-monospace, monospace" font-size="11">${xml(label.text)}</text>`);
+    }
+    if (showTrails) parts.push(`<text x="${margin}" y="${height - 12}" fill="#a5aaa7" font-family="monospace" font-size="11">Center trails connect saved positions through frame ${frame + 1}; skipped motion is not reconstructed.</text>`);
+    if (!validSide) parts.push(`<text x="${margin}" y="${height - 48}" fill="#e88475" font-family="monospace" font-size="12">invalid diagnostic side; boundary omitted</text>`);
+    if (omittedSquares) parts.push(`<text x="${margin}" y="${height - 30}" fill="#e88475" font-family="monospace" font-size="12">non-finite poses: ${omittedSquares} square(s) omitted</text>`);
+    parts.push(`<text x="${margin}" y="30" fill="#e7e5df" font-family="monospace" font-size="14">trial ${xml(DATA.metadata.trial_id)} · frame ${frame + 1}/${F} · ${xml(PHASES[Number(A.phase[frame])] || "UNKNOWN")}</text></svg>`);
+    const blob = new Blob([parts.join("")], {type: "image/svg+xml;charset=utf-8"}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `trial-${String(DATA.metadata.trial_id)}-frame-${frame + 1}.svg`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  }
+  document.getElementById("export-svg").addEventListener("click", exportCurrentSvg);
+  if (strategy) {
+    document.getElementById("go-best").addEventListener("click", () => seekFrame(strategy.best_frame));
+    document.getElementById("go-final-current").addEventListener("click", () => seekFrame(F - 1));
+    document.getElementById("strategy-graph").addEventListener("click", event => {
+      const box = event.currentTarget.getBoundingClientRect();
+      const fraction = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+      seekNormalizedWork(fraction);
+    });
+  }
+  function seekNormalizedWork(fraction) {
+    if (!strategy) { seekFrame(Math.round(fraction * (F - 1))); return; }
+    const work = fraction * Number(strategy.frames[F - 1].work);
+    let nearest = 0;
+    strategy.frames.forEach((item, index) => { if (Math.abs(Number(item.work) - work) < Math.abs(Number(strategy.frames[nearest].work) - work)) nearest = index; });
+    seekFrame(nearest);
+  }
+  window.asquerixTrajectory = {seekFrame, seekNormalizedWork, setPlaying, getFrame: () => frame, frameCount: F,
+    initialIdentity: DATA.metadata.initial_identity || null, frameMetadata: index => strategy ? strategy.frames[index] : null};
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent || !event.data || event.data.type !== "asquerix-seek") return;
+    if (event.data.mode === "work") seekNormalizedWork(Number(event.data.value));
+    else if (event.data.mode === "frame") seekFrame(Number(event.data.value));
+  });
+  render();
+})();
+</script>
+</body>
+</html>
