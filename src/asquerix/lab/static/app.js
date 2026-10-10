@@ -326,10 +326,14 @@ function faviconFrame(step){
     return `<rect x="${x}" y="${y}" width="4.5" height="4.5" transform="rotate(${angle.toFixed(1)} ${x+2.25} ${y+2.25})"/>`;}).join('');
   return 'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#2764ad"/><g fill="none" stroke="#e8eef3" stroke-width="1.4">${squares}</g></svg>`);
 }
+// Firefox ignores a changed href on an existing icon link, so each frame replaces the link element.
+function setFavicon(href){
+  for(const old of document.querySelectorAll('link[rel~=icon]'))old.remove();
+  const link=document.createElement('link');link.rel='icon';link.type='image/svg+xml';link.href=href;document.head.append(link);
+}
 function animateFavicon(on){
-  const link=document.querySelector('link[rel=icon]');
-  if(on&&!faviconTimer){let step=0;faviconTimer=setInterval(()=>{link.href=faviconFrame(step++);},250);}
-  if(!on&&faviconTimer){clearInterval(faviconTimer);faviconTimer=null;link.href='/favicon.ico';}
+  if(on&&!faviconTimer){let step=0;faviconTimer=setInterval(()=>setFavicon(faviconFrame(step++)),250);}
+  if(!on&&faviconTimer){clearInterval(faviconTimer);faviconTimer=null;setFavicon('/favicon.ico');}
 }
 function toast(message){const note=element('div',message,'toast');document.body.append(note);setTimeout(()=>note.remove(),2500);}
 async function start(){capabilities=await api('/capabilities');field('n').removeAttribute('max');try{bestKnown=await api('/references/best-known');}catch{bestKnown=null;}defaults=capabilities.defaults;inventory=await api('/devices');buildAdvanced();field('device').replaceChildren();for(const device of inventory.items){const option=element('option',`${device.name} · ${device.uuid}`);option.value=device.device;field('device').append(option);}document.getElementById('device-summary').textContent=inventory.items.length?inventory.items.map(item=>item.name).join(', '):'No accessible CUDA GPU';document.getElementById('launch-campaign').disabled=!inventory.items.length;document.getElementById('resource-warning').textContent=inventory.items.map(item=>`${item.device}: ${item.memory_used_mib}/${item.memory_total_mib} MiB in use, ${item.utilization_percent}% device activity. ${item.warning}`).join(' ');const identifier=location.hash.slice(1);if(/^[a-f0-9]{32}$/.test(identifier))await openCampaign(identifier);else await catalog();}
