@@ -109,17 +109,17 @@ class CpuSampler:
         return text[text.rindex(")") + 2:].split()  # the command name may contain spaces
 
     def _tree(self) -> list[int]:
-        parents = {}
-        for entry in os.scandir("/proc"):
-            if entry.name.isdigit():
-                try:
-                    parents[int(entry.name)] = int(self._fields(f"/proc/{entry.name}/stat")[1])
-                except (OSError, ValueError, IndexError):
-                    continue
-        tree, frontier = [self.root], [self.root]
+        # Walk down through each thread's `children` file instead of reading every process in /proc.
+        tree, frontier = [], [self.root]
         while frontier:
-            frontier = [pid for pid, parent in parents.items() if parent in frontier]
-            tree += frontier
+            pid = frontier.pop()
+            tree.append(pid)
+            try:
+                for task in os.scandir(f"/proc/{pid}/task"):
+                    with open(f"/proc/{pid}/task/{task.name}/children", encoding="ascii") as stream:
+                        frontier += [int(child) for child in stream.read().split()]
+            except OSError:
+                continue
         return tree
 
     def sample(self) -> dict | None:
