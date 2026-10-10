@@ -19,6 +19,7 @@ from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
+from .limits import MAX_SQUARES
 
 
 VALIDATOR_VERSION = "cpu-f64-projection-v2"
@@ -345,10 +346,10 @@ def validate_document(document: Any, tolerance: float = 1e-8) -> dict[str, Any]:
         return invalid("document is missing required field 'n'")
     declared_n = document["n"]
     if isinstance(declared_n, bool) or not isinstance(declared_n, Integral):
-        return invalid("document field 'n' must be an integer in [1, 1000]")
+        return invalid(f"document field 'n' must be an integer in [1, {MAX_SQUARES}]")
     n = int(declared_n)
-    if not 1 <= n <= 1000:
-        return invalid("document field 'n' must be an integer in [1, 1000]")
+    if not 1 <= n <= MAX_SQUARES:
+        return invalid(f"document field 'n' must be an integer in [1, {MAX_SQUARES}]")
 
     if "poses" not in document:
         return invalid("document is missing required field 'poses'")
