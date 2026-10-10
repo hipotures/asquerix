@@ -316,6 +316,12 @@ def test_parallel_validation_returns_the_serial_rows_and_holdout_is_not_repeated
     try:
         assert worker.result_rows(items) == [module._result_row(campaign, item) for item in items]
         assert worker.pool is not None
+        # The campaign path validates whole chunks with the batched validator; its rows match too.
+        chunk = {"states": states, "best": best, "current": current, "program_hashes": ["p"] * len(ids),
+                 "candidate_ids": ["c"] * len(ids), "arms": ["a"] * len(ids), "initial_ids": ids, "replicates": np.zeros(len(ids), np.uint64), "identifier": "i", "bank": "training", "bank_hash": "b", "attempt": 1}
+        rows = worker.validate_async(chunk).result()
+        expected = [module._result_row(campaign, item) for item in items]
+        assert [{key: row[key] for key in expected[0]} for row in rows] == expected
     finally:
         worker.close()
 

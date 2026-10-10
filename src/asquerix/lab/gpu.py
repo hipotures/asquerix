@@ -830,6 +830,7 @@ class StreamingBatch:
         wp.launch(terminations, dim=self.slots, inputs=[batch.states, codes], device=batch.device)
         termination = codes.numpy()
         self.timings["transfer_seconds"] += perf_counter() - start
+        self.timings["readback_seconds"] = self.timings.get("readback_seconds", 0.0) + perf_counter() - start
         self.running.append(int(((termination == 0) & (self.slot_episode >= 0)).sum()))
         finished = np.flatnonzero((termination != 0) & (self.slot_episode >= 0))
         self.newly = self.slot_episode[finished].copy()
@@ -849,6 +850,7 @@ class StreamingBatch:
             self.best[episodes] = np.transpose(out_best.numpy(), (1, 0, 2))
             self.current[episodes] = np.transpose(out_current.numpy(), (1, 0, 2))
             self.collected[episodes] = True
+            self.timings["gather_seconds"] = self.timings.get("gather_seconds", 0.0) + perf_counter() - start
             self.slot_episode[finished] = -1
             refill = finished[:max(0, min(len(finished), self.total - self.next_episode))]
             if len(refill) and not cancel:

@@ -66,6 +66,9 @@ class Datasets(Model):
 RETAINED_PER_METHOD = 50
 # A group holds several times the GPU slots so finished slots can be refilled while long programs run.
 GROUP_SLOT_FACTOR = 4
+# Automatic lambda stays at most 4096: a larger generation can outlast a whole time budget, so (1+lambda)
+# would never select a parent. A larger lambda can still be set explicitly.
+AUTO_LAMBDA_MAX = 4096
 
 
 def suggested_side(n: int) -> float:
@@ -248,7 +251,7 @@ class Campaign(Model):
         return self.datasets.training.valid_count * self.operator_replicates
 
     def effective_lambda(self) -> int:
-        return self.search.lambda_ or max(1, min(16384, GROUP_SLOT_FACTOR * self.batch_capacity // self.episodes_per_program()))
+        return self.search.lambda_ or max(1, min(AUTO_LAMBDA_MAX, GROUP_SLOT_FACTOR * self.batch_capacity // self.episodes_per_program()))
 
     def random_group_size(self) -> int:
         """Independent programs are evaluated together in a stream several times the slot count."""

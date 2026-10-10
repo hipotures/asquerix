@@ -36,6 +36,13 @@ def _pose_array(poses: Any) -> np.ndarray:
     same rule and therefore returns non-finite vertices for non-finite poses.
     """
 
+    if isinstance(poses, np.ndarray) and poses.dtype.kind == "f":
+        # Fast path for float arrays: every element is already a real, non-boolean number, and the float64
+        # conversion is the same exact widening the object path performs.
+        array = poses.astype(np.float64)
+        if array.ndim != 2 or array.shape[1] != _POSE_WIDTH:
+            raise ValueError("poses must have shape (n, 3)")
+        return array
     try:
         raw = np.asarray(poses, dtype=object)
         if any(isinstance(value, (bool, np.bool_)) or not isinstance(value, Real) for value in raw.flat):
@@ -275,9 +282,8 @@ def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, A
         edge_lengths = np.linalg.norm(edges, axis=2)
     if not bool(np.isfinite(edge_lengths).all()):
         return _invalid_result(tolerance_value, nonfinite=True)
-    if not bool(np.all(np.isclose(edge_lengths, 1.0,
-                                  rtol=_UNIT_EDGE_TOLERANCE,
-                                  atol=_UNIT_EDGE_TOLERANCE))):
+    # The np.isclose(edge_lengths, 1.0) test written out: |a - 1| <= atol + rtol * |1|, for finite a.
+    if not bool(np.all(np.abs(edge_lengths - 1.0) <= _UNIT_EDGE_TOLERANCE + _UNIT_EDGE_TOLERANCE * 1.0)):
         return _invalid_result(tolerance_value)
 
     half_side = 0.5 * side_value
@@ -286,15 +292,15 @@ def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, A
         return _invalid_result(tolerance_value, nonfinite=True)
     min_wall_clearance = float(wall_clearances.min())
 
-    pair_separations: list[float] = []
+    pair_separations = np.empty(0)
     if square_vertices.shape[0] > 1:
         try:
-            pair_separations = [float(value) for value in _pair_separations(square_vertices)]
+            pair_separations = _pair_separations(square_vertices)
         except ValueError:
             return _invalid_result(tolerance_value, nonfinite=True)
 
-    if pair_separations:
-        min_pair_separation: float | None = float(min(pair_separations))
+    if len(pair_separations):
+        min_pair_separation: float | None = float(pair_separations.min())
         pair_penetration = max(0.0, -min_pair_separation)
     else:
         min_pair_separation = None
@@ -303,10 +309,11 @@ def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, A
     wall_penetration = max(0.0, -min_wall_clearance)
     max_penetration = float(max(pair_penetration, wall_penetration))
 
-    clearances = pair_separations + [min_wall_clearance]
-    if any(clearance < -tolerance_value for clearance in clearances):
+    # The same comparisons as over the list of clearances, evaluated on the float64 array.
+    clearances = np.append(pair_separations, min_wall_clearance)
+    if bool((clearances < -tolerance_value).any()):
         status = "INVALID"
-    elif all(clearance > tolerance_value for clearance in clearances):
+    elif bool((clearances > tolerance_value).all()):
         status = "NUMERICALLY_VALIDATED"
     else:
         status = "INDETERMINATE"
@@ -320,6 +327,81 @@ def validate_pose(poses: Any, side: Any, tolerance: float = 1e-8) -> dict[str, A
         "tolerance": float(tolerance_value),
         "validator_version": VALIDATOR_VERSION,
     }
+
+
+def validate_poses(poses: np.ndarray, sides: np.ndarray, tolerance: float = 1e-8) -> list[dict[str, Any]]:
+    """`validate_pose` for many poses of the same square count at once, with identical results.
+
+    Every pose goes through the same element-wise float64 operations as in `validate_pose`, with a leading
+    batch axis. Poses that would take one of its early INVALID exits (non-finite data, degenerate or
+    non-unit squares, non-positive sides) are handed to `validate_pose` itself.
+    """
+
+    poses = np.asarray(poses)
+    sides = np.asarray(sides)
+    count = len(poses)
+    tolerance_value = _scalar(tolerance)
+    if (poses.ndim != 3 or poses.shape[2] != _POSE_WIDTH or poses.shape[1] < 1 or poses.dtype.kind != "f"
+            or sides.shape != (count,) or sides.dtype.kind != "f" or tolerance_value is None
+            or not np.isfinite(tolerance_value) or tolerance_value < 0.0):
+        return [validate_pose(pose, side, tolerance) for pose, side in zip(poses, sides)]
+    results: list[dict[str, Any] | None] = [None] * count
+    pairs_first, pairs_second = np.triu_indices(poses.shape[1], k=1)
+    # Batches stay bounded in memory: about 2**18 square pairs per block.
+    block = max(1, (1 << 18) // max(1, len(pairs_first)))
+    for start in range(0, count, block):
+        batch = poses[start:start + block].astype(np.float64)
+        side_values = sides[start:start + block].astype(np.float64)
+        with np.errstate(invalid="ignore", over="ignore", divide="ignore"):
+            cosine, sine = np.cos(batch[..., 2]), np.sin(batch[..., 2])
+            u = np.stack((cosine, sine), axis=-1)
+            v = np.stack((-sine, cosine), axis=-1)
+            signs = np.asarray(((1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0)), dtype=np.float64)
+            square_vertices = batch[..., None, :2] + 0.5 * (signs[None, :, 0, None] * u[..., None, :]
+                                                          + signs[None, :, 1, None] * v[..., None, :])
+            edges = np.roll(square_vertices, -1, axis=2) - square_vertices
+            edge_lengths = np.linalg.norm(edges, axis=3)
+            wall_clearances = (0.5 * side_values)[:, None, None, None] - np.abs(square_vertices)
+            normals = np.stack((-edges[..., 1], edges[..., 0]), axis=-1)
+            lengths = np.linalg.norm(normals, axis=3)
+            normalized = normals / lengths[..., None]
+            axes = np.concatenate((normalized[:, pairs_first], normalized[:, pairs_second]), axis=2)
+            first = np.matmul(square_vertices[:, pairs_first][:, :, None, :, :], axes[..., None])[..., 0]
+            second = np.matmul(square_vertices[:, pairs_second][:, :, None, :, :], axes[..., None])[..., 0]
+            gaps = np.maximum(second.min(axis=3) - first.max(axis=3), first.min(axis=3) - second.max(axis=3))
+            separations = gaps.max(axis=2)
+        axes_ok = (1, 2)  # lengths: (batch, squares, edges)
+        regular = (np.isfinite(batch).all(axis=(1, 2)) & np.isfinite(side_values) & (side_values > 0.0)
+                   & np.isfinite(square_vertices).all(axis=(1, 2, 3)) & np.isfinite(edge_lengths).all(axis=(1, 2))
+                   & (np.abs(edge_lengths - 1.0) <= _UNIT_EDGE_TOLERANCE + _UNIT_EDGE_TOLERANCE * 1.0).all(axis=(1, 2))
+                   & np.isfinite(wall_clearances).all(axis=(1, 2, 3)))
+        if len(pairs_first):
+            regular &= (np.isfinite(lengths).all(axis=axes_ok) & np.isfinite(normalized).all(axis=(1, 2, 3)) & ~(lengths <= 0.0).any(axis=axes_ok)
+                        & np.isfinite(first).all(axis=(1, 2, 3)) & np.isfinite(second).all(axis=(1, 2, 3)) & np.isfinite(gaps).all(axis=(1, 2)))
+        for offset in range(len(batch)):
+            index = start + offset
+            if not regular[offset]:
+                results[index] = validate_pose(poses[index], sides[index], tolerance)
+                continue
+            min_wall_clearance = float(wall_clearances[offset].min())
+            pair_separations = separations[offset]
+            if len(pair_separations):
+                min_pair_separation: float | None = float(pair_separations.min())
+                pair_penetration = max(0.0, -min_pair_separation)
+            else:
+                min_pair_separation, pair_penetration = None, 0.0
+            clearances = np.append(pair_separations, min_wall_clearance)
+            if bool((clearances < -tolerance_value).any()):
+                status = "INVALID"
+            elif bool((clearances > tolerance_value).all()):
+                status = "NUMERICALLY_VALIDATED"
+            else:
+                status = "INDETERMINATE"
+            results[index] = {"status": status, "min_pair_separation": min_pair_separation,
+                              "max_penetration": float(max(pair_penetration, max(0.0, -min_wall_clearance))),
+                              "min_wall_clearance": min_wall_clearance, "nonfinite": False,
+                              "tolerance": float(tolerance_value), "validator_version": VALIDATOR_VERSION}
+    return results
 
 
 def validate_document(document: Any, tolerance: float = 1e-8) -> dict[str, Any]:

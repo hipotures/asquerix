@@ -16,6 +16,7 @@ import numpy as np
 
 from ..persistence import open_jsonl_writer, read_json, read_jsonl, write_json
 from .config import RETAINED_PER_METHOD, Campaign, digest
+from ..geometry import validate_poses
 from .evaluation import result_row, score
 from .search import Controller, initial_pool
 from .storage import check_quota, environment, executable_identity, load_banks, load_npz, prepare_banks, sha256, write_npz
@@ -53,15 +54,27 @@ def _result_chunk(campaign: Campaign, items: list[tuple]) -> list[dict]:
     return [_result_row(campaign, item) for item in items]
 
 
+def _background():
+    """Validation processes yield the CPU to the thread that keeps the GPU fed; they still use every idle core."""
+    os.nice(10)
+
+
 def _validate_chunk(campaign: Campaign, chunk: dict) -> list[dict]:
     """Validate a chunk of episodes and finish their rows, in a pool process; arrays travel as whole blocks."""
-    rows = []
-    for index in range(len(chunk["states"])):
-        row = result_row(campaign, chunk["states"][index], chunk["best"][index], chunk["current"][index],
-                         program_hash=chunk["program_hashes"][index], bank_hash=chunk["bank_hash"],
-                         initial_id=chunk["initial_ids"][index], replicate=chunk["replicates"][index])
-        candidate_id = chunk["candidate_ids"][index]
-        row.update({"candidate_id": candidate_id, "bank": chunk["bank"], "arm": chunk["arms"][index],
+    rows, states = [], chunk["states"]
+    # The whole chunk's poses are validated at once; results equal validate_pose per pose.
+    best_validations = validate_poses(chunk["best"], states["best_side"], 1e-9)
+    current_validations = validate_poses(chunk["current"], states["result"]["side"], 1e-9)
+    profile_hash = digest(campaign.profile())
+    owners = chunk.get("owners", np.arange(len(states)))
+    for index in range(len(states)):
+        owner = int(owners[index])
+        row = result_row(campaign, states[index], chunk["best"][index], chunk["current"][index],
+                         program_hash=chunk["program_hashes"][owner], bank_hash=chunk["bank_hash"],
+                         initial_id=str(int(chunk["initial_ids"][index])), replicate=str(int(chunk["replicates"][index])),
+                         validations=(best_validations[index], current_validations[index]), profile_hash=profile_hash)
+        candidate_id = chunk["candidate_ids"][owner]
+        row.update({"candidate_id": candidate_id, "bank": chunk["bank"], "arm": chunk["arms"][owner],
                     "task_id": digest({"campaign": chunk["identifier"], "candidate": candidate_id, "episode": row["episode_key"]}),
                     "execution_attempt": chunk["attempt"],
                     "timing_scope": "Shared strategy batch; GPU time is not an isolated per-program measurement"})
@@ -103,6 +116,7 @@ class CampaignWorker:
         self.elapsed_before = self.state["elapsed_execution_seconds"]
         self.last_activity = 0.0
         self.deadline_reached = False
+        self.compiled = {}
         self.time_cut = None  # execution-elapsed second at which a method's time budget ends, during its groups
         self.pool = None
 
@@ -267,10 +281,14 @@ class CampaignWorker:
             if self.stopped():  # a stop before the group starts: nothing to record, the group stays pending
                 return [{**candidate, "score": {"complete": False}} for candidate in candidates]
             rows, arrays = [], []
-            programs = [compile_program(candidate["program"]["authored"]) for candidate in candidates]
+            # Programs compiled while they were generated are reused; others (controls, resumed groups) compile here.
+            programs = [self.compiled.pop(candidate["program"]["hash"], None) or compile_program(candidate["program"]["authored"])
+                        for candidate in candidates]
+            self.compiled.clear()  # proposals rejected as duplicates or left from a cut group
             attempt = self.state["group_attempts"].get(group_hash, 0) + 1
             self.state["group_attempts"][group_hash] = attempt
-            timing = {"validation_seconds": 0.0, "simulation_seconds": 0.0, "device_seconds": 0.0, "transfer_seconds": 0.0}
+            timing = {"validation_seconds": 0.0, "simulation_seconds": 0.0, "device_seconds": 0.0, "transfer_seconds": 0.0,
+                      "readback_seconds": 0.0, "gather_seconds": 0.0}
             self.event("TASK_GROUP_STARTED", {"group": group_hash, "bank": bank_name, "episodes": total, "attempt": attempt,
                                               "candidate_ids": [candidate["id"] for candidate in candidates]})
             self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=total,
@@ -296,13 +314,14 @@ class CampaignWorker:
                 stream_pids, stream_slots, stream_replicates = pids, initial_slots, replicates  # stream positions, never remapped
 
                 def submit(indices):
+                    # Per-episode metadata travels as arrays plus the chunk's own small program table.
                     indices = np.asarray(indices, dtype=np.int64)
-                    owners = stream_pids[indices]
+                    programs_in_chunk, owners = np.unique(stream_pids[indices], return_inverse=True)
                     return self.validate_async({
                         "states": batch.states[indices], "best": batch.best[indices], "current": batch.current[indices],
-                        "program_hashes": [hashes[owner] for owner in owners], "candidate_ids": [identities[owner] for owner in owners],
-                        "arms": [arm_names[owner] for owner in owners], "initial_ids": [str(int(value)) for value in bank["ids"][stream_slots[indices]]],
-                        "replicates": [str(int(value)) for value in stream_replicates[indices]],
+                        "owners": owners, "program_hashes": [hashes[owner] for owner in programs_in_chunk],
+                        "candidate_ids": [identities[owner] for owner in programs_in_chunk], "arms": [arm_names[owner] for owner in programs_in_chunk],
+                        "initial_ids": bank["ids"][stream_slots[indices]], "replicates": stream_replicates[indices],
                         "identifier": self.identifier, "bank": bank_name, "bank_hash": bank["hash"], "attempt": attempt})
 
                 chunk = max(512, min(8192, total // (VALIDATION_PROCESSES * 4)))
@@ -310,15 +329,17 @@ class CampaignWorker:
                     cancel = self.stopped() or self.cut()
                     cancelled = cancelled or cancel
                     done = batch.advance(cancel=cancel)
+                    submit_start = time.monotonic()
                     if not cancelled:
                         waiting.extend(batch.newly.tolist())
                         while len(waiting) >= chunk:
                             indices, waiting = waiting[:chunk], waiting[chunk:]
                             futures.append((indices, submit(indices)))
+                    timing["submit_seconds"] = timing.get("submit_seconds", 0.0) + time.monotonic() - submit_start
                     if done:
                         break
                     self.activity(active_episodes=total, stage="GPU: simulating episodes", stage_done=int(batch.collected.sum()), stage_total=total)
-                for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
+                for key in ("simulation_seconds", "device_seconds", "transfer_seconds", "readback_seconds", "gather_seconds"):
                     timing[key] += batch.timings.get(key, 0.0)
                 timing["setup_seconds"] = setup_seconds
                 order = np.arange(total)
@@ -485,7 +506,7 @@ class CampaignWorker:
             return [_result_row(self.campaign, item) for item in items]
         if self.pool is None:
             import multiprocessing
-            self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"))
+            self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"), initializer=_background)
         # The campaign is sent once per chunk, not once per episode: pickling it per row kept the parent busy.
         size = max(1, -(-len(items) // (VALIDATION_PROCESSES * 4)))
         chunks = [items[start:start + size] for start in range(0, len(items), size)]
@@ -499,7 +520,7 @@ class CampaignWorker:
             return future
         if self.pool is None:
             import multiprocessing
-            self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"))
+            self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"), initializer=_background)
         return self.pool.submit(_validate_chunk, self.campaign, chunk)
 
     def close(self):
@@ -645,7 +666,7 @@ class CampaignWorker:
                 self.state["arm_start_elapsed"].setdefault(method, self.elapsed() - self.state.get("arm_prior_elapsed", {}).get(method, 0.0))
                 # The time budget counts only this campaign's own search time for the method.
                 clock = self.state.setdefault("arm_clock", {}).setdefault(method, self.elapsed())
-                controller = Controller(self.campaign, method, self.state["shared_pool"], self.identifier,
+                controller = Controller(self.campaign, method, self.state["shared_pool"], self.identifier, compiled=self.compiled,
                                         state=self.state["controllers"].get(method), event=self.event)
                 # A continuation or resumed campaign shows its inherited counts before its first group finishes.
                 self.activity(phase="SEARCH", arm=method, generation=controller.generation,

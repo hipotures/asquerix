@@ -152,7 +152,9 @@ class Controller:
     """
 
     def __init__(self, campaign: Campaign, method: str, shared_pool: list[dict], campaign_id: str,
-                 *, state: dict | None = None, event=lambda kind, payload: None):
+                 *, state: dict | None = None, event=lambda kind, payload: None, compiled: dict | None = None):
+        # `compiled` collects each accepted program's Compiled form by hash, so the evaluator need not compile it again.
+        self.compiled = compiled
         if method not in campaign.search.methods:
             raise ValueError("Controller method is not in this frozen campaign")
         self.campaign, self.method, self.shared_pool, self.campaign_id = campaign, method, shared_pool, campaign_id
@@ -229,6 +231,8 @@ class Controller:
                     else:
                         authored = generate(self.rng, self.campaign.generation)
                     compiled = compile_program(authored)
+                    if self.compiled is not None:
+                        self.compiled[compiled.program_hash] = compiled
                 except ProgramError as error:
                     self.event("PROPOSAL_REJECTED", {"arm": self.method, "generation": self.generation, "retry": retry,
                                                      "reason": str(error), "mutation": mutation})

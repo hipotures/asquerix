@@ -18,10 +18,16 @@ def episode_key(program_hash: str, bank_hash: str, initial_id: str, replicate: s
 
 
 def result_row(campaign: Campaign, state: np.void, best: np.ndarray, current: np.ndarray,
-               *, program_hash: str, bank_hash: str, initial_id: str, replicate: str) -> dict:
+               *, program_hash: str, bank_hash: str, initial_id: str, replicate: str,
+               validations: tuple[dict, dict] | None = None, profile_hash: str | None = None) -> dict:
+    """One episode's record. `validations` may carry the (best, current) results of `validate_poses` for
+    this episode, which equal `validate_pose`; `profile_hash` may carry digest(campaign.profile())."""
     from .gpu import OUTCOMES, TERMINATIONS, defined_fields
-    best_validation = validate_pose(best, float(state["best_side"]), 1e-9)
-    current_validation = validate_pose(current, float(state["result"]["side"]), 1e-9)
+    if validations is None:
+        validations = (validate_pose(best, float(state["best_side"]), 1e-9),
+                       validate_pose(current, float(state["result"]["side"]), 1e-9))
+    best_validation, current_validation = validations
+    profile_hash = profile_hash or digest(campaign.profile())
     termination = TERMINATIONS[int(state["termination"])]
     eligible = (int(state["termination"]) in (1, 2, 3)
                 and int(state["best_feasible"]) == 1
@@ -31,8 +37,8 @@ def result_row(campaign: Campaign, state: np.void, best: np.ndarray, current: np
         scalar = array[0]
         values[name] = str(int(scalar)) if scalar.dtype == np.dtype("uint64") else scalar.item()
     reserved = 2 * (2 * campaign.n + campaign.n * (campaign.n - 1) // 2) + campaign.n
-    return {"episode_key": episode_key(program_hash, bank_hash, initial_id, replicate, digest(campaign.profile())),
-            "program_hash": program_hash, "bank_hash": bank_hash, "profile_hash": digest(campaign.profile()),
+    return {"episode_key": episode_key(program_hash, bank_hash, initial_id, replicate, profile_hash),
+            "program_hash": program_hash, "bank_hash": bank_hash, "profile_hash": profile_hash,
             "initial_id": initial_id, "replicate": replicate, "best_L": float(state["best_side"]),
             "current_L": float(state["result"]["side"]), "termination": termination,
             "operation_outcome": OUTCOMES[int(state["last_outcome"])], "gpu_feasible": bool(state["best_feasible"]),
