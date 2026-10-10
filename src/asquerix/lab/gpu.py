@@ -201,8 +201,8 @@ def _valid(ins: Instruction, pc: int, length: int):
     return valid
 
 
-@wp.kernel
-def initialize(cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dtype=wp.vec3),
+@wp.func
+def _initialize(world: int, cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dtype=wp.vec3),
                initial_results: wp.array(dtype=Result), ids: wp.array(dtype=wp.uint64),
                replicates: wp.array(dtype=wp.uint64), program_ids: wp.array(dtype=int),
                code: wp.array2d(dtype=Instruction), lengths: wp.array(dtype=int),
@@ -210,7 +210,6 @@ def initialize(cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dty
                best: wp.array2d(dtype=wp.vec3), states: wp.array(dtype=VM), recording: int,
                trace_poses: wp.array2d(dtype=wp.vec3), frames: wp.array(dtype=Frame),
                events: wp.array(dtype=Frame), capture: wp.array(dtype=Capture), frame_cap: int):
-    world = wp.tid()
     vm = VM()
     vm.result = initial_results[world]
     vm.entry_side = vm.result.side
@@ -250,6 +249,31 @@ def initialize(cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dty
         capture[0] = c
         _record(current, world, cfg.n, vm, vm.result.side, 0, 0, 1, trace_poses, frames, events, capture, frame_cap)
     states[world] = vm
+
+
+@wp.kernel
+def initialize(cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dtype=wp.vec3),
+               initial_results: wp.array(dtype=Result), ids: wp.array(dtype=wp.uint64),
+               replicates: wp.array(dtype=wp.uint64), program_ids: wp.array(dtype=int),
+               code: wp.array2d(dtype=Instruction), lengths: wp.array(dtype=int),
+               current: wp.array2d(dtype=wp.vec3), trial: wp.array2d(dtype=wp.vec3),
+               best: wp.array2d(dtype=wp.vec3), states: wp.array(dtype=VM), recording: int,
+               trace_poses: wp.array2d(dtype=wp.vec3), frames: wp.array(dtype=Frame),
+               events: wp.array(dtype=Frame), capture: wp.array(dtype=Capture), frame_cap: int):
+    _initialize(wp.tid(), cfg, operator_seed, inputs, initial_results, ids, replicates, program_ids, code, lengths, current, trial, best, states, recording, trace_poses, frames, events, capture, frame_cap)
+
+
+@wp.kernel
+def initialize_slots(slots: wp.array(dtype=int), cfg: Parameters, operator_seed: wp.uint64, inputs: wp.array2d(dtype=wp.vec3),
+               initial_results: wp.array(dtype=Result), ids: wp.array(dtype=wp.uint64),
+               replicates: wp.array(dtype=wp.uint64), program_ids: wp.array(dtype=int),
+               code: wp.array2d(dtype=Instruction), lengths: wp.array(dtype=int),
+               current: wp.array2d(dtype=wp.vec3), trial: wp.array2d(dtype=wp.vec3),
+               best: wp.array2d(dtype=wp.vec3), states: wp.array(dtype=VM), recording: int,
+               trace_poses: wp.array2d(dtype=wp.vec3), frames: wp.array(dtype=Frame),
+               events: wp.array(dtype=Frame), capture: wp.array(dtype=Capture), frame_cap: int):
+    """Start new episodes in the listed slots; each slot is initialized exactly as a fresh world."""
+    _initialize(slots[wp.tid()], cfg, operator_seed, inputs, initial_results, ids, replicates, program_ids, code, lengths, current, trial, best, states, recording, trace_poses, frames, events, capture, frame_cap)
 
 
 @wp.kernel
@@ -724,6 +748,88 @@ class StrategyBatch:
         return (self.trace_poses.numpy()[:count].copy(), self.frames.numpy()[:count].copy(),
                 self.events.numpy()[:event_count].copy(),
                 {name: int(captured[name]) for name in captured.dtype.names})
+
+
+class StreamingBatch:
+    """Evaluate many episodes in a fixed number of GPU slots, refilling each slot as its episode ends.
+
+    Programs differ widely in length, so in a plain batch most worlds finish early and wait for the
+    longest episode. Here a finished slot's result is collected at the next slice boundary and a queued
+    episode starts in its place, so the GPU stays full until the queue is empty. Each episode is
+    initialized and executed exactly as in StrategyBatch; only the slot it occupies differs.
+    """
+
+    def __init__(self, campaign: Campaign, programs: list[Compiled], poses: np.ndarray,
+                 initial_results: np.ndarray, ids: np.ndarray, replicates: np.ndarray, program_ids: np.ndarray):
+        total = len(ids)
+        if total < 1 or poses.shape != (total, campaign.n, 3) or len(initial_results) != total:
+            raise ValueError("Invalid streaming task table")
+        slots = min(total, campaign.batch_capacity)
+        first = np.arange(slots)
+        # The first wave uses the ordinary batch, which validates programs, dtypes and the device.
+        self.batch = StrategyBatch(campaign, programs, poses[first], initial_results[first], ids[first],
+                                   replicates[first], program_ids[first])
+        self.campaign, self.total, self.slots = campaign, total, slots
+        self.poses, self.initial_results, self.ids = poses, initial_results, ids
+        self.replicates, self.program_ids = replicates, program_ids
+        self.slot_episode = first.copy()          # episode index occupying each slot (-1 when idle)
+        self.next_episode = slots
+        self.states = np.zeros(total, dtype=VM.numpy_dtype())
+        self.best = np.empty((total, campaign.n, 3), dtype=np.float32)
+        self.current = np.empty((total, campaign.n, 3), dtype=np.float32)
+        self.collected = np.zeros(total, dtype=bool)
+        self.timings = self.batch.timings
+        self.running = []  # episodes still running in slots after each slice, a load measure
+
+    def advance(self, *, cancel: bool = False) -> bool:
+        batch = self.batch
+        batch.advance(cancel=cancel)
+        states = batch.latest
+        self.running.append(int(((states["termination"] == 0) & (self.slot_episode >= 0)).sum()))
+        finished = np.flatnonzero((states["termination"] != 0) & (self.slot_episode >= 0))
+        if len(finished):
+            start = perf_counter()
+            best = batch.best.numpy()
+            current = batch.current.numpy()
+            episodes = self.slot_episode[finished]
+            self.states[episodes] = states[finished]
+            self.best[episodes] = np.transpose(best[:, finished], (1, 0, 2))
+            self.current[episodes] = np.transpose(current[:, finished], (1, 0, 2))
+            self.collected[episodes] = True
+            self.slot_episode[finished] = -1
+            refill = finished[:max(0, min(len(finished), self.total - self.next_episode))]
+            if len(refill) and not cancel:
+                episodes = np.arange(self.next_episode, self.next_episode + len(refill))
+                self.next_episode += len(refill)
+                self.slot_episode[refill] = episodes
+                inputs = batch.inputs.numpy()
+                inputs[:, refill] = np.transpose(self.poses[episodes], (1, 0, 2))
+                batch.inputs.assign(inputs)
+                for name, values in (("initial_results", self.initial_results), ("ids", self.ids),
+                                     ("replicates", self.replicates), ("program_ids", self.program_ids)):
+                    array = getattr(batch, name).numpy()
+                    array[refill] = values[episodes]
+                    getattr(batch, name).assign(array)
+                slot_array = wp.array(refill.astype(np.int32), dtype=int, device=batch.device)
+                wp.launch(initialize_slots, dim=len(refill), inputs=[slot_array, batch.cfg, wp.uint64(int(self.campaign.operator_seed)),
+                          batch.inputs, batch.initial_results, batch.ids, batch.replicates, batch.program_ids,
+                          batch.code, batch.lengths, batch.current, batch.trial, batch.best, batch.states,
+                          0, batch.trace_poses, batch.frames, batch.events, batch.capture, batch.frame_cap],
+                          device=batch.device, block_dim=32)
+                wp.synchronize_device(batch.device)
+            self.timings["transfer_seconds"] += perf_counter() - start
+        if cancel:  # a cancelled stream reports queued episodes as never started
+            return True
+        return bool(self.collected.all())
+
+    def occupancy(self) -> float:
+        """Mean fraction of slots running an episode over the slices of this stream."""
+        return sum(self.running) / (len(self.running) * self.slots) if self.running else 0.0
+
+    def collect(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if not self.collected.all():
+            raise ValueError("Cannot collect unfinished episodes")
+        return self.states.copy(), self.best.copy(), self.current.copy()
 
 
 def defined_fields(states: np.ndarray) -> dict[str, np.ndarray]:

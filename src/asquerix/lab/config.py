@@ -64,6 +64,8 @@ class Datasets(Model):
 
 
 RETAINED_PER_METHOD = 50
+# A group holds several times the GPU slots so finished slots can be refilled while long programs run.
+GROUP_SLOT_FACTOR = 4
 
 
 def suggested_side(n: int) -> float:
@@ -222,9 +224,9 @@ class Campaign(Model):
             compile_program(program)
         if any(not 0 < threshold <= self.initial_side for threshold in self.thresholds):
             raise ValueError("thresholds must be finite, positive, and no larger than initial side")
-        if self.n > 0.3 * self.initial_side ** 2:
+        if self.n > 0.35 * self.initial_side ** 2:
             raise ValueError(f"{self.n} squares cover {self.n / self.initial_side ** 2:.0%} of a {self.initial_side:g} x {self.initial_side:g} "
-                             f"container; random starts need at most 30%. Use an initial side of at least {suggested_side(self.n):g}.")
+                             f"container; random starts need at most 35%. Use an initial side of at least {suggested_side(self.n):g}.")
         if self.search.time_budget_seconds and self.limits.max_seconds < self.search.time_budget_seconds:
             raise ValueError("the hard time limit must not be shorter than the search time budget")
         if self.plan()["estimated_native_bytes"] > self.limits.max_artifact_mib * 1024**2:
@@ -246,11 +248,11 @@ class Campaign(Model):
         return self.datasets.training.valid_count * self.operator_replicates
 
     def effective_lambda(self) -> int:
-        return self.search.lambda_ or max(1, min(4096, self.batch_capacity // self.episodes_per_program()))
+        return self.search.lambda_ or max(1, min(4096, GROUP_SLOT_FACTOR * self.batch_capacity // self.episodes_per_program()))
 
     def random_group_size(self) -> int:
-        """Independent programs are evaluated together until they fill the batch capacity."""
-        return max(self.effective_lambda(), self.batch_capacity // self.episodes_per_program())
+        """Independent programs are evaluated together in a stream several times the slot count."""
+        return max(self.effective_lambda(), GROUP_SLOT_FACTOR * self.batch_capacity // self.episodes_per_program())
 
     def profile(self) -> dict:
         return {"name": self.evaluation_profile, "n": self.n, "initial_side": self.initial_side,

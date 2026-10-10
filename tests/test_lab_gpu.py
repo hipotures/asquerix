@@ -364,7 +364,7 @@ def test_time_budget_fills_the_gpu_keeps_important_evidence_and_still_runs_holdo
                     datasets={"training": {"first_id": "100", "valid_count": 4}, "holdout": {"first_id": "200", "valid_count": 2}},
                     generation={"min_nodes": 2, "max_nodes": 4}, recording={"automatic": False}, publication={"enabled": False},
                     limits={"max_seconds": 120})
-    assert spec.effective_lambda() == 64 and spec.random_group_size() == 64
+    assert spec.effective_lambda() == 256 and spec.random_group_size() == 256
     summary, state, messages = _run_worker(tmp_path, "9" * 32, spec)
     assert summary["state"] == "COMPLETED" and summary["stop_reason"] is None
     assert {state["outcome"] for state in summary["controllers"].values()} == {"TIME_BUDGET_REACHED"}
@@ -387,3 +387,55 @@ def test_time_budget_fills_the_gpu_keeps_important_evidence_and_still_runs_holdo
     assert len(with_poses) < 3 * RETAINED_PER_METHOD < len(searched)
     winners = {winner["id"] for winner in state["frozen_winners"]}
     assert winners <= with_poses and all(candidate.get("holdout_score") for candidate in state["candidates"] if candidate["id"] in winners)
+
+
+def _mixed_programs(count, seed):
+    import random
+    from asquerix.lab.config import Generation
+    from asquerix.lab.search import generate
+    rng = random.Random(seed)
+    return [compile_program(generate(rng, Generation())) for _ in range(count)]
+
+
+def test_streaming_slots_give_the_same_bytes_as_one_batch(cuda_device):
+    from asquerix.lab.gpu import StreamingBatch
+    initial, poses = starts(Config(n=6), 20, 700, cuda_device)
+    programs = _mixed_programs(6, 11)
+    slots = np.tile(np.arange(20), 6)
+    pids = np.repeat(np.arange(6), 20).astype(np.int32)
+    ids = np.arange(700, 720, dtype=np.uint64)[slots]
+    replicates = np.zeros(len(ids), dtype=np.uint64)
+    spec = Campaign(name="Stream", n=6, batch_capacity=len(ids), publication={"enabled": False})
+    whole = StrategyBatch(spec, programs, poses[slots], initial[slots], ids, replicates, pids)
+    while not whole.advance():
+        pass
+    expected = whole.collect()
+    narrow = Campaign.model_validate({**spec.document(), "batch_capacity": 16})
+    stream = StreamingBatch(narrow, programs, poses[slots], initial[slots], ids, replicates, pids)
+    while not stream.advance():
+        pass
+    actual = stream.collect()
+    for name, array in defined_fields(expected[0]).items():
+        np.testing.assert_array_equal(defined_fields(actual[0])[name].view(np.uint8), array.view(np.uint8), err_msg=name)
+    np.testing.assert_array_equal(actual[1].view(np.uint8), expected[1].view(np.uint8))
+    np.testing.assert_array_equal(actual[2].view(np.uint8), expected[2].view(np.uint8))
+
+
+def test_streaming_keeps_slots_busy_when_program_lengths_differ(cuda_device):
+    from asquerix.lab.gpu import StreamingBatch
+    initial, poses = starts(Config(n=11), 32, 800, cuda_device)
+    programs = _mixed_programs(64, 7)
+    slots = np.tile(np.arange(32), 64)
+    pids = np.repeat(np.arange(64), 32).astype(np.int32)
+    ids = np.arange(800, 832, dtype=np.uint64)[slots]
+    spec = Campaign(name="Load", n=11, batch_capacity=256, publication={"enabled": False})
+    stream = StreamingBatch(spec, programs, poses[slots], initial[slots], ids, np.zeros(len(ids), dtype=np.uint64), pids)
+    while not stream.advance():
+        pass
+    # 2048 episodes in 256 slots: slots stay occupied until the queue runs out; one plain batch idles most of the time.
+    whole = Campaign.model_validate({**spec.document(), "batch_capacity": len(ids)})
+    plain = StreamingBatch(whole, programs, poses[slots], initial[slots], ids, np.zeros(len(ids), dtype=np.uint64), pids)
+    while not plain.advance():
+        pass
+    print(f"slot occupancy: streaming {stream.occupancy():.0%}, one batch {plain.occupancy():.0%}")
+    assert stream.occupancy() > 2 * plain.occupancy()

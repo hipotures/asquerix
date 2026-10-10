@@ -202,7 +202,7 @@ class CampaignWorker:
         A group's results are admitted atomically: its first part's receipt, written last, records every
         program's score, so a resumed campaign never evaluates a finished group again.
         """
-        from .gpu import StrategyBatch, defined_fields
+        from .gpu import StreamingBatch, defined_fields
         bank = self.banks[bank_name]
         episodes_per_candidate = len(bank["ids"]) * self.campaign.operator_replicates
         total = len(candidates) * episodes_per_candidate
@@ -225,7 +225,6 @@ class CampaignWorker:
                 self.remember_chunk(part)
         else:
             rows, arrays = [], []
-            chunk_size = min(self.campaign.batch_capacity, 32768)
             programs = [compile_program(candidate["program"]["authored"]) for candidate in candidates]
             attempt = self.state["group_attempts"].get(group_hash, 0) + 1
             self.state["group_attempts"][group_hash] = attempt
@@ -233,46 +232,44 @@ class CampaignWorker:
             self.event("TASK_GROUP_STARTED", {"group": group_hash, "bank": bank_name, "episodes": total, "attempt": attempt,
                                               "candidate_ids": [candidate["id"] for candidate in candidates]})
             self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=total)
-            for first in range(0, total, chunk_size):
-                if self.stopped():
-                    break
+            if not self.stopped():
                 if digest(executable_identity()) != self.state["executable_hash"]:
                     raise InterruptedError("Executable changed before task admission")
-                count = min(chunk_size, total - first)
-                indices = np.arange(first, first + count, dtype=np.int64)
+                indices = np.arange(total, dtype=np.int64)
                 pids = (indices // episodes_per_candidate).astype(np.int32)
                 local = indices % episodes_per_candidate
                 initial_slots = (local // self.campaign.operator_replicates).astype(np.int32)
                 replicates = (local % self.campaign.operator_replicates).astype(np.uint64)
-                self.state["submitted_episode_attempts"] += count
-                batch = StrategyBatch(self.campaign, programs, bank["poses"][initial_slots],
-                                      bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
+                self.state["submitted_episode_attempts"] += total
+                # GPU slots are refilled as episodes finish, so long programs do not leave the GPU idle.
+                batch = StreamingBatch(self.campaign, programs, bank["poses"][initial_slots],
+                                       bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
                 while not batch.advance(cancel=self.stopped()):
-                    self.activity(active_episodes=count)
-                states, best, current = batch.collect()
+                    self.activity(active_episodes=total)
                 for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
                     timing[key] += batch.timings.get(key, 0.0)
-                validation_start = time.monotonic()
-                validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
-                                               bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
-                                              for index in range(count)])
-                timing["validation_seconds"] += time.monotonic() - validation_start
-                for index, row in enumerate(validated):
-                    candidate = candidates[int(pids[index])]
-                    row.update({"candidate_id": candidate["id"], "bank": bank_name, "arm": candidate["arm"],
-                                "task_id": digest({"campaign": self.identifier, "candidate": candidate["id"], "episode": row["episode_key"]}),
-                                "execution_attempt": attempt,
-                                "timing_scope": "Shared strategy batch; GPU time is not an isolated per-program measurement"})
-                rows.extend(validated)
-                fields = defined_fields(states)
-                arrays.append({"best_poses": best, "current_poses": current, "initial_ids": bank["ids"][initial_slots],
-                               "replicates": replicates, "program_indices": pids,
-                               **{"state_" + name: array for name, array in fields.items()}})
+                if not self.stopped():
+                    states, best, current = batch.collect()
+                    validation_start = time.monotonic()
+                    validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
+                                                   bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
+                                                  for index in range(total)])
+                    timing["validation_seconds"] += time.monotonic() - validation_start
+                    for index, row in enumerate(validated):
+                        candidate = candidates[int(pids[index])]
+                        row.update({"candidate_id": candidate["id"], "bank": bank_name, "arm": candidate["arm"],
+                                    "task_id": digest({"campaign": self.identifier, "candidate": candidate["id"], "episode": row["episode_key"]}),
+                                    "execution_attempt": attempt,
+                                    "timing_scope": "Shared strategy batch; GPU time is not an isolated per-program measurement"})
+                    rows.extend(validated)
+                    arrays.append({"best_poses": best, "current_poses": current, "initial_ids": bank["ids"][initial_slots],
+                                   "replicates": replicates, "program_indices": pids,
+                                   **{"state_" + name: array for name, array in defined_fields(states).items()}})
             executed = sum(row["termination"] != "CANCELLED" for row in rows)
             self.state["completed_episode_executions"] += executed
             scores = self.scores(candidates, rows, episodes_per_candidate)
             keep = set()
-            if len(rows) == total:  # a group cut short by a stop is not admitted; a resume repeats it
+            if len(rows) == total and executed == total:  # a group cut short by a stop is not admitted; a resume repeats it
                 keep = self.retained(candidates, scores, bank_name)
                 persist_start = time.monotonic()
                 merged = {name: np.concatenate([part[name] for part in arrays]) for name in arrays[0]}

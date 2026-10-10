@@ -13,7 +13,7 @@ def test_http_submission_idempotency_pagination_and_compilation(tmp_path):
     app = create_app(tmp_path, worker_enabled=False)
     with TestClient(app, base_url="http://127.0.0.1:8765") as client:
         assert client.get("/").status_code == 200
-        assert client.get("/api/v1/capabilities").json()["square_count"] == [1, 32]
+        assert client.get("/api/v1/capabilities").json()["square_count"] == [1, None]
         response = client.post("/api/v1/campaigns", json=Campaign(name="HTTP campaign").document(), headers=HEADERS)
         assert response.status_code == 202
         assert client.post("/api/v1/campaigns", json=Campaign(name="HTTP campaign").document(), headers=HEADERS).json() == response.json()
