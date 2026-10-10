@@ -49,6 +49,10 @@ def _result_row(campaign: Campaign, item: tuple) -> dict:
                       initial_id=initial_id, replicate=replicate)
 
 
+def _result_chunk(campaign: Campaign, items: list[tuple]) -> list[dict]:
+    return [_result_row(campaign, item) for item in items]
+
+
 class CampaignWorker:
     def __init__(self, job: dict, *, emit, signal, signal_since):
         self.identifier = job["id"]
@@ -417,8 +421,10 @@ class CampaignWorker:
         if self.pool is None:
             import multiprocessing
             self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"))
-        chunk = max(1, len(items) // (VALIDATION_PROCESSES * 4))
-        return list(self.pool.map(_result_row, [self.campaign] * len(items), items, chunksize=chunk))
+        # The campaign is sent once per chunk, not once per episode: pickling it per row kept the parent busy.
+        size = max(1, -(-len(items) // (VALIDATION_PROCESSES * 4)))
+        chunks = [items[start:start + size] for start in range(0, len(items), size)]
+        return [row for rows in self.pool.map(_result_chunk, [self.campaign] * len(chunks), chunks) for row in rows]
 
     def close(self):
         if self.pool is not None:
