@@ -195,7 +195,7 @@ async function render(){
   document.getElementById('campaign-progress-label').textContent=timed&&state!=='COMPLETED'?`${duration(Math.min(seconds,timed))} of ${duration(timed)} search time · ${done} scientific episodes${seconds>=timed?' · holdout and replays':''}`:`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
   // What the worker is doing right now (GPU simulation, CPU validation, disk writes...), with its duration.
   const stage=document.getElementById('campaign-stage');
-  stage.textContent=active&&summary.stage?`Now: ${summary.stage}${summary.stage_total?` · ${summary.stage_done!=null?`${summary.stage_done} / `:''}${summary.stage_total}`:''}${summary.stage_since?` · for ${duration(Math.max(0,Date.now()/1000-summary.stage_since))}`:''}`:'';
+  stage.textContent=active&&summary.stage?`${summary.stage}${summary.stage_total?` · ${summary.stage_done!=null?`${summary.stage_done} / `:''}${summary.stage_total}`:''}${summary.stage_since?` · for ${duration(Math.max(0,Date.now()/1000-summary.stage_since))}`:''}`:'';
 
   const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
   const line=document.getElementById('campaign-provenance');
