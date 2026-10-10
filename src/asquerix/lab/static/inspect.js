@@ -99,8 +99,24 @@ function programView(target, candidate, candidates = []) {
     diff.append(side(candidate.mutation.before, "Parent", "before"), side(candidate.mutation.after, "This candidate", "after"));
     section.append(diff);
     target.append(section);
+    // Parent and child side by side on the ranking quantities (lower is better in every row).
     const parent = candidates.find(item => item.id === candidate.parent_id);
-    target.append(element("p", `Parent: ${candidate.parent_id || candidate.parent_hash}. Child tuple: ${JSON.stringify(candidate.score?.ranking_tuple || null)}. Parent tuple: ${JSON.stringify(parent?.score?.ranking_tuple || null)}.`, "muted"));
+    const child = candidate.score?.ranking_tuple, before = parent?.score?.ranking_tuple;
+    const table = element("table", undefined, "compare"), head = element("tr");
+    const parentName = candidate.parent_id ? `Parent #${candidate.parent_id.split(":").at(-1)}` : "Parent";
+    for (const text of ["", parentName, "This candidate", "Change"]) head.append(element("th", text, text ? "num" : ""));
+    table.append(head);
+    const rows = [["Mean L", 0, 6], ["Median L", 1, 6], ["Charged work", 2, 0], ["Instructions", 3, 0]];
+    for (const [label, index, digits] of rows) {
+      const row = element("tr"), a = before?.[index], b = child?.[index];
+      const format = value => typeof value === "number" ? (digits ? value.toFixed(digits) : Math.round(value).toLocaleString("en")) : "—";
+      const delta = typeof a === "number" && typeof b === "number" ? b - a : null;
+      const change = element("td", delta === null ? "—" : `${delta > 0 ? "+" : ""}${digits ? delta.toFixed(digits) : Math.round(delta).toLocaleString("en")}`, "num");
+      if (delta) change.classList.add(delta < 0 ? "better" : "worse");
+      row.append(element("td", label), element("td", format(a), "num"), element("td", format(b), "num"), change);
+      table.append(row);
+    }
+    section.append(table);
   } else target.append(element("p", candidate.parent_id ? `Parent: ${candidate.parent_id}` : "Independently generated or fixed; no parent.", "muted"));
 }
 
