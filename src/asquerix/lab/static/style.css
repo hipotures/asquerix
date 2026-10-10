@@ -167,3 +167,6 @@ label > input[inputmode=numeric]{align-self:flex-start;width:22ch;font-variant-n
 /* Five status tiles; the speed tile's second line is smaller. */
 .statusline{grid-template-columns:repeat(5,1fr)}
 @media (max-width:1050px){.statusline{grid-template-columns:repeat(3,1fr)}}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:20;padding:10px 16px;border-radius:6px;background:var(--strong-bg);color:var(--strong-ink);font-size:13px;box-shadow:0 6px 18px var(--popover-shadow)}
+header .mark{cursor:default;user-select:none}

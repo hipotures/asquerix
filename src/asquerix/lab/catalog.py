@@ -216,6 +216,14 @@ class Catalog:
                 "first_id": str(bounds[0] or 0), "last_id": str(bounds[1] or 0), "total": bounds[2],
                 "cursor_reset": after > (bounds[1] or 0)}
 
+    def recent_events(self, identifier: str, limit: int = 60, *, skip=("CANDIDATE_GENERATED", "CANDIDATE_RESULT", "PROPOSAL_DUPLICATE", "PROPOSAL_REJECTED")) -> list[dict]:
+        """The latest events, newest last, without the per-program events that would flood a diagnosis."""
+        marks = ",".join("?" for _ in skip)
+        with self.lock:
+            rows = self.db.execute(f"SELECT * FROM events WHERE campaign_id=? AND kind NOT IN ({marks}) ORDER BY id DESC LIMIT ?",
+                                   (identifier, *skip, limit)).fetchall()
+        return [{"id": row["id"], "kind": row["kind"], "created": row["created"], "payload": json.loads(row["payload"])} for row in reversed(rows)]
+
     def candidate(self, campaign_id: str, candidate: dict):
         program = candidate["program"]
         with self.transaction() as db:

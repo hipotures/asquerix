@@ -207,6 +207,55 @@ def create_app(root: Path = Path("runs/lab"), *, host="127.0.0.1", port=8765,
         power["checked"] = 0.0
         return change
 
+    @app.get("/api/v1/debug")
+    def debug(campaign_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None):
+        """One document describing the server and, optionally, a campaign, for diagnosing a problem."""
+        import platform, subprocess
+        from .storage import executable_identity, digest as identity_digest
+        root = Path(__file__).resolve().parents[3]
+        try:
+            revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, timeout=3).stdout.strip()
+            dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root, capture_output=True, text=True, timeout=3).stdout.split("\n")
+        except (OSError, subprocess.SubprocessError):
+            revision, dirty = None, []
+        monitor = service.gpu_monitor.snapshot()
+        report = {"generated_at": time.time(), "generated_at_text": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                  "server": {"source_revision": revision, "modified_files": [line[3:] for line in dirty if line.strip()],
+                             "executable_hash_now": identity_digest(executable_identity()), "python": platform.python_version(),
+                             "worker_alive": bool(service.process and service.process.is_alive()), "worker_ready": service.ready,
+                             "active_campaign": service.active, "catalog": str(service.catalog.path)},
+                  "gpus": monitor["gpus"] or [{key: device[key] for key in ("device", "name", "uuid", "memory_used_mib", "memory_total_mib", "utilization_percent")}
+                                              for device in service.inventory()],
+                  "gpu_monitor": {key: monitor[key] for key in ("session", "live", "campaign_id", "started", "finished", "error")},
+                  "recent_campaigns": [{"id": item["id"], "name": item["spec"]["name"], "n": item["spec"]["n"], "state": item["state"],
+                                        "error": item["summary"].get("error"), "updated": item["updated"]}
+                                       for item in service.catalog.campaigns(limit=8)["items"]]}
+        if campaign_id:
+            campaign = service.catalog.get(campaign_id)
+            directory = service.directory(campaign_id)
+            checkpoint_path = service.root / "checkpoints" / (campaign_id + ".json.gz")
+            checkpoint = None
+            if checkpoint_path.is_file():
+                from ..persistence import read_json
+                state = read_json(checkpoint_path)
+                checkpoint = {"phase": state.get("phase"), "executable_hash": state.get("executable_hash"),
+                              "executable_matches_now": state.get("executable_hash") == report["server"]["executable_hash_now"],
+                              "completed_episode_executions": state.get("completed_episode_executions"),
+                              "elapsed_execution_seconds": state.get("elapsed_execution_seconds"),
+                              "controllers": {method: {key: value.get(key) for key in ("outcome", "count", "completed", "generation", "parent_id")}
+                                              for method, value in state.get("controllers", {}).items()},
+                              "pending_groups": {method: len(value.get("pending", [])) for method, value in state.get("controllers", {}).items()},
+                              "chunks": len(state.get("chunks", [])), "retained_programs": len(state.get("candidates", []))}
+            error = None
+            if (directory / "error.json.gz").is_file():
+                from ..persistence import read_json
+                error = read_json(directory / "error.json.gz")
+            report["campaign"] = {"id": campaign_id, "state": campaign["state"], "created": campaign["created"], "updated": campaign["updated"],
+                                  "device_uuid": campaign["device_uuid"], "spec": campaign["spec"], "summary": campaign["summary"],
+                                  "publication": campaign["publication"], "error_file": error, "checkpoint": checkpoint,
+                                  "recent_events": service.catalog.recent_events(campaign_id)}
+        return report
+
     @app.post("/api/v1/programs/validate")
     def validate(program: ProgramRequest):
         return compile_program(program.program).document()
