@@ -208,6 +208,8 @@ class Service:
 
     def _finalize(self, identifier, summary):
         self.catalog.set_state(identifier, "FINALIZING", summary={**summary, "phase": "FINALIZING", "scientific_status": summary["state"], "report_status": "BUILDING"})
+        stage = lambda text: self.catalog.set_state(identifier, "FINALIZING", summary={"stage": text, "stage_since": time.time(), "stage_done": None, "stage_total": None})
+        stage("Disk: reading campaign history")
         directory = self.directory(identifier)
         events = []
         cursor = 0
@@ -218,14 +220,17 @@ class Service:
             events.extend(page["items"])
             cursor = int(page["items"][-1]["id"])
         spec = Campaign.model_validate(self.catalog.get(identifier)["spec"])
+        stage("CPU: building report")
         report = generate(directory, events, campaign=spec)
         publication = {"status": "LOCAL_ONLY"}
         if spec.publication.enabled:
+            stage("Git: publishing results")
             from ..publication import publish
             try:
                 publication = publish(directory, push=True)
             except Exception as error:  # finalized local evidence stays valid when publication fails
                 publication = {"status": "FAILED", "error": f"{type(error).__name__}: {error}"}
+        stage("Disk: registering artifacts")
         artifacts = self._register_artifacts(identifier)
         report_artifact = next(item["id"] for item in artifacts if item["path"] == "report.html")
         self.catalog.set_state(identifier, summary["state"], summary={"phase": summary["state"], "report_status": "READY", "report_artifact_id": report_artifact,
@@ -241,6 +246,10 @@ class Service:
             self.catalog.worker(self.token, message["pid"], self.worker_start)
             return
         identifier = message["campaign_id"]
+        if kind == "batch":
+            for item in message["messages"]:
+                self._message(item)
+            return
         if kind == "event":
             self.catalog.event(identifier, message["kind"], message["payload"])
         elif kind == "checkpoint":
@@ -299,7 +308,7 @@ class Service:
 
     # Frequent bookkeeping messages are committed together: one fsync per batch instead of one per message
     # keeps the worker from blocking on a full reply queue while it generates or records thousands of programs.
-    BATCHED = ("event", "candidate", "progress", "checkpoint", "chunk")
+    BATCHED = ("event", "candidate", "progress", "checkpoint", "chunk", "batch")
 
     def _handle(self, message):
         try:

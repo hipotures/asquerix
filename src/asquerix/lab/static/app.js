@@ -193,9 +193,8 @@ async function render(){
   document.getElementById('campaign-progress-bar').style.width=`${(fraction*100).toFixed(1)}%`;
   document.querySelector('.activity .progress').setAttribute('aria-valuenow',String(Math.round(fraction*100)));
   document.getElementById('campaign-progress-label').textContent=timed&&state!=='COMPLETED'?`${duration(Math.min(seconds,timed))} of ${duration(timed)} search time · ${done} scientific episodes${seconds>=timed?' · holdout and replays':''}`:`${done} / ${state==='COMPLETED'?done:plan} scientific episodes${state==='COMPLETED'?'':' (holdout count is an upper bound)'}`;
-  // What the worker is doing right now (GPU simulation, CPU validation, disk writes...), with its duration.
-  const stage=document.getElementById('campaign-stage');
-  stage.textContent=active&&summary.stage?`${summary.stage}${summary.stage_total?` · ${summary.stage_done!=null?`${summary.stage_done} / `:''}${summary.stage_total}`:''}${summary.stage_since?` · for ${duration(Math.max(0,Date.now()/1000-summary.stage_since))}`:''}`:'';
+  // What the worker is doing right now (GPU simulation, CPU validation, disk writes...); the duration ticks locally.
+  shownStage=active&&summary.stage?summary:null;stageText();
 
   const published=publication.status==='PUBLISHED',status=publication.status||(active?'PENDING':'NONE');
   const line=document.getElementById('campaign-provenance');
@@ -335,6 +334,12 @@ function animateFavicon(on){
   if(on&&!faviconTimer){let step=0;faviconTimer=setInterval(()=>setFavicon(faviconFrame(step++)),250);}
   if(!on&&faviconTimer){clearInterval(faviconTimer);faviconTimer=null;setFavicon('/favicon.ico');}
 }
+let shownStage=null;
+function stageText(){
+  const target=document.getElementById('campaign-stage'),item=shownStage;
+  target.textContent=item?`${item.stage}${item.stage_total?` · ${item.stage_done!=null?`${item.stage_done} / `:''}${item.stage_total}`:''}${item.stage_since?` · for ${duration(Math.max(0,Date.now()/1000-item.stage_since))}`:''}`:'';
+}
+setInterval(stageText,1000);
 function toast(message){const note=element('div',message,'toast');document.body.append(note);setTimeout(()=>note.remove(),2500);}
 async function start(){capabilities=await api('/capabilities');field('n').removeAttribute('max');try{bestKnown=await api('/references/best-known');}catch{bestKnown=null;}defaults=capabilities.defaults;inventory=await api('/devices');buildAdvanced();field('device').replaceChildren();for(const device of inventory.items){const option=element('option',`${device.name} · ${device.uuid}`);option.value=device.device;field('device').append(option);}document.getElementById('device-summary').textContent=inventory.items.length?inventory.items.map(item=>item.name).join(', '):'No accessible CUDA GPU';document.getElementById('launch-campaign').disabled=!inventory.items.length;document.getElementById('resource-warning').textContent=inventory.items.map(item=>`${item.device}: ${item.memory_used_mib}/${item.memory_total_mib} MiB in use, ${item.utilization_percent}% device activity. ${item.warning}`).join(' ');const identifier=location.hash.slice(1);if(/^[a-f0-9]{32}$/.test(identifier))await openCampaign(identifier);else await catalog();}
 start().catch(e=>fail(e.message));

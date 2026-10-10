@@ -53,6 +53,22 @@ def _result_chunk(campaign: Campaign, items: list[tuple]) -> list[dict]:
     return [_result_row(campaign, item) for item in items]
 
 
+def _validate_chunk(campaign: Campaign, chunk: dict) -> list[dict]:
+    """Validate a chunk of episodes and finish their rows, in a pool process; arrays travel as whole blocks."""
+    rows = []
+    for index in range(len(chunk["states"])):
+        row = result_row(campaign, chunk["states"][index], chunk["best"][index], chunk["current"][index],
+                         program_hash=chunk["program_hashes"][index], bank_hash=chunk["bank_hash"],
+                         initial_id=chunk["initial_ids"][index], replicate=chunk["replicates"][index])
+        candidate_id = chunk["candidate_ids"][index]
+        row.update({"candidate_id": candidate_id, "bank": chunk["bank"], "arm": chunk["arms"][index],
+                    "task_id": digest({"campaign": chunk["identifier"], "candidate": candidate_id, "episode": row["episode_key"]}),
+                    "execution_attempt": chunk["attempt"],
+                    "timing_scope": "Shared strategy batch; GPU time is not an isolated per-program measurement"})
+        rows.append(row)
+    return rows
+
+
 class CampaignWorker:
     def __init__(self, job: dict, *, emit, signal, signal_since):
         self.identifier = job["id"]
@@ -257,8 +273,10 @@ class CampaignWorker:
             timing = {"validation_seconds": 0.0, "simulation_seconds": 0.0, "device_seconds": 0.0, "transfer_seconds": 0.0}
             self.event("TASK_GROUP_STARTED", {"group": group_hash, "bank": bank_name, "episodes": total, "attempt": attempt,
                                               "candidate_ids": [candidate["id"] for candidate in candidates]})
-            self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=total)
+            self.activity(phase=bank_name.upper(), arm=candidates[0]["arm"], generation=candidates[0]["generation"], active_episodes=total,
+                          stage="CPU: preparing group (compiling programs, uploading worlds)", stage_total=len(candidates))
             if not self.stopped():
+                setup_start = time.monotonic()
                 indices = np.arange(total, dtype=np.int64)
                 pids = (indices // episodes_per_candidate).astype(np.int32)
                 local = indices % episodes_per_candidate
@@ -268,11 +286,25 @@ class CampaignWorker:
                 # GPU slots are refilled as episodes finish, so long programs do not leave the GPU idle.
                 batch = StreamingBatch(self.campaign, programs, bank["poses"][initial_slots],
                                        bank["initial_results"][initial_slots], bank["ids"][initial_slots], replicates, pids)
+                setup_seconds = time.monotonic() - setup_start
                 # An exhausted time budget or a stop cancels the group in flight. Finished episodes are validated
                 # by the process pool while the GPU keeps simulating; validation is a pure function of each episode.
                 cancelled, waiting, futures = False, [], []
-                item = lambda index: (batch.states[index], batch.best[index], batch.current[index], candidates[int(pids[index])]["program"]["hash"],
-                                      bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
+                hashes = [candidate["program"]["hash"] for candidate in candidates]
+                identities = [candidate["id"] for candidate in candidates]
+                arm_names = [candidate["arm"] for candidate in candidates]
+                stream_pids, stream_slots, stream_replicates = pids, initial_slots, replicates  # stream positions, never remapped
+
+                def submit(indices):
+                    indices = np.asarray(indices, dtype=np.int64)
+                    owners = stream_pids[indices]
+                    return self.validate_async({
+                        "states": batch.states[indices], "best": batch.best[indices], "current": batch.current[indices],
+                        "program_hashes": [hashes[owner] for owner in owners], "candidate_ids": [identities[owner] for owner in owners],
+                        "arms": [arm_names[owner] for owner in owners], "initial_ids": [str(int(value)) for value in bank["ids"][stream_slots[indices]]],
+                        "replicates": [str(int(value)) for value in stream_replicates[indices]],
+                        "identifier": self.identifier, "bank": bank_name, "bank_hash": bank["hash"], "attempt": attempt})
+
                 chunk = max(512, min(8192, total // (VALIDATION_PROCESSES * 4)))
                 while True:
                     cancel = self.stopped() or self.cut()
@@ -282,13 +314,14 @@ class CampaignWorker:
                         waiting.extend(batch.newly.tolist())
                         while len(waiting) >= chunk:
                             indices, waiting = waiting[:chunk], waiting[chunk:]
-                            futures.append((indices, self.validate_async([item(index) for index in indices])))
+                            futures.append((indices, submit(indices)))
                     if done:
                         break
                     self.activity(active_episodes=total, stage="GPU: simulating episodes", stage_done=int(batch.collected.sum()), stage_total=total)
                 for key in ("simulation_seconds", "device_seconds", "transfer_seconds"):
                     timing[key] += batch.timings.get(key, 0.0)
-                partial = False
+                timing["setup_seconds"] = setup_seconds
+                order = np.arange(total)
                 if cancelled and not self.stopped():
                     # Time budget cut: programs whose every episode finished are admitted as a smaller group;
                     # the rest are dropped unevaluated.
@@ -298,37 +331,30 @@ class CampaignWorker:
                                                         "dropped_candidates": int((~complete).sum())})
                     if complete.any():
                         selected = np.repeat(complete, episodes_per_candidate)
-                        states, best, current = batch.states[selected], batch.best[selected], batch.current[selected]
+                        order = np.flatnonzero(selected)  # stream positions of the admitted episodes
                         candidates = [candidate for candidate, flag in zip(candidates, complete) if flag]
                         total = len(candidates) * episodes_per_candidate
                         initial_slots, replicates = initial_slots[selected], replicates[selected]
                         pids = (np.arange(total) // episodes_per_candidate).astype(np.int32)
                         group_hash = digest({"candidates": [candidate["id"] for candidate in candidates], "bank": bank_name})[:16]
-                        cancelled, partial = False, True
+                        cancelled = False
                     else:
                         candidates = []
                 if not cancelled and not self.stopped():
                     validation_start = time.monotonic()
                     self.activity(stage="CPU: validating poses", stage_total=total)
+                    states, best, current = batch.states[order], batch.best[order], batch.current[order]
+                    # Episodes not yet sent (the stream's tail, or a truncated group's) are validated now; rows
+                    # already validated during the simulation are reused.
+                    submitted = {index for indices, _ in futures for index in indices}
+                    rest = [int(index) for index in order if int(index) not in submitted]
+                    if rest:
+                        futures.append((rest, submit(rest)))
                     by_index = {}
-                    if partial:  # validate the admitted programs' episodes, in their original stream order
-                        validated = self.result_rows([(states[index], best[index], current[index], candidates[int(pids[index])]["program"]["hash"],
-                                                       bank["hash"], str(int(bank["ids"][initial_slots[index]])), str(int(replicates[index])))
-                                                      for index in range(total)])
-                    else:
-                        states, best, current = batch.collect()
-                        if waiting:
-                            futures.append((waiting, self.validate_async([item(index) for index in waiting])))
-                        for indices, future in futures:
-                            by_index.update(zip(indices, future.result()))
-                        validated = [by_index[index] for index in range(total)]
+                    for indices, future in futures:
+                        by_index.update(zip(indices, future.result()))
+                    validated = [by_index[int(index)] for index in order]
                     timing["validation_seconds"] += time.monotonic() - validation_start
-                    for index, row in enumerate(validated):
-                        candidate = candidates[int(pids[index])]
-                        row.update({"candidate_id": candidate["id"], "bank": bank_name, "arm": candidate["arm"],
-                                    "task_id": digest({"campaign": self.identifier, "candidate": candidate["id"], "episode": row["episode_key"]}),
-                                    "execution_attempt": attempt,
-                                    "timing_scope": "Shared strategy batch; GPU time is not an isolated per-program measurement"})
                     rows.extend(validated)
                     arrays.append({"best_poses": best, "current_poses": current, "initial_ids": bank["ids"][initial_slots],
                                    "replicates": replicates, "program_indices": pids,
@@ -386,7 +412,7 @@ class CampaignWorker:
                     timing["top_seconds"] = time.monotonic() - top_start
                 self.event("TASK_GROUP_COMPLETED", {"group": group_hash, "bank": bank_name, "episodes": total,
                                                     "retained_programs": len(keep), "timings": timing})
-        evaluated = []
+        evaluated, outgoing = [], []
         recording_start = time.monotonic()
         self.activity(stage="CPU: recording program results", stage_total=len(candidates))
         for candidate in candidates:
@@ -396,12 +422,15 @@ class CampaignWorker:
             result["arm_execution_elapsed_seconds"] = self.elapsed() - self.state["arm_start_elapsed"].get(candidate["arm"], 0.0)
             self.state.setdefault("arm_elapsed", {})[candidate["arm"]] = result["arm_execution_elapsed_seconds"]
             evaluated.append(result)
-            self.emit({"type": "candidate", "campaign_id": self.identifier, "candidate": result})
             summary = result.get("score") or result.get("holdout_score")
-            self.event("CANDIDATE_RESULT" if bank_name == "training" else "HOLDOUT_RESULT",
-                       {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name,
-                        "score": {key: summary.get(key) for key in ("complete", "eligible", "mean_best_L", "best_L", "ranking_tuple")},
-                        "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()})
+            outgoing.append({"type": "candidate", "campaign_id": self.identifier, "candidate": result})
+            outgoing.append({"type": "event", "campaign_id": self.identifier, "kind": "CANDIDATE_RESULT" if bank_name == "training" else "HOLDOUT_RESULT",
+                             "payload": {"candidate_id": result["id"], "arm": result["arm"], "bank": bank_name,
+                                         "score": {key: summary.get(key) for key in ("complete", "eligible", "mean_best_L", "best_L", "ranking_tuple")},
+                                         "program_hash": candidate["program"]["hash"], "execution_elapsed_seconds": self.elapsed()}})
+        # Program results reach the service in a few large messages instead of two per program.
+        for start in range(0, len(outgoing), 1024):
+            self.emit({"type": "batch", "campaign_id": self.identifier, "messages": outgoing[start:start + 1024]})
         recording_seconds = time.monotonic() - recording_start
         self.activity(stage="Disk: candidate log and checkpoint")
         log_start = time.monotonic()
@@ -462,16 +491,16 @@ class CampaignWorker:
         chunks = [items[start:start + size] for start in range(0, len(items), size)]
         return [row for rows in self.pool.map(_result_chunk, [self.campaign] * len(chunks), chunks) for row in rows]
 
-    def validate_async(self, items: list[tuple]):
-        """Start validating a chunk of episodes in the process pool; the result keeps the items' order."""
+    def validate_async(self, chunk: dict):
+        """Start validating a chunk of episodes in the process pool; the rows keep the chunk's order."""
         if VALIDATION_PROCESSES < 2:
             future = Future()
-            future.set_result(_result_chunk(self.campaign, items))
+            future.set_result(_validate_chunk(self.campaign, chunk))
             return future
         if self.pool is None:
             import multiprocessing
             self.pool = ProcessPoolExecutor(VALIDATION_PROCESSES, mp_context=multiprocessing.get_context("spawn"))
-        return self.pool.submit(_result_chunk, self.campaign, items)
+        return self.pool.submit(_validate_chunk, self.campaign, chunk)
 
     def close(self):
         if self.pool is not None:
@@ -531,7 +560,7 @@ class CampaignWorker:
             if collection_bytes + estimated > self.campaign.recording.max_trace_mib * 1024**2:
                 omissions.append({"candidate_id": candidate["id"], "reason": "trace collection storage cap"})
                 continue
-            self.activity(phase="REPLAYS", candidate_id=candidate["id"])
+            self.activity(phase="REPLAYS", candidate_id=candidate["id"], stage="GPU: recording replay of a selected episode")
             reference = load_npz(self.directory / row["numeric_path"])
             result = replay(self.campaign, self.directory, candidate=candidate, row=row,
                             bank=self.banks["training"], reference_arrays=reference,
@@ -575,7 +604,7 @@ class CampaignWorker:
         if not (self.directory / "environment.json.gz").exists():
             write_json(self.directory / "environment.json.gz", self.provenance)
         if not (self.directory / "datasets.json.gz").exists():
-            self.activity(phase="PREPARING")
+            self.activity(phase="PREPARING", stage="GPU: preparing starting worlds")
             metadata, timing = prepare_banks(self.campaign, self.directory, stop=self.stopped,
                                            progress=lambda value: self.activity(phase="PREPARING", **{key: val for key, val in value.items() if key != "phase"}))
             self.state["timings"].update(timing)
@@ -691,6 +720,7 @@ class CampaignWorker:
         return self.finish("PARTIAL" if self.stopped() else "COMPLETED")
 
     def finish(self, status: str) -> dict:
+        self.activity(stage="Disk: writing summaries and checkpoint")
         self.checkpoint()
         if status == "PAUSED" or status == "INTERRUPTED":
             return {"state": status, "elapsed_execution_seconds": self.elapsed()}
